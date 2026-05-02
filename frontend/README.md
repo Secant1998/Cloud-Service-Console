@@ -902,6 +902,7 @@ SSH 登录、远端服务控制、云端部署、健康检查、控制 signaling
   - 只做 Windows 发布
   - 会先安装 `frontend` 依赖
   - 会安装 `backend/requirements.txt` 和 `PyInstaller`
+  - `backend/requirements.txt` 里现在也包含 `Pillow`，因为 `beforeBuildCommand` 会运行 `scripts/make_icon.py`
   - 会自动计算版本号
   - 会调用 `scripts/update_versions.py` 同步版本文件
   - 会调用 `tauri-apps/tauri-action@action-v0.6.2`

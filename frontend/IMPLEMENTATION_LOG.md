@@ -939,6 +939,7 @@
 - 新增 `.github/workflows/release-windows.yml`
   - `push main` 或手动触发后自动做 Windows release
   - 自动安装前端依赖、后端依赖、PyInstaller
+  - 因为 `beforeBuildCommand` 会运行 `scripts/make_icon.py`，所以构建环境也需要 `Pillow`
   - 自动计算版本号
   - 自动调用 `tauri-apps/tauri-action@action-v0.6.2` 发布 `nsis + updater`
 
