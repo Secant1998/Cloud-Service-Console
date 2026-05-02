@@ -1,0 +1,352 @@
+export type LoginRequest = {
+  host: string;
+  username: string;
+  password: string;
+  remember_password: boolean;
+  auto_login: boolean;
+};
+
+export type SettingsRequest = {
+  host: string;
+  username: string;
+  password?: string;
+  remember_password: boolean;
+  auto_login: boolean;
+};
+
+export type ApiResponse = {
+  success: boolean;
+  message: string;
+};
+
+export type IngestModeSwitchRequest = {
+  target_mode: string;
+};
+
+export type IngestModeResult = {
+  ingest_mode: string;
+  changed: boolean;
+  message: string;
+};
+
+export type ControlSessionDescription = {
+  sdp: string;
+  type: string;
+};
+
+export type ControlMonitorConfig = {
+  session: string;
+  poll_interval_sec: number;
+  turn_urls: string[];
+  turn_username: string;
+  turn_credential: string;
+};
+
+export type ControlMonitorOffer = {
+  ok: boolean;
+  session: string;
+  offerId: string;
+  createdAt: string;
+  offer: ControlSessionDescription;
+};
+
+export type TankTroubleRoomRequest = {
+  room: string;
+  player_id: string;
+  country_code?: string;
+};
+
+export type TankTroubleRoomState = {
+  ok: boolean;
+  room: string;
+  map_seed: number;
+  map_id: string;
+  active_player_ids: string[];
+  active_player_count: number;
+  voted_player_ids: string[];
+  vote_count: number;
+  vote_required: number;
+  countdown_seconds: number;
+  countdown_active: boolean;
+  countdown_deadline_ms: number;
+  local_player_voted: boolean;
+  local_player_color: string;
+  updated_at_ms: number;
+};
+
+export type TankTroubleLatencyInputState = {
+  forward: boolean;
+  backward: boolean;
+  left: boolean;
+  right: boolean;
+  fire_seq: number;
+  clone_hit_seq: number;
+};
+
+export type TankTroubleLatencyPlayerState = {
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+};
+
+export type TankTroubleLatencyTargetState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  phase: number;
+};
+
+export type TankTroubleLatencyRequest = {
+  room: string;
+  player_id: string;
+  country_code?: string;
+  map_seed: number;
+  local_color: string;
+  input_seq: number;
+  local_player: TankTroubleLatencyPlayerState;
+  targets: TankTroubleLatencyTargetState[];
+  input: TankTroubleLatencyInputState;
+};
+
+export type TankTroubleLatencyBulletState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+};
+
+export type TankTroubleLatencyFireEvent = {
+  id: number;
+  x: number;
+  y: number;
+  angle: number;
+  speed: number;
+  radius: number;
+};
+
+export type TankTroubleLatencyCloneState = {
+  player_id: string;
+  country_code: string;
+  color: string;
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+  flash: number;
+};
+
+export type TankTroubleLatencyTargetRespawn = {
+  id: number;
+  x: number;
+  y: number;
+  phase: number;
+};
+
+export type TankTroubleLatencyState = {
+  ok: boolean;
+  room: string;
+  ack_input_seq: number;
+  snapshot_seq: number;
+  clone: TankTroubleLatencyCloneState;
+  clone_input: TankTroubleLatencyInputState;
+  fire_events: TankTroubleLatencyFireEvent[];
+  clone_reset_seq: number;
+  bullets: TankTroubleLatencyBulletState[];
+  target_respawns: TankTroubleLatencyTargetRespawn[];
+  local_player_hit_seq: number;
+  clone_hit_ack_seq: number;
+  updated_at_ms: number;
+};
+
+export type TankTroublePreviewRow = {
+  rank: number;
+  player_id: string;
+  country_code: string;
+  score: number;
+  active: boolean;
+};
+
+export type TankTroublePreviewRect = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export type TankTroublePreviewTankState = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+  flash: number;
+};
+
+export type TankTroublePreviewBulletState = {
+  id: number;
+  color: string;
+  x: number;
+  y: number;
+  radius: number;
+};
+
+export type TankTroublePreviewTargetState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  phase: number;
+};
+
+export type TankTroublePreviewRippleState = {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  wall: TankTroublePreviewRect;
+};
+
+export type TankTroublePreviewFadeState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  life: number;
+  maxLife: number;
+  color: string;
+};
+
+export type TankTroublePreviewSceneState = {
+  theme: "light" | "dark";
+  mapTag: string;
+  elapsedMs: number;
+  walls: TankTroublePreviewRect[];
+  tanks: TankTroublePreviewTankState[];
+  bullets: TankTroublePreviewBulletState[];
+  targets: TankTroublePreviewTargetState[];
+  wallRipples: TankTroublePreviewRippleState[];
+  bulletFades: TankTroublePreviewFadeState[];
+};
+
+export type TankTroublePreviewPlayerSnapshot = {
+  color: string;
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+  flash: number;
+  shots: number;
+};
+
+export type TankTroublePreviewPushRequest = {
+  session_id: string;
+  room: string;
+  player_id: string;
+  country_code?: string;
+  snapshot_seq: number;
+  tank: TankTroublePreviewPlayerSnapshot;
+  updated_at_ms: number;
+};
+
+export type TankTroublePreviewClearRequest = {
+  session_id: string;
+};
+
+export type LoginSettings = {
+  host: string;
+  username: string;
+  password: string;
+  remember_password: boolean;
+  auto_login: boolean;
+};
+
+export type ServiceStatus = {
+  name: string;
+  title: string;
+  description: string;
+  running: boolean;
+  pid?: string | null;
+  status: string;
+  active_state: string;
+  sub_state: string;
+  unit_state: string;
+  detail: string;
+};
+
+export type HealthCheckStatus = {
+  key: string;
+  title: string;
+  description: string;
+  ok: boolean;
+  note: string;
+  status: string;
+};
+
+export type PortStatus = {
+  key: string;
+  title: string;
+  port: number;
+  protocol: string;
+  listening: boolean;
+  checked: boolean;
+};
+
+export type PortChecksResponse = {
+  port_checks: PortStatus[];
+};
+
+export type NetworkEndpointStatus = {
+  ip: string;
+  location: string;
+  country_code: string;
+};
+
+export type NetworkSnapshot = {
+  local: NetworkEndpointStatus;
+  server: NetworkEndpointStatus;
+  last_checked: string;
+};
+
+export type DashboardStatus = {
+  connected: boolean;
+  ssh_target: string;
+  public_base_url: string;
+  ingest_mode: string;
+  pending_offers: number | string;
+  service_running_count: string;
+  health_ok_count: string;
+  last_refresh: string;
+  summary_status: string;
+  config_path: string;
+  services: ServiceStatus[];
+  health_checks: HealthCheckStatus[];
+  port_checks: PortStatus[];
+  network_snapshot: NetworkSnapshot;
+  broker_status?: Record<string, unknown> | null;
+};
+
+export type LogEntry = {
+  timestamp: string;
+  level: string;
+  message: string;
+};
+
+export type LogsResponse = {
+  logs: LogEntry[];
+};
+
+export type LocalSetupStatus = {
+  ready: boolean;
+  message: string;
+};
+
+export type LocalSetupResult = {
+  ready: boolean;
+  changed: boolean;
+  message: string;
+};

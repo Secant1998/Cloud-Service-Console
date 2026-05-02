@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HTTP Snapshot Viewer</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --panel-bg: rgba(7, 12, 19, 0.72);
+            --panel-border: rgba(125, 211, 252, 0.22);
+            --accent: #7dd3fc;
+            --good: #34d399;
+            --bad: #f87171;
+            --muted: #94a3b8;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: Segoe UI, Arial, sans-serif;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: block;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+            width: min(360px, calc(100vw - 32px));
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            padding: 14px 16px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            gap: 8px;
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .k {
+            color: var(--muted);
+        }
+
+        .v {
+            color: #e2e8f0;
+            word-break: break-word;
+        }
+
+        .status {
+            color: var(--good);
+        }
+
+        .status.bad {
+            color: var(--bad);
+        }
+
+        .metric {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .card {
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .label {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .value {
+            color: #f8fafc;
+            font-size: 20px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+<img id="frame" alt="Latest snapshot">
+
+<div class="overlay">
+    <h1>HTTP Snapshot Viewer</h1>
+    <div class="metric">
+        <div class="card">
+            <div class="label">Refresh FPS</div>
+            <div class="value" id="fps">--</div>
+        </div>
+        <div class="card">
+            <div class="label">Resolution</div>
+            <div class="value" id="resolution">--</div>
+        </div>
+    </div>
+    <div class="row"><div class="k">Mode</div><div class="v">HTTP JPEG</div></div>
+    <div class="row"><div class="k">Source</div><div class="v" id="source">src=webcam</div></div>
+    <div class="row"><div class="k">Status</div><div class="v status" id="status">Loading...</div></div>
+    <div class="row"><div class="k">Last Fetch</div><div class="v" id="last-fetch">--</div></div>
+    <div class="row"><div class="k">Last Error</div><div class="v" id="last-error">--</div></div>
+</div>
+
+<script>
+    const img = document.getElementById('frame');
+    const params = new URLSearchParams(location.search);
+    const src = params.get('src') || 'webcam';
+    const frameUrl = `api/frame.jpeg?src=${encodeURIComponent(src)}`;
+    const intervalMs = Number(params.get('interval_ms') || 150);
+
+    document.getElementById('source').textContent = `src=${src}`;
+
+    let lastUrl = null;
+    let lastAt = null;
+
+    function setText(id, value) {
+        document.getElementById(id).textContent = value;
+    }
+
+    function setStatus(text, bad = false) {
+        const node = document.getElementById('status');
+        node.textContent = text;
+        node.classList.toggle('bad', bad);
+    }
+
+    async function loadFrame() {
+        const started = performance.now();
+        try {
+            const response = await fetch(`${frameUrl}&_=${Date.now()}`, {cache: 'no-store'});
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            img.onload = () => {
+                if (lastUrl) URL.revokeObjectURL(lastUrl);
+                lastUrl = objectUrl;
+
+                const now = performance.now();
+                if (lastAt != null) {
+                    const delta = (now - lastAt) / 1000;
+                    if (delta > 0) setText('fps', (1 / delta).toFixed(1));
+                }
+                lastAt = now;
+
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                    setText('resolution', `${img.naturalWidth}x${img.naturalHeight}`);
+                }
+
+                setStatus(`OK (${Math.round(now - started)} ms fetch)`);
+                setText('last-fetch', new Date().toLocaleTimeString());
+                setText('last-error', '--');
+                setTimeout(loadFrame, intervalMs);
+            };
+            img.src = objectUrl;
+        } catch (error) {
+            setStatus('Fetch failed', true);
+            setText('last-error', error.message);
+            setTimeout(loadFrame, 1000);
+        }
+    }
+
+    loadFrame();
+</script>
+</body>
+</html>

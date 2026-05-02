@@ -1,0 +1,37 @@
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Backend build outputs
+backend/build/
+backend/dist/
+backend/*.spec
+
+# Frontend build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Tauri / Rust build outputs
+src-tauri/target/
+src-tauri/binaries/*.exe
+src-tauri/binaries/*.pdb
+
+# Runtime data
+data/
+
+# Local env / secrets
+.env
+.env.*

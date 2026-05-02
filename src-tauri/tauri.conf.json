@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/1",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "python scripts\\make_icon.py && python scripts\\build_backend_bundle.py && cmd /c npm.cmd run build --prefix frontend",
+    "devPath": "http://127.0.0.1:5173",
+    "distDir": "../frontend/dist"
+  },
+  "package": {
+    "productName": "Cloud Service Console",
+    "version": "0.3.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "com.codex.cloudserviceconsole",
+      "targets": ["nsis"],
+      "icon": [
+        "icons/icon.ico"
+      ],
+      "externalBin": [
+        "binaries/cloud-console-backend"
+      ]
+    },
+    "windows": [
+      {
+        "title": "Cloud Service Console",
+        "width": 1180,
+        "height": 760,
+        "resizable": true,
+        "minWidth": 1180,
+        "minHeight": 760
+      }
+    ]
+  }
+}

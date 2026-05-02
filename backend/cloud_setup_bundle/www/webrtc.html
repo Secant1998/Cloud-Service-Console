@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebRTC Viewer - Camera Stats</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --panel-bg: rgba(7, 12, 19, 0.74);
+            --panel-border: rgba(125, 211, 252, 0.22);
+            --accent: #7dd3fc;
+            --good: #34d399;
+            --warn: #fbbf24;
+            --bad: #f87171;
+            --muted: #94a3b8;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: Segoe UI, Arial, sans-serif;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        body.clean-mode .overlay {
+            display: none;
+        }
+
+        body.clean-mode video {
+            cursor: none;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+            width: min(440px, calc(100vw - 32px));
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--panel-border);
+            background: var(--panel-bg);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+        }
+
+        .title {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .title h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .title .src {
+            color: var(--accent);
+            font-size: 13px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--warn);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .dot.good {
+            color: var(--good);
+            background: var(--good);
+        }
+
+        .dot.bad {
+            color: var(--bad);
+            background: var(--bad);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .metric {
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .label {
+            margin-bottom: 4px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .value {
+            color: #f8fafc;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.15;
+        }
+
+        .sub {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .info {
+            margin-top: 10px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            gap: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .info-row .k {
+            color: var(--muted);
+        }
+
+        .info-row .v {
+            color: #e2e8f0;
+            word-break: break-word;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        button,
+        a.action {
+            appearance: none;
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.82);
+            color: #f8fafc;
+            padding: 9px 12px;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .footer {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+<video id="video" autoplay controls playsinline muted></video>
+
+<div class="overlay">
+    <div class="title">
+        <h1>WebRTC Stream Stats</h1>
+        <div class="src" id="stream-name">src=webcam</div>
+    </div>
+    <div class="status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">Connecting...</span>
+    </div>
+    <div class="grid">
+        <div class="metric">
+            <div class="label">FPS</div>
+            <div class="value" id="fps">--</div>
+            <div class="sub">decoded or rendered frame rate</div>
+        </div>
+        <div class="metric">
+            <div class="label">Packet Loss</div>
+            <div class="value" id="loss">--</div>
+            <div class="sub" id="loss-sub">lost / total packets</div>
+        </div>
+        <div class="metric">
+            <div class="label">Network RTT</div>
+            <div class="value" id="rtt">--</div>
+            <div class="sub">WebRTC transport round trip time</div>
+        </div>
+        <div class="metric">
+            <div class="label">Receiver Delay</div>
+            <div class="value" id="receiver-delay">--</div>
+            <div class="sub" id="receiver-delay-sub">receiver-side jitter buffer + decode only</div>
+        </div>
+        <div class="metric">
+            <div class="label">Jitter</div>
+            <div class="value" id="jitter">--</div>
+            <div class="sub">packet arrival jitter from browser stats</div>
+        </div>
+        <div class="metric">
+            <div class="label">Resolution</div>
+            <div class="value" id="resolution">--</div>
+            <div class="sub">current video size</div>
+        </div>
+    </div>
+    <div class="info">
+        <div class="info-row"><div class="k">Mode</div><div class="v" id="mode">WebRTC only</div></div>
+        <div class="info-row"><div class="k">Codec</div><div class="v" id="codec">Waiting for codec info...</div></div>
+        <div class="info-row"><div class="k">Playback</div><div class="v" id="playback">Waiting for media...</div></div>
+        <div class="info-row"><div class="k">Signaling</div><div class="v" id="signaling">Opening WebSocket...</div></div>
+        <div class="info-row"><div class="k">ICE</div><div class="v" id="ice">new</div></div>
+        <div class="info-row"><div class="k">Diagnostics</div><div class="v" id="diagnostics">No sender timecode is injected. Delay values shown here are receiver-side only.</div></div>
+        <div class="info-row"><div class="k">Last Event</div><div class="v" id="last-event">Page loaded</div></div>
+    </div>
+    <div class="actions">
+        <button id="retry-webrtc" type="button">Retry WebRTC</button>
+        <a class="action" id="mp4-link" href="#" target="_blank" rel="noopener">Open MP4</a>
+        <a class="action" id="snapshot-link" href="#" target="_blank" rel="noopener">Open Snapshot</a>
+    </div>
+    <div class="footer">
+        This page stays on the live WebRTC path and exposes the real browser-side state instead of hiding failures behind a fallback player.
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const params = new URLSearchParams(location.search);
+    const streamName = params.get('src') || 'webcam';
+    const media = params.get('media') || 'video';
+    const cleanMode = params.get('clean') === '1' || params.get('ui') === 'clean';
+    const mp4Href = `api/stream.mp4?src=${encodeURIComponent(streamName)}`;
+    const snapshotHref = `api/frame.jpeg?src=${encodeURIComponent(streamName)}`;
+
+    if (cleanMode) {
+        document.body.classList.add('clean-mode');
+        video.controls = false;
+        video.setAttribute('disablePictureInPicture', '');
+        document.title = `${streamName} - Video`;
+    }
+
+    document.getElementById('stream-name').textContent = `src=${streamName}`;
+    document.getElementById('mp4-link').href = mp4Href;
+    document.getElementById('snapshot-link').href = snapshotHref;
+
+    let peer = null;
+    let ws = null;
+    let statsTimer = null;
+    let remoteStream = null;
+    let prevFrameStat = null;
+    let prevDelayStat = null;
+
+    function setStatus(text, level) {
+        document.getElementById('status-text').textContent = text;
+        const dot = document.getElementById('status-dot');
+        dot.classList.remove('good', 'bad');
+        if (level === 'good') dot.classList.add('good');
+        if (level === 'bad') dot.classList.add('bad');
+    }
+
+    function setMetric(id, value) {
+        document.getElementById(id).textContent = value;
+    }
+
+    function setLoss(primary, secondary) {
+        document.getElementById('loss').textContent = primary;
+        document.getElementById('loss-sub').textContent = secondary;
+    }
+
+    function setInfo(id, value) {
+        document.getElementById(id).textContent = value;
+    }
+
+    function rememberEvent(value) {
+        setInfo('last-event', value);
+    }
+
+    function formatMs(value) {
+        return `${value.toFixed(1)} ms`;
+    }
+
+    function getAverageDeltaMs(currentTotalSeconds, currentCount, previousTotalSeconds, previousCount) {
+        if (!Number.isFinite(currentTotalSeconds) || !Number.isFinite(currentCount) || currentCount <= 0) {
+            return null;
+        }
+
+        if (
+            Number.isFinite(previousTotalSeconds) &&
+            Number.isFinite(previousCount) &&
+            currentTotalSeconds >= previousTotalSeconds &&
+            currentCount > previousCount
+        ) {
+            return ((currentTotalSeconds - previousTotalSeconds) / (currentCount - previousCount)) * 1000;
+        }
+
+        return (currentTotalSeconds / currentCount) * 1000;
+    }
+
+    function resetMetrics() {
+        setMetric('fps', '--');
+        setLoss('--', 'lost / total packets');
+        setMetric('rtt', '--');
+        setMetric('receiver-delay', '--');
+        document.getElementById('receiver-delay-sub').textContent = 'receiver-side jitter buffer + decode only';
+        setMetric('jitter', '--');
+        setMetric('resolution', '--');
+        setInfo('codec', 'Waiting for codec info...');
+        setInfo('diagnostics', 'No sender timecode is injected. Delay values shown here are receiver-side only.');
+        prevFrameStat = null;
+        prevDelayStat = null;
+    }
+
+    function stopStatsLoop() {
+        if (statsTimer) {
+            clearInterval(statsTimer);
+            statsTimer = null;
+        }
+    }
+
+    function resetVideoSurface() {
+        if (remoteStream) {
+            remoteStream.getTracks().forEach(track => track.stop());
+        }
+        remoteStream = null;
+        video.srcObject = null;
+    }
+
+    function closePeer() {
+        stopStatsLoop();
+
+        if (ws) {
+            try {
+                ws.close();
+            } catch (error) {
+            }
+            ws = null;
+        }
+
+        if (peer) {
+            try {
+                peer.close();
+            } catch (error) {
+            }
+            peer = null;
+        }
+
+        resetVideoSurface();
+    }
+
+    function applyLowLatencyReceiverHints(pc) {
+        for (const receiver of pc.getReceivers()) {
+            if (!receiver || receiver.track.kind !== 'video') {
+                continue;
+            }
+
+            if ('playoutDelayHint' in receiver) {
+                receiver.playoutDelayHint = 0;
+            }
+
+            if ('jitterBufferTarget' in receiver) {
+                try {
+                    receiver.jitterBufferTarget = 60;
+                } catch (error) {
+                }
+            }
+        }
+    }
+
+    async function tryPlay(reason) {
+        try {
+            await video.play();
+            setInfo('playback', `video.play() succeeded via ${reason}`);
+        } catch (error) {
+            setInfo('playback', `video.play() blocked: ${error.message}`);
+        }
+    }
+
+    function wireVideoEvents() {
+        for (const name of ['loadedmetadata', 'loadeddata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'error']) {
+            video.addEventListener(name, () => {
+                rememberEvent(`video:${name}`);
+
+                if (name === 'playing') {
+                    setStatus('Receiving WebRTC video', 'good');
+                } else if (name === 'waiting' || name === 'stalled') {
+                    setStatus(`Video ${name}`, '');
+                } else if (name === 'error') {
+                    setStatus('Video error', 'bad');
+                }
+            });
+        }
+    }
+
+    async function buildPeerConnection(mediaValue) {
+        const pc = new RTCPeerConnection({iceServers: []});
+        remoteStream = new MediaStream();
+        video.srcObject = remoteStream;
+
+        const kinds = ['video', 'audio'].filter(kind => mediaValue.indexOf(kind) >= 0);
+        for (const kind of kinds) {
+            pc.addTransceiver(kind, {direction: 'recvonly'});
+        }
+
+        applyLowLatencyReceiverHints(pc);
+
+        pc.addEventListener('track', event => {
+            if (event.streams && event.streams[0]) {
+                video.srcObject = event.streams[0];
+            } else if (event.track) {
+                remoteStream.addTrack(event.track);
+                video.srcObject = remoteStream;
+            }
+
+            setInfo('playback', `Remote ${event.track.kind} track attached`);
+            rememberEvent(`pc:track:${event.track.kind}`);
+            applyLowLatencyReceiverHints(pc);
+            tryPlay('ontrack');
+        });
+
+        pc.addEventListener('connectionstatechange', () => {
+            const state = pc.connectionState || 'unknown';
+            rememberEvent(`pc:${state}`);
+
+            if (state === 'connected') {
+                setStatus('WebRTC connected', 'good');
+            } else if (state === 'failed' || state === 'disconnected') {
+                setStatus(`WebRTC ${state}`, 'bad');
+            } else if (state === 'closed') {
+                setStatus('WebRTC closed', 'bad');
+            } else {
+                setStatus(`WebRTC ${state}`, '');
+            }
+        });
+
+        pc.addEventListener('iceconnectionstatechange', () => {
+            const state = pc.iceConnectionState || 'unknown';
+            setInfo('ice', state);
+            rememberEvent(`ice:${state}`);
+        });
+
+        return pc;
+    }
+
+    async function connect(mediaValue) {
+        closePeer();
+        resetMetrics();
+        resetVideoSurface();
+
+        setInfo('mode', 'WebRTC only');
+        setStatus('Connecting...', '');
+        setInfo('playback', 'Waiting for remote track...');
+        setInfo('signaling', 'Opening WebSocket...');
+        setInfo('ice', 'new');
+        rememberEvent('connect:start');
+
+        const pc = await buildPeerConnection(mediaValue);
+        peer = pc;
+
+        const wsUrl = new URL('api/ws' + location.search, location.href);
+        ws = new WebSocket(`ws${wsUrl.toString().substring(4)}`);
+
+        ws.addEventListener('open', () => {
+            setInfo('signaling', 'WebSocket open');
+            rememberEvent('ws:open');
+
+            pc.addEventListener('icecandidate', event => {
+                if (!event.candidate || !ws || ws.readyState !== WebSocket.OPEN) {
+                    return;
+                }
+
+                ws.send(JSON.stringify({type: 'webrtc/candidate', value: event.candidate.candidate}));
+            });
+
+            pc.createOffer()
+                .then(offer => pc.setLocalDescription(offer))
+                .then(() => {
+                    setInfo('signaling', 'Offer sent');
+                    ws.send(JSON.stringify({type: 'webrtc/offer', value: pc.localDescription.sdp}));
+                })
+                .catch(error => {
+                    setStatus('Offer failed', 'bad');
+                    setInfo('playback', error.message);
+                    rememberEvent('offer:error');
+                });
+        });
+
+        ws.addEventListener('message', async event => {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === 'webrtc/candidate') {
+                try {
+                    await pc.addIceCandidate({candidate: msg.value, sdpMid: '0'});
+                } catch (error) {
+                    rememberEvent('candidate:error');
+                }
+            } else if (msg.type === 'webrtc/answer') {
+                await pc.setRemoteDescription({type: 'answer', sdp: msg.value});
+                applyLowLatencyReceiverHints(pc);
+                setInfo('signaling', 'Answer received');
+                rememberEvent('answer:ok');
+                tryPlay('answer');
+            }
+        });
+
+        ws.addEventListener('close', () => {
+            setInfo('signaling', 'WebSocket closed');
+            rememberEvent('ws:close');
+            if (pc.connectionState !== 'connected') {
+                setStatus('WebRTC signaling closed before playback', 'bad');
+            }
+        });
+
+        ws.addEventListener('error', () => {
+            setInfo('signaling', 'WebSocket error');
+            rememberEvent('ws:error');
+            setStatus('WebSocket error', 'bad');
+        });
+
+        statsTimer = setInterval(updateStats, 1000);
+        tryPlay('connect');
+    }
+
+    async function updateStats() {
+        if (!peer) {
+            return;
+        }
+
+        let report;
+        try {
+            report = await peer.getStats();
+        } catch (error) {
+            return;
+        }
+
+        let inbound = null;
+        let track = null;
+        let candidatePair = null;
+        let remoteInbound = null;
+        let codec = null;
+
+        report.forEach(stat => {
+            if (!inbound && stat.type === 'inbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
+                inbound = stat;
+            }
+            if (!track && stat.type === 'track' && stat.kind === 'video') {
+                track = stat;
+            }
+            if (!candidatePair && stat.type === 'candidate-pair' && stat.state === 'succeeded' && stat.nominated) {
+                candidatePair = stat;
+            }
+            if (!remoteInbound && stat.type === 'remote-inbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
+                remoteInbound = stat;
+            }
+        });
+
+        if (inbound && inbound.codecId && report.has(inbound.codecId)) {
+            codec = report.get(inbound.codecId);
+        }
+
+        if (codec) {
+            const name = codec.mimeType || codec.sdpFmtpLine || codec.payloadType || 'unknown';
+            setInfo('codec', String(name));
+        }
+
+        const resolution = video.videoWidth && video.videoHeight ? `${video.videoWidth}x${video.videoHeight}` : '--';
+        setMetric('resolution', resolution);
+
+        let fps = null;
+        if (track && typeof track.framesPerSecond === 'number' && track.framesPerSecond > 0) {
+            fps = track.framesPerSecond;
+        } else if (inbound && typeof inbound.framesDecoded === 'number' && typeof inbound.timestamp === 'number') {
+            if (prevFrameStat && prevFrameStat.timestamp < inbound.timestamp && prevFrameStat.framesDecoded <= inbound.framesDecoded) {
+                const framesDelta = inbound.framesDecoded - prevFrameStat.framesDecoded;
+                const secondsDelta = (inbound.timestamp - prevFrameStat.timestamp) / 1000;
+                if (secondsDelta > 0) {
+                    fps = framesDelta / secondsDelta;
+                }
+            }
+            prevFrameStat = {framesDecoded: inbound.framesDecoded, timestamp: inbound.timestamp};
+        }
+        setMetric('fps', fps != null ? fps.toFixed(1) : '--');
+
+        if (inbound) {
+            const lost = Number.isFinite(inbound.packetsLost) ? inbound.packetsLost : 0;
+            const received = Number.isFinite(inbound.packetsReceived) ? inbound.packetsReceived : 0;
+            const total = lost + received;
+            const pct = total > 0 ? (lost / total) * 100 : 0;
+            setLoss(`${pct.toFixed(2)}%`, `${lost} lost / ${total} total packets`);
+
+            const jitterMs = typeof inbound.jitter === 'number' ? inbound.jitter * 1000 : null;
+            setMetric('jitter', jitterMs != null ? formatMs(jitterMs) : '--');
+        } else {
+            setLoss('--', 'lost / total packets');
+            setMetric('jitter', '--');
+        }
+
+        const rttSource = candidatePair && typeof candidatePair.currentRoundTripTime === 'number'
+            ? candidatePair.currentRoundTripTime
+            : remoteInbound && typeof remoteInbound.roundTripTime === 'number'
+                ? remoteInbound.roundTripTime
+                : null;
+        const rttMs = rttSource != null ? rttSource * 1000 : null;
+        setMetric('rtt', rttMs != null ? formatMs(rttMs) : '--');
+
+        let jitterBufferDelayTotal = null;
+        let jitterBufferDelayCount = null;
+        if (inbound && typeof inbound.jitterBufferDelay === 'number' && typeof inbound.jitterBufferEmittedCount === 'number' && inbound.jitterBufferEmittedCount > 0) {
+            jitterBufferDelayTotal = inbound.jitterBufferDelay;
+            jitterBufferDelayCount = inbound.jitterBufferEmittedCount;
+        } else if (track && typeof track.jitterBufferDelay === 'number' && typeof track.jitterBufferEmittedCount === 'number' && track.jitterBufferEmittedCount > 0) {
+            jitterBufferDelayTotal = track.jitterBufferDelay;
+            jitterBufferDelayCount = track.jitterBufferEmittedCount;
+        }
+
+        let decodeDelayTotal = null;
+        let decodeDelayCount = null;
+        if (inbound && typeof inbound.totalProcessingDelay === 'number' && typeof inbound.framesDecoded === 'number' && inbound.framesDecoded > 0) {
+            decodeDelayTotal = inbound.totalProcessingDelay;
+            decodeDelayCount = inbound.framesDecoded;
+        }
+
+        const jitterBufferDelayMs = getAverageDeltaMs(
+            jitterBufferDelayTotal,
+            jitterBufferDelayCount,
+            prevDelayStat ? prevDelayStat.jitterBufferDelayTotal : null,
+            prevDelayStat ? prevDelayStat.jitterBufferDelayCount : null
+        );
+
+        const decodeDelayMs = getAverageDeltaMs(
+            decodeDelayTotal,
+            decodeDelayCount,
+            prevDelayStat ? prevDelayStat.decodeDelayTotal : null,
+            prevDelayStat ? prevDelayStat.decodeDelayCount : null
+        );
+
+        prevDelayStat = {
+            jitterBufferDelayTotal,
+            jitterBufferDelayCount,
+            decodeDelayTotal,
+            decodeDelayCount
+        };
+
+        const receiverDelayMs = (jitterBufferDelayMs != null || decodeDelayMs != null)
+            ? (jitterBufferDelayMs || 0) + (decodeDelayMs || 0)
+            : null;
+
+        if (receiverDelayMs != null) {
+            setMetric('receiver-delay', formatMs(receiverDelayMs));
+            const parts = [];
+            if (jitterBufferDelayMs != null) {
+                parts.push(`jitter buffer ${jitterBufferDelayMs.toFixed(1)} ms`);
+            }
+            if (decodeDelayMs != null) {
+                parts.push(`decode ${decodeDelayMs.toFixed(1)} ms`);
+            }
+            document.getElementById('receiver-delay-sub').textContent = parts.join(' + ');
+        } else {
+            setMetric('receiver-delay', '--');
+            document.getElementById('receiver-delay-sub').textContent = 'receiver-side jitter buffer + decode only';
+        }
+
+        const framesDecoded = inbound && typeof inbound.framesDecoded === 'number' ? inbound.framesDecoded : null;
+        const freezeCount = track && typeof track.freezeCount === 'number' ? track.freezeCount : null;
+        const pauseCount = track && typeof track.pauseCount === 'number' ? track.pauseCount : null;
+        const playbackParts = [];
+        if (framesDecoded != null) playbackParts.push(`frames decoded ${framesDecoded}`);
+        if (freezeCount != null) playbackParts.push(`freezes ${freezeCount}`);
+        if (pauseCount != null) playbackParts.push(`pauses ${pauseCount}`);
+        setInfo('playback', playbackParts.length ? playbackParts.join(', ') : 'Waiting for media stats...');
+    }
+
+    document.getElementById('retry-webrtc').addEventListener('click', () => {
+        connect(media).catch(error => {
+            console.error(error);
+            setStatus('Connect failed', 'bad');
+            setInfo('playback', error.message);
+            rememberEvent('retry:error');
+        });
+    });
+
+    wireVideoEvents();
+    setStatus('Connecting...', '');
+    connect(media).catch(error => {
+        console.error(error);
+        setStatus('Connect failed', 'bad');
+        setInfo('playback', error.message);
+        rememberEvent('connect:error');
+    });
+
+    window.addEventListener('beforeunload', () => {
+        closePeer();
+    });
+</script>
+</body>
+</html>

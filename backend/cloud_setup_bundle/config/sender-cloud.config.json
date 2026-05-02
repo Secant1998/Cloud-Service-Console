@@ -1,0 +1,23 @@
+{
+  "streamName": "main-camera",
+  "cloud": {
+    "publicScheme": "http",
+    "remoteBase": "/opt/go2rtc-cloud",
+    "apiPort": 18081,
+    "ingestPort": 18084,
+    "internalApiPort": 18082,
+    "telemetryInternalPort": 18083,
+    "controlSignalingInternalPort": 18085,
+    "webrtcPort": 19090,
+    "srtIngestPort": 19091,
+    "rtspPort": 8554,
+    "go2rtcReleaseTag": "v1.9.14"
+  },
+  "transport": {
+    "ingestMode": "http",
+    "srtLatencyMs": 120,
+    "srtPacketSize": 1316,
+    "connectTimeoutMs": 3000,
+    "dropLatePackets": true
+  }
+}
