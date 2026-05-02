@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import type { AppUpdaterState } from "../hooks/useAppUpdater";
 import type { NetworkSnapshot } from "../types/cloud";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -10,6 +11,7 @@ type AppShellProps = PropsWithChildren<{
   title: string;
   statusText: string;
   theme: "light" | "dark";
+  updater: AppUpdaterState;
   activeView: ConsoleView;
   busy?: boolean;
   sidebarRefreshBusy?: boolean;
@@ -20,6 +22,7 @@ type AppShellProps = PropsWithChildren<{
   scrollLocked?: boolean;
   onViewChange: (view: ConsoleView) => void;
   onRefresh: () => void;
+  onInstallUpdate: () => void;
   onLocalSetup: () => void;
   onSidebarRefresh: () => void;
   onToggleTheme: () => void;
@@ -31,6 +34,7 @@ export function AppShell({
   title,
   statusText,
   theme,
+  updater,
   activeView,
   busy = false,
   sidebarRefreshBusy = false,
@@ -41,6 +45,7 @@ export function AppShell({
   scrollLocked = false,
   onViewChange,
   onRefresh,
+  onInstallUpdate,
   onLocalSetup,
   onSidebarRefresh,
   onToggleTheme,
@@ -206,12 +211,14 @@ export function AppShell({
           title={title}
           statusText={statusText}
           theme={theme}
+          updater={updater}
           busy={busy}
           setupBusy={setupBusy}
           setupProgress={setupProgress}
           setupMessage={setupMessage}
           setupTone={setupTone}
           onRefresh={onRefresh}
+          onInstallUpdate={onInstallUpdate}
           onLocalSetup={onLocalSetup}
           onToggleTheme={onToggleTheme}
           onLogout={onLogout}

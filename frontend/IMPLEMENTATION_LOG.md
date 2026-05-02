@@ -898,3 +898,85 @@
 
 - `frontend` 下执行 `npm run build` 通过
 - `python -m compileall backend` 通过
+
+## 阶段 29：GitHub 自更新入口 + 自动发布工作流
+
+主要目标：
+
+- 让桌面程序在检测到 GitHub 最新版高于本地版本时，直接在程序内点击更新
+- 让后续 Windows 发布尽量走 GitHub Actions，而不是继续依赖本地手工打新版 `exe`
+- 保持这条链路只作用于桌面壳层，不碰现有云端视频、控制信号和游戏逻辑链路
+
+主要结果：
+
+- 前端新增 `frontend/src/hooks/useAppUpdater.ts`
+  - 在 Tauri 环境下动态接入 `@tauri-apps/api/updater`
+  - 应用启动时检查 GitHub 最新 release
+  - 维护 `available / installing / currentVersion / latestVersion / error / message`
+- 前端新增 `frontend/src/components/UpdateAction.tsx`
+  - 圆形更新按钮
+  - 登录页和主控制台都会显示在主题切换按钮左边
+  - 只有发现新版或正在安装时才显示
+- `frontend/src/App.tsx`
+  - 挂载 updater hook
+  - 把 updater 状态和安装动作统一透传给 `LoginPage` 和 `DashboardPage`
+- `frontend/src/pages/LoginPage.tsx`
+  - 登录页右上角接入更新按钮
+- `frontend/src/components/Topbar.tsx`
+  - 主控制台顶部操作区接入更新按钮
+- `frontend/src/styles/globals.css`
+  - 新增更新按钮样式、脉冲提示和安装旋转状态
+- `frontend/src/styles/theme.css`
+  - 补齐深色模式下更新按钮样式
+- `src-tauri/tauri.conf.json`
+  - 开启 Tauri updater
+  - 写入 GitHub `latest.json` endpoint
+  - 写入 updater 公钥
+- `src-tauri/Cargo.toml`
+  - 给 `tauri` 增加 `updater` feature
+- 新增 `scripts/update_versions.py`
+  - 统一同步 `package.json / frontend/package.json / frontend/package-lock.json / src-tauri/Cargo.toml / src-tauri/tauri.conf.json`
+- 新增 `.github/workflows/release-windows.yml`
+  - `push main` 或手动触发后自动做 Windows release
+  - 自动安装前端依赖、后端依赖、PyInstaller
+  - 自动计算版本号
+  - 自动调用 `tauri-action` 发布 `nsis + updater`
+
+关键文件：
+
+- `frontend/src/hooks/useAppUpdater.ts`
+- `frontend/src/components/UpdateAction.tsx`
+- `frontend/src/App.tsx`
+- `frontend/src/pages/LoginPage.tsx`
+- `frontend/src/components/Topbar.tsx`
+- `frontend/src/components/AppShell.tsx`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `scripts/update_versions.py`
+- `.github/workflows/release-windows.yml`
+- `frontend/README.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+关键决策：
+
+- 这次没有自己手搓“访问 GitHub API + 下载 exe + 启动安装器”的私有更新器，而是优先接 Tauri 官方 updater
+- 更新检测逻辑只在 Tauri 运行时启用；浏览器开发模式下不会报错，也不会显示更新按钮
+- 更新按钮做成独立组件，避免登录页和主控制台各写一份状态分支
+- 版本号同步抽成单独脚本，给本地打包和 GitHub Actions 共用
+- GitHub 工作流先做成“自动 Windows release”，而不是继续让本地工作区承担正式发布职责
+
+验证结果：
+
+- `frontend` 下执行 `npm run build` 通过
+- `python -m compileall backend` 通过
+- 本地 `Tauri` 打包已经产出：
+  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.exe`
+  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.nsis.zip`
+
+遗留问题：
+
+- 本地这次没有直接看到 `latest.json` 和 `.sig` 落盘，所以“GitHub Release 上 updater 清单是否完整生成”仍需要首次 Actions 真机运行确认
+- 也就是说，代码侧和工作流侧都已经接上了，但还差一次 GitHub 上的真实 release 运行来做最终闭环验证

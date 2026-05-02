@@ -29,6 +29,7 @@ import { ServiceCard } from "../components/ServiceCard";
 import { SummaryCard } from "../components/SummaryCard";
 import { TankTroublePanel } from "../components/TankTroublePanel";
 import { ToggleSwitch } from "../components/ToggleSwitch";
+import type { AppUpdaterState } from "../hooks/useAppUpdater";
 import type {
   ControlMonitorConfig,
   DashboardStatus,
@@ -39,7 +40,9 @@ import type {
 type DashboardPageProps = {
   initialStatus?: DashboardStatus;
   theme: "light" | "dark";
+  updater: AppUpdaterState;
   onToggleTheme: () => void;
+  onInstallUpdate: () => void;
   onLogoutDone: () => void;
 };
 
@@ -182,7 +185,14 @@ async function waitForIceGatheringComplete(peer: RTCPeerConnection, timeoutMs = 
   });
 }
 
-export function DashboardPage({ initialStatus, theme, onToggleTheme, onLogoutDone }: DashboardPageProps) {
+export function DashboardPage({
+  initialStatus,
+  theme,
+  updater,
+  onToggleTheme,
+  onInstallUpdate,
+  onLogoutDone,
+}: DashboardPageProps) {
   const [activeView, setActiveView] = useState<ConsoleView>("overview");
   const [status, setStatus] = useState<DashboardStatus>(initialStatus ?? emptyStatus);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -1611,6 +1621,7 @@ export function DashboardPage({ initialStatus, theme, onToggleTheme, onLogoutDon
       title={currentView.title}
       statusText={status.summary_status}
       theme={theme}
+      updater={updater}
       activeView={activeView}
       busy={busy}
       sidebarRefreshBusy={sidebarRefreshBusy}
@@ -1621,6 +1632,7 @@ export function DashboardPage({ initialStatus, theme, onToggleTheme, onLogoutDon
       scrollLocked={activeView === "games"}
       onViewChange={setActiveView}
       onRefresh={() => loadAll("refresh")}
+      onInstallUpdate={onInstallUpdate}
       onLocalSetup={handleLocalSetup}
       onSidebarRefresh={handleSidebarRefresh}
       onToggleTheme={onToggleTheme}

@@ -856,3 +856,102 @@ SSH 登录、远端服务控制、云端部署、健康检查、控制 signaling
 - 哪些边界不能乱碰
 
 如果后续产品继续演进，应优先维护这份 README 的真实性。
+
+## 14B. GitHub 自更新链路（2026-05-03）
+
+这套桌面程序现在已经接入一条正式的 GitHub 自更新链路，目标是：
+
+- 用户安装过一次桌面版以后，后续只需要在程序里点更新按钮，不再依赖本地手工打新版 `exe`
+- 发布动作尽量交给 GitHub Actions 完成
+- 更新检测和安装只发生在正式的 Tauri 打包程序里，不影响浏览器开发模式
+
+当前前端接入点：
+
+- `frontend/src/hooks/useAppUpdater.ts`
+  - 全局更新状态入口
+  - 负责在 Tauri 运行时动态导入 `@tauri-apps/api/app` 和 `@tauri-apps/api/updater`
+  - 启动时检查当前版本与 GitHub 最新 release
+  - 维护 `available / installing / currentVersion / latestVersion / error` 等状态
+- `frontend/src/components/UpdateAction.tsx`
+  - 圆形更新按钮
+  - 只在“发现新版本”或“正在安装更新”时显示
+  - 点击后调用 Tauri updater 安装新版
+- `frontend/src/App.tsx`
+  - 挂载全局 updater hook
+  - 把 updater 状态和安装动作透传给登录页和主控制台
+- `frontend/src/pages/LoginPage.tsx`
+  - 登录页右上角，主题切换按钮左边
+- `frontend/src/components/Topbar.tsx`
+  - 主控制台顶部操作区，主题切换按钮左边
+
+当前 Tauri 壳层接入点：
+
+- `src-tauri/tauri.conf.json`
+  - 已开启 `tauri.updater.active = true`
+  - 已关闭内置弹窗 `dialog = false`
+  - 更新清单入口固定为：
+    - `https://github.com/Secant1998/Cloud-Service-Console/releases/latest/download/latest.json`
+  - 已写入 updater 公钥
+- `src-tauri/Cargo.toml`
+  - `tauri` 已开启 `updater` feature
+
+当前 GitHub 发布自动化入口：
+
+- `.github/workflows/release-windows.yml`
+  - 触发方式：`push main` 或手动 `workflow_dispatch`
+  - 只做 Windows 发布
+  - 会先安装 `frontend` 依赖
+  - 会安装 `backend/requirements.txt` 和 `PyInstaller`
+  - 会自动计算版本号
+  - 会调用 `scripts/update_versions.py` 同步版本文件
+  - 会调用 `tauri-apps/tauri-action@v1`
+  - 会发布 `nsis + updater` 产物
+  - 已设置 `updaterJsonPreferNsis: true`
+
+## 14C. 版本号、签名密钥与发布注意点
+
+当前版本同步脚本：
+
+- `scripts/update_versions.py`
+
+它会同步这些文件里的版本号：
+
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+
+当前本机 updater 私钥位置：
+
+- `C:\Users\SECANT\.tauri\cloud-service-console.key`
+
+当前本机 updater 公钥位置：
+
+- `C:\Users\SECANT\.tauri\cloud-service-console.key.pub`
+
+注意：
+
+- 私钥绝对不能提交到仓库
+- GitHub Actions 现在需要一个仓库 Secret：
+  - `TAURI_PRIVATE_KEY`
+- 这个 Secret 的内容可以直接放私钥文件全文，或者放私钥文件路径对应的字符串内容
+- 当前这次实现没有再引入密码保护版本的私钥，所以暂时不需要 `TAURI_KEY_PASSWORD`
+
+本地手工打包时现在推荐这样跑：
+
+```powershell
+$env:TAURI_PRIVATE_KEY='C:\Users\SECANT\.tauri\cloud-service-console.key'
+npm run tauri:build -- --bundles nsis,updater
+```
+
+当前已知状态：
+
+- 本地已经能正常打出：
+  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.exe`
+  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.nsis.zip`
+- 本地这次没有看到 `latest.json` 落盘，因此“GitHub Release 实际产出 updater 清单”这一步仍以首次 GitHub Actions 运行结果为准
+- 换句话说：
+  - 程序内的“检测更新 / 点击安装”入口已经接好
+  - GitHub 自动发布工作流已经接好
+  - 还需要 GitHub 上真实跑一次 release workflow，才能完成端到端闭环验证

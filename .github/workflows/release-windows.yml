@@ -1,0 +1,113 @@
+name: release-windows
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pyinstaller
+
+      - name: Validate updater signing key
+        shell: pwsh
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+        run: |
+          if (-not $env:TAURI_PRIVATE_KEY) {
+            throw "Missing repository secret: TAURI_PRIVATE_KEY"
+          }
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          function Parse-Version([string]$value) {
+            $parts = $value.Split(".")
+            if ($parts.Count -ne 3) {
+              throw "Unsupported version: $value"
+            }
+            return @([int]$parts[0], [int]$parts[1], [int]$parts[2])
+          }
+
+          function Compare-Version([int[]]$left, [int[]]$right) {
+            for ($index = 0; $index -lt 3; $index += 1) {
+              if ($left[$index] -gt $right[$index]) {
+                return 1
+              }
+              if ($left[$index] -lt $right[$index]) {
+                return -1
+              }
+            }
+            return 0
+          }
+
+          $currentVersion = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).package.version
+          $latestTag = git tag --list "v*" --sort=-version:refname | Select-Object -First 1
+          $latestVersion = if ($latestTag) { $latestTag.TrimStart("v") } else { "0.0.0" }
+
+          $currentParts = Parse-Version $currentVersion
+          $latestParts = Parse-Version $latestVersion
+
+          if ((Compare-Version $currentParts $latestParts) -gt 0) {
+            $nextVersion = $currentVersion
+          } else {
+            $nextVersion = "{0}.{1}.{2}" -f $latestParts[0], $latestParts[1], ($latestParts[2] + 1)
+          }
+
+          "version=$nextVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Sync version files
+        run: python scripts/update_versions.py ${{ steps.version.outputs.version }}
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Cloud Service Console v__VERSION__
+          releaseBody: |
+            Automated desktop release published from the main branch.
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          projectPath: .
+          tauriScript: node frontend/node_modules/@tauri-apps/cli/tauri.js
+          args: --config src-tauri/tauri.conf.json --bundles nsis,updater
+          updaterJsonPreferNsis: true

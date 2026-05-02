@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getStatus } from "./api/cloudApi";
+import { useAppUpdater } from "./hooks/useAppUpdater";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import type { DashboardStatus } from "./types/cloud";
@@ -26,6 +27,7 @@ export default function App() {
   const [bootChecked, setBootChecked] = useState(false);
   const [bootStatus, setBootStatus] = useState<DashboardStatus | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(detectInitialTheme);
+  const { updater, installUpdate } = useAppUpdater();
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -68,7 +70,9 @@ export default function App() {
     return (
       <LoginPage
         theme={theme}
+        updater={updater}
         onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+        onInstallUpdate={installUpdate}
         onLoggedIn={() => setAuthenticated(true)}
       />
     );
@@ -78,7 +82,9 @@ export default function App() {
     <DashboardPage
       initialStatus={bootStatus?.connected ? bootStatus : undefined}
       theme={theme}
+      updater={updater}
       onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+      onInstallUpdate={installUpdate}
       onLogoutDone={() => setAuthenticated(false)}
     />
   );

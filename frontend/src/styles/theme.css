@@ -465,6 +465,31 @@ html[data-theme="dark"] .theme-mode-button-login:hover:not(:disabled) {
   background: rgba(30, 41, 59, 0.7);
 }
 
+html[data-theme="dark"] .update-action {
+  background:
+    radial-gradient(circle at 30% 24%, rgba(37, 99, 235, 0.34), rgba(15, 23, 42, 0.94) 52%, rgba(8, 16, 29, 0.96) 100%);
+  color: #bfdbfe;
+  box-shadow:
+    0 18px 36px rgba(2, 6, 23, 0.34),
+    inset 0 0 0 1px rgba(96, 165, 250, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .update-action:hover:not(:disabled) {
+  box-shadow:
+    0 22px 44px rgba(2, 6, 23, 0.42),
+    inset 0 0 0 1px rgba(125, 211, 252, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .update-action.error {
+  color: #fca5a5;
+  box-shadow:
+    0 18px 36px rgba(69, 10, 10, 0.3),
+    inset 0 0 0 1px rgba(248, 113, 113, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 html[data-theme="dark"] .main-scroll::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.24);
 }

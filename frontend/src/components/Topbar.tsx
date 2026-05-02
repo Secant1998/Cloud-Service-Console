@@ -1,4 +1,6 @@
 import { Button } from "./Button";
+import { UpdateAction } from "./UpdateAction";
+import type { AppUpdaterState } from "../hooks/useAppUpdater";
 
 type SetupFeedbackTone = "idle" | "progress" | "success" | "error";
 
@@ -6,12 +8,14 @@ type TopbarProps = {
   title: string;
   statusText: string;
   theme: "light" | "dark";
+  updater: AppUpdaterState;
   busy?: boolean;
   setupBusy?: boolean;
   setupProgress?: number;
   setupMessage?: string;
   setupTone?: SetupFeedbackTone;
   onRefresh: () => void;
+  onInstallUpdate: () => void;
   onLocalSetup: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -21,12 +25,14 @@ export function Topbar({
   title,
   statusText,
   theme,
+  updater,
   busy = false,
   setupBusy = false,
   setupProgress = 0,
   setupMessage = "",
   setupTone = "idle",
   onRefresh,
+  onInstallUpdate,
   onLocalSetup,
   onToggleTheme,
   onLogout,
@@ -39,6 +45,7 @@ export function Topbar({
         <div className="topbar-status">{statusText}</div>
       </div>
       <div className="topbar-actions">
+        <UpdateAction updater={updater} disabled={busy} onInstall={onInstallUpdate} />
         <Button variant="ghost" className="theme-mode-button" disabled={busy} onClick={onToggleTheme}>
           {theme === "dark" ? "浅色模式" : "深色模式"}
         </Button>

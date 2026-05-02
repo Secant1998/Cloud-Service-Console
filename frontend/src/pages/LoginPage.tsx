@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { UpdateAction } from "../components/UpdateAction";
 import { getSettings, login } from "../api/cloudApi";
+import type { AppUpdaterState } from "../hooks/useAppUpdater";
 import type { LoginRequest } from "../types/cloud";
 
 type LoginPageProps = {
   theme: "light" | "dark";
+  updater: AppUpdaterState;
   onToggleTheme: () => void;
+  onInstallUpdate: () => void;
   onLoggedIn: () => void;
 };
 
@@ -19,7 +23,7 @@ const initialForm: LoginRequest = {
   auto_login: false,
 };
 
-export function LoginPage({ theme, onToggleTheme, onLoggedIn }: LoginPageProps) {
+export function LoginPage({ theme, updater, onToggleTheme, onInstallUpdate, onLoggedIn }: LoginPageProps) {
   const [form, setForm] = useState<LoginRequest>(initialForm);
   const [loading, setLoading] = useState(false);
   const [bootLoading, setBootLoading] = useState(true);
@@ -114,9 +118,17 @@ export function LoginPage({ theme, onToggleTheme, onLoggedIn }: LoginPageProps) 
         <section className="login-intro">
           <div className="login-intro-toolbar">
             <div className="product-badge">Cloud Service Console v3</div>
-            <Button variant="ghost" type="button" className="theme-mode-button theme-mode-button-login" onClick={onToggleTheme}>
-              {theme === "dark" ? "浅色模式" : "深色模式"}
-            </Button>
+            <div className="login-intro-toolbar-actions">
+              <UpdateAction
+                updater={updater}
+                disabled={bootLoading || loading}
+                login
+                onInstall={onInstallUpdate}
+              />
+              <Button variant="ghost" type="button" className="theme-mode-button theme-mode-button-login" onClick={onToggleTheme}>
+                {theme === "dark" ? "浅色模式" : "深色模式"}
+              </Button>
+            </div>
           </div>
           <h1>登录云服务器</h1>
           <p>
