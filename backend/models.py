@@ -292,6 +292,8 @@ class TankTroublePreviewBulletState(BaseModel):
     x: float
     y: float
     radius: float
+    vx: float = 0.0
+    vy: float = 0.0
 
 
 class TankTroublePreviewTargetState(BaseModel):
@@ -342,6 +344,8 @@ class TankTroublePreviewPlayerSnapshot(BaseModel):
     radius: float
     flash: float = 0.0
     shots: int = 0
+    score: int = 0
+    hits: int = 0
 
 
 class TankTroublePreviewPushRequest(BaseModel):
@@ -350,7 +354,11 @@ class TankTroublePreviewPushRequest(BaseModel):
     player_id: str = ""
     country_code: str = ""
     snapshot_seq: int = 0
+    authoritative_scene: bool = False
+    theme: str = "dark"
     tank: TankTroublePreviewPlayerSnapshot
+    bullets: List[TankTroublePreviewBulletState] = Field(default_factory=list)
+    targets: List[TankTroublePreviewTargetState] = Field(default_factory=list)
     updated_at_ms: int = 0
 
 

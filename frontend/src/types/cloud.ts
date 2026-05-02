@@ -191,6 +191,8 @@ export type TankTroublePreviewBulletState = {
   x: number;
   y: number;
   radius: number;
+  vx: number;
+  vy: number;
 };
 
 export type TankTroublePreviewTargetState = {
@@ -241,6 +243,8 @@ export type TankTroublePreviewPlayerSnapshot = {
   radius: number;
   flash: number;
   shots: number;
+  score: number;
+  hits: number;
 };
 
 export type TankTroublePreviewPushRequest = {
@@ -249,7 +253,11 @@ export type TankTroublePreviewPushRequest = {
   player_id: string;
   country_code?: string;
   snapshot_seq: number;
+  authoritative_scene: boolean;
+  theme: "light" | "dark";
   tank: TankTroublePreviewPlayerSnapshot;
+  bullets: TankTroublePreviewBulletState[];
+  targets: TankTroublePreviewTargetState[];
   updated_at_ms: number;
 };
 

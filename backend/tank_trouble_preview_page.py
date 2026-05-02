@@ -477,6 +477,8 @@ const POLL_INTERVAL_MS = 45;
                 x: Number(bullet?.x || 0),
                 y: Number(bullet?.y || 0),
                 radius: Number(bullet?.radius || 0),
+                vx: Number(bullet?.vx || 0),
+                vy: Number(bullet?.vy || 0),
               }))
             : [],
           targets: Array.isArray(scene.targets)
@@ -634,7 +636,7 @@ const POLL_INTERVAL_MS = 45;
         }
       }
 
-      function syncSmoothedEntities(scene, dt) {
+      function syncSmoothedEntities(scene, dt, frameSeq) {
         const tankIds = new Set();
         for (const tank of scene.tanks) {
           tankIds.add(tank.id);
@@ -663,16 +665,30 @@ const POLL_INTERVAL_MS = 45;
           bulletIds.add(bulletKey);
           const current = smoothedBullets.get(bulletKey);
           if (!current) {
-            smoothedBullets.set(bulletKey, { ...bullet, trailX: bullet.x, trailY: bullet.y });
+            smoothedBullets.set(bulletKey, {
+              ...bullet,
+              trailX: bullet.x,
+              trailY: bullet.y,
+              snapshotSeq: frameSeq,
+            });
             continue;
           }
           current.trailX = current.x;
           current.trailY = current.y;
-          const ease = clamp(dt * 20, 0.26, 0.84);
-          current.x = lerp(current.x, bullet.x, ease);
-          current.y = lerp(current.y, bullet.y, ease);
           current.radius = bullet.radius;
           current.color = bullet.color;
+          current.vx = bullet.vx;
+          current.vy = bullet.vy;
+          if (current.snapshotSeq !== frameSeq) {
+            const correctionDistance = Math.hypot(current.x - bullet.x, current.y - bullet.y);
+            const ease = correctionDistance > 36 ? 1 : clamp(dt * 28, 0.68, 0.96);
+            current.x = lerp(current.x, bullet.x, ease);
+            current.y = lerp(current.y, bullet.y, ease);
+            current.snapshotSeq = frameSeq;
+          } else {
+            current.x += current.vx * dt;
+            current.y += current.vy * dt;
+          }
         }
         for (const id of Array.from(smoothedBullets.keys())) {
           if (!bulletIds.has(id)) {
@@ -792,7 +808,7 @@ const POLL_INTERVAL_MS = 45;
           return;
         }
 
-        syncSmoothedEntities(scene, dt);
+        syncSmoothedEntities(scene, dt, previewState.frame_seq || 0);
 
         const scale = Math.min(width / WORLD_WIDTH, height / WORLD_HEIGHT);
         const offsetX = (width - WORLD_WIDTH * scale) / 2;

@@ -981,3 +981,39 @@
 
 - 本地这次没有直接看到 `latest.json` 和 `.sig` 落盘，所以“GitHub Release 上 updater 清单是否完整生成”仍需要首次 Actions 真机运行确认
 - 也就是说，代码侧和工作流侧都已经接上了，但还差一次 GitHub 上的真实 release 运行来做最终闭环验证
+
+## 阶段 30：Tank Trouble 延迟预览切到 authoritative scene
+主要目标：
+- 解决延迟测试模式里浏览器预览只跟得上坦克，但子弹和靶子不同步的问题
+- 解决预览子弹看起来偏慢、偏钝的问题
+- 保持修改只落在 Tank Trouble 的 preview/latency 链路，不碰视频和控制信号链路
+
+主要实现：
+- `frontend/src/components/TankTroublePanel.tsx`
+  - 把 preview push 从 `tank + shots` 升级为 `authoritative_scene + theme + tank + bullets + targets`
+  - 新增 `buildPreviewSnapshot()`，直接读取本地引擎里的真实子弹和真实靶子状态
+- `frontend/src/types/cloud.ts`
+  - `TankTroublePreviewBulletState` 新增 `vx / vy`
+  - `TankTroublePreviewPlayerSnapshot` 新增 `score / hits`
+  - `TankTroublePreviewPushRequest` 新增 `authoritative_scene / theme / bullets / targets`
+- `backend/models.py`
+  - 与前端同步字段，保证 FastAPI / Pydantic request model 可直接接收新的 preview payload
+- `backend/tank_trouble_preview_runtime.py`
+  - 新增 authoritative scene 分支
+  - authoritative 模式下不再根据 `shots` 本地生成子弹，也不再本地推演 target respawn
+  - 直接缓存前端上传的 bullets / targets / score / hits / theme
+  - 旧逻辑保留作兼容兜底
+- `backend/tank_trouble_preview_page.py`
+  - viewer 读取 `vx / vy`
+  - 同一份快照存活期间按速度在本地连续推进子弹
+  - 只有在新快照到达时才做轻量位置校正，避免观感上“慢半拍”
+
+关键结果：
+- 浏览器预览的 tank / bullets / targets 现在来自同一份 authoritative 场景源
+- 靶子命中、重生、子弹位置和速度不再由后端猜测
+- 预览页对子弹的观感比之前更接近桌面端本地运行效果
+
+验证结果：
+- `cmd /c npm run build` 通过
+- `python -m compileall backend` 通过
+- 额外对 `TankTroublePreviewRuntime` 做了 authoritative push 自测，确认返回 state 中已包含真实 `theme / score / bullets / targets / vx / vy`

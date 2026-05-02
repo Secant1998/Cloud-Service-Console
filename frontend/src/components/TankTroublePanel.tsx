@@ -14,7 +14,9 @@ import type {
   TankTroubleLatencyRequest,
   TankTroubleLatencyState,
   TankTroubleLatencyTargetRespawn,
+  TankTroublePreviewBulletState,
   TankTroublePreviewPlayerSnapshot,
+  TankTroublePreviewTargetState,
   TankTroubleRoomState,
 } from "../types/cloud";
 import { Button } from "./Button";
@@ -156,6 +158,14 @@ type LatencyCloneSyncMeta = {
   snapshotSeq: number;
 };
 
+type TankTroublePreviewSnapshot = {
+  authoritative_scene: true;
+  theme: "light" | "dark";
+  tank: TankTroublePreviewPlayerSnapshot;
+  bullets: TankTroublePreviewBulletState[];
+  targets: TankTroublePreviewTargetState[];
+};
+
 type TankTroubleEngine = {
   setTheme: (theme: "light" | "dark") => void;
   setBotEnabled: (enabled: boolean) => void;
@@ -163,7 +173,7 @@ type TankTroubleEngine = {
   update: (dt: number, input: InputState) => void;
   render: (ctx: CanvasRenderingContext2D) => void;
   snapshot: () => TankTroubleSnapshot;
-  buildPreviewPlayerSnapshot: () => TankTroublePreviewPlayerSnapshot;
+  buildPreviewSnapshot: () => TankTroublePreviewSnapshot;
   buildLatencySyncState: () => Pick<TankTroubleLatencyRequest, "local_player" | "targets">;
   applyLatencyState: (state: TankTroubleLatencyState) => void;
   clearLatencyState: () => void;
@@ -2163,15 +2173,37 @@ function createTankTroubleEngine(options: {
         targetsRemaining: targets.length,
       };
     },
-    buildPreviewPlayerSnapshot() {
+    buildPreviewSnapshot() {
       return {
-        color: options.playerColor,
-        x: player.x,
-        y: player.y,
-        angle: player.angle,
-        radius: player.radius,
-        flash: player.flash,
-        shots,
+        authoritative_scene: true,
+        theme,
+        tank: {
+          color: options.playerColor,
+          x: player.x,
+          y: player.y,
+          angle: player.angle,
+          radius: player.radius,
+          flash: player.flash,
+          shots,
+          score,
+          hits,
+        },
+        bullets: bullets.map((bullet) => ({
+          id: bullet.id,
+          color: options.playerColor,
+          x: bullet.x,
+          y: bullet.y,
+          radius: bullet.radius,
+          vx: bullet.vx,
+          vy: bullet.vy,
+        })),
+        targets: targets.map((target) => ({
+          id: target.id,
+          x: target.x,
+          y: target.y,
+          radius: target.radius,
+          phase: target.phase,
+        })),
       };
     },
     buildLatencySyncState() {
@@ -2462,6 +2494,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       pushPending = false;
       try {
         const snapshotSeq = previewPushSeqRef.current + 1;
+        const previewSnapshot = engine.buildPreviewSnapshot();
         previewPushSeqRef.current = snapshotSeq;
         await pushTankTroublePreview({
           session_id: sessionId,
@@ -2469,7 +2502,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
           player_id: session.playerId,
           country_code: localCountryCode,
           snapshot_seq: snapshotSeq,
-          tank: engine.buildPreviewPlayerSnapshot(),
+          ...previewSnapshot,
           updated_at_ms: Date.now(),
         });
         if (!disposed) {

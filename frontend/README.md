@@ -956,3 +956,59 @@ npm run tauri:build -- --bundles nsis,updater
   - 程序内的“检测更新 / 点击安装”入口已经接好
   - GitHub 自动发布工作流已经接好
   - 还需要 GitHub 上真实跑一次 release workflow，才能完成端到端闭环验证
+
+## 14D. Tank Trouble 延迟预览同步
+
+这次延迟测试链路里的浏览器预览，已经从“后端根据 `shots` 自己推测子弹/靶子”改成了“前端直接上报 authoritative scene，后端只缓存和转发真实状态”。
+
+当前设计：
+
+- 前端 `frontend/src/components/TankTroublePanel.tsx`
+  - `buildPreviewSnapshot()` 直接从本地游戏引擎取真实场景
+  - 上报字段包括：
+    - `authoritative_scene`
+    - `theme`
+    - `tank`
+    - `bullets`
+    - `targets`
+  - `bullets` 里带 `id / x / y / radius / vx / vy`
+  - `targets` 里带 `id / x / y / radius / phase`
+- 前端类型 `frontend/src/types/cloud.ts`
+  - `TankTroublePreviewBulletState` 新增 `vx / vy`
+  - `TankTroublePreviewPlayerSnapshot` 新增 `score / hits`
+  - `TankTroublePreviewPushRequest` 新增 `authoritative_scene / theme / bullets / targets`
+- 后端模型 `backend/models.py`
+  - 与前端同步新增上述字段，保证 API request/response 一致
+- 后端预览 runtime `backend/tank_trouble_preview_runtime.py`
+  - 当 `authoritative_scene = true` 时：
+    - 不再根据 `tank.shots` 本地生成子弹
+    - 不再本地推演 target hit / respawn
+    - 直接缓存前端上传的 `bullets / targets / theme / score / hits`
+  - 当旧客户端没有发 authoritative scene 时，仍然保留原来的 `shots -> spawn bullet` 兼容逻辑
+- 浏览器 viewer `backend/tank_trouble_preview_page.py`
+  - 现在会读取子弹的 `vx / vy`
+  - 新快照到达时只做轻量校正
+  - 两次快照之间在 viewer 本地按速度连续推进子弹，避免视觉上慢半拍
+
+这样改的原因：
+
+- 以前后端只知道“开了几枪”，不知道每颗真实子弹此刻的位置、速度、反弹结果和靶子实时状态
+- 所以 tank 位置看起来还行，但子弹和靶子天然会出现不同步、显得慢、命中反馈滞后的问题
+- authoritative scene 之后，浏览器预览和桌面端游戏看到的是同一份场景来源，后端不再做近似猜测
+
+兼容和边界：
+
+- 这次改动只作用于 Tank Trouble 的延迟测试预览链路
+- 不影响视频推流、控制信号监听、机械臂控制或其他云端服务
+- 如果以后还要扩展别的调试模式，建议继续沿用这套 authoritative scene 方式，不要再回到 `shots` 推导
+
+本次验证：
+
+- `frontend` 下执行 `cmd /c npm run build` 通过
+- 工程根目录执行 `python -m compileall backend` 通过
+- 额外做过一次 `TankTroublePreviewRuntime` 的 authoritative push 自测，确认返回状态里已经能拿到：
+  - `theme`
+  - `score`
+  - `bullets`
+  - `targets`
+  - `vx / vy`
