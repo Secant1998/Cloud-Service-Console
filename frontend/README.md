@@ -904,7 +904,7 @@ SSH 登录、远端服务控制、云端部署、健康检查、控制 signaling
   - 会安装 `backend/requirements.txt` 和 `PyInstaller`
   - 会自动计算版本号
   - 会调用 `scripts/update_versions.py` 同步版本文件
-  - 会调用 `tauri-apps/tauri-action@v1`
+  - 会调用 `tauri-apps/tauri-action@action-v0.6.2`
   - 会发布 `nsis + updater` 产物
   - 已设置 `updaterJsonPreferNsis: true`
 

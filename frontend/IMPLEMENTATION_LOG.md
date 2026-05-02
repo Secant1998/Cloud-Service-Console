@@ -940,7 +940,7 @@
   - `push main` 或手动触发后自动做 Windows release
   - 自动安装前端依赖、后端依赖、PyInstaller
   - 自动计算版本号
-  - 自动调用 `tauri-action` 发布 `nsis + updater`
+  - 自动调用 `tauri-apps/tauri-action@action-v0.6.2` 发布 `nsis + updater`
 
 关键文件：
 
