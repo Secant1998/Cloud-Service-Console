@@ -14,27 +14,64 @@ const DEFAULT_BACKEND_HOST: &str = "127.0.0.1";
 const DEFAULT_BACKEND_PORT: u16 = 8765;
 const BACKEND_READY_TIMEOUT: Duration = Duration::from_secs(15);
 const BACKEND_READY_INTERVAL: Duration = Duration::from_millis(250);
+const BACKEND_STOP_TIMEOUT: Duration = Duration::from_secs(5);
+const BACKEND_STOP_INTERVAL: Duration = Duration::from_millis(150);
 
 struct BackendRuntime {
     base_url: String,
+    port: Option<u16>,
     child: Option<CommandChild>,
 }
 
 struct BackendState(Mutex<BackendRuntime>);
 
-fn cleanup_backend_child<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
-    let child = {
-        let state = app_handle.state::<BackendState>();
-        let next_child = match state.0.lock() {
-            Ok(mut guard) => guard.child.take(),
-            Err(_) => None,
-        };
-        next_child
+fn terminate_backend_child(state: &BackendState) -> Result<Option<u16>, String> {
+    let (child, port) = {
+        let mut guard = state
+            .0
+            .lock()
+            .map_err(|_| "backend state lock poisoned".to_string())?;
+        (guard.child.take(), guard.port)
     };
 
     if let Some(child) = child {
-        let _ = child.kill();
+        child
+            .kill()
+            .map_err(|error| format!("failed to terminate backend sidecar: {error}"))?;
     }
+
+    Ok(port)
+}
+
+fn wait_for_backend_stop(port: u16) -> Result<(), String> {
+    let address = SocketAddr::from(([127, 0, 0, 1], port));
+    let start = Instant::now();
+
+    while start.elapsed() < BACKEND_STOP_TIMEOUT {
+        if TcpStream::connect_timeout(&address, Duration::from_millis(250)).is_err() {
+            return Ok(());
+        }
+        std::thread::sleep(BACKEND_STOP_INTERVAL);
+    }
+
+    Err(format!(
+        "backend sidecar did not stop listening on http://{DEFAULT_BACKEND_HOST}:{port}"
+    ))
+}
+
+fn cleanup_backend_child<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
+    let state = app_handle.state::<BackendState>();
+    let _ = terminate_backend_child(&state);
+}
+
+#[tauri::command]
+fn prepare_update_install(state: State<'_, BackendState>) -> Result<(), String> {
+    if let Some(port) = terminate_backend_child(&state)? {
+        wait_for_backend_stop(port)?;
+    }
+
+    std::thread::sleep(Duration::from_millis(450));
+    Ok(())
 }
 
 #[tauri::command]
@@ -103,9 +140,13 @@ fn main() {
     let app = tauri::Builder::default()
         .manage(BackendState(Mutex::new(BackendRuntime {
             base_url: format!("http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}"),
+            port: None,
             child: None,
         })))
-        .invoke_handler(tauri::generate_handler![get_backend_base_url])
+        .invoke_handler(tauri::generate_handler![
+            get_backend_base_url,
+            prepare_update_install
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 return Ok(());
@@ -153,6 +194,7 @@ fn main() {
             let state = app.state::<BackendState>();
             let mut runtime = state.0.lock().expect("backend state lock poisoned");
             runtime.base_url = base_url;
+            runtime.port = Some(port);
             runtime.child = Some(child);
 
             Ok(())

@@ -23,6 +23,10 @@ export type IngestModeSwitchRequest = {
   target_mode: string;
 };
 
+export type LocalSetupRunRequest = {
+  password: string;
+};
+
 export type IngestModeResult = {
   ingest_mode: string;
   changed: boolean;
@@ -54,6 +58,35 @@ export type TankTroubleRoomRequest = {
   room: string;
   player_id: string;
   country_code?: string;
+  preferred_color?: string;
+};
+
+export type TankTroubleRoomStatusRequest = {
+  room: string;
+};
+
+export type TankTroublePageUrlResponse = {
+  ok: boolean;
+  room: string;
+  url: string;
+};
+
+export type TankTroubleRoomPlayerState = {
+  player_id: string;
+  country_code: string;
+  color: string;
+  score: number;
+  hits: number;
+  deaths: number;
+  latency_ms?: number;
+  connected: boolean;
+  voted: boolean;
+};
+
+export type TankTroubleVoteMarker = {
+  player_id: string;
+  country_code: string;
+  color: string;
 };
 
 export type TankTroubleRoomState = {
@@ -71,6 +104,215 @@ export type TankTroubleRoomState = {
   countdown_deadline_ms: number;
   local_player_voted: boolean;
   local_player_color: string;
+  local_player_present: boolean;
+  active_players: TankTroubleRoomPlayerState[];
+  voters: TankTroubleVoteMarker[];
+  occupied_colors: string[];
+  available_colors: string[];
+  room_full: boolean;
+  updated_at_ms: number;
+};
+
+export type TankTroubleMatchInputState = {
+  forward: boolean;
+  backward: boolean;
+  left: boolean;
+  right: boolean;
+  fire_seq: number;
+  fire_held?: boolean;
+};
+
+export type TankTroubleMatchLocalPlayerSyncState = {
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+};
+
+export type TankTroubleMatchRequest = {
+  room: string;
+  player_id: string;
+  country_code?: string;
+  preferred_color?: string;
+  input_seq: number;
+  map_seed?: number;
+  latency_ms?: number;
+  input: TankTroubleMatchInputState;
+  local_player?: TankTroubleMatchLocalPlayerSyncState;
+};
+
+export type TankTroubleMatchPlayerState = {
+  player_id: string;
+  country_code: string;
+  color: string;
+  weapon?: string;
+  shotgun_ammo?: number;
+  minigun_ammo?: number;
+  double_barrel_ammo?: number;
+  weapon_reload_ms?: number;
+  shield_active_ms?: number;
+  shield_visible_ms?: number;
+  shield_elapsed_ms?: number;
+  shield_radius?: number;
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+  flash: number;
+  score: number;
+  hits: number;
+  deaths: number;
+  shots: number;
+  alive: boolean;
+  respawn_in_ms: number;
+  latency_ms?: number;
+  input?: TankTroubleMatchInputState;
+  server_time_ms?: number;
+};
+
+export type TankTroubleMatchBulletState = {
+  id: number;
+  owner_id: string;
+  color: string;
+  projectile_type?: string;
+  x: number;
+  y: number;
+  radius: number;
+  vx: number;
+  vy: number;
+  life: number;
+  age?: number;
+  bounces_left?: number;
+  has_bounced?: boolean;
+  owner_shield_released?: boolean;
+  path_segments?: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  }>;
+  distance_travelled?: number;
+  segments?: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  }>;
+  server_time_ms?: number;
+};
+
+export type TankTroubleMatchTargetState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  phase: number;
+};
+
+export type TankTroubleTankExplosionState = {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  seed?: number;
+  created_at_ms?: number;
+  killer_id?: string;
+  victim_id?: string;
+  killer_color?: string;
+  victim_color?: string;
+  weapon?: "bullet" | "suicide" | string;
+  bullet_id?: number;
+  suicide?: boolean;
+};
+
+export type TankTroublePowerupState = {
+  id: number;
+  kind: string;
+  color: string;
+  symbol: string;
+  effect: string;
+  score_delta: number;
+  x: number;
+  y: number;
+  radius: number;
+  phase: number;
+};
+
+export type TankTroublePowerupEffectState = {
+  id: number;
+  powerup_id: number;
+  player_id: string;
+  kind: string;
+  color: string;
+  symbol: string;
+  effect?: string;
+  score_delta: number;
+  x: number;
+  y: number;
+  radius: number;
+  created_at_ms: number;
+};
+
+export type TankTroubleMatchLocalState = {
+  player_id: string;
+  country_code: string;
+  color: string;
+  weapon?: string;
+  shotgun_ammo?: number;
+  minigun_ammo?: number;
+  double_barrel_ammo?: number;
+  weapon_reload_ms?: number;
+  shield_active_ms?: number;
+  shield_visible_ms?: number;
+  shield_elapsed_ms?: number;
+  shield_radius?: number;
+  x: number;
+  y: number;
+  angle: number;
+  radius: number;
+  flash: number;
+  score: number;
+  hits: number;
+  deaths: number;
+  shots: number;
+  fire_ack_seq?: number;
+  alive: boolean;
+  respawn_in_ms: number;
+  latency_ms?: number;
+  server_time_ms?: number;
+};
+
+export type TankTroubleMatchState = {
+  ok: boolean;
+  room: string;
+  map_seed: number;
+  map_id: string;
+  snapshot_seq: number;
+  ack_input_seq: number;
+  local_player_color: string;
+  local_state: TankTroubleMatchLocalState | null;
+  local_player_voted: boolean;
+  active_player_ids: string[];
+  active_player_count: number;
+  active_players: TankTroubleRoomPlayerState[];
+  players: TankTroubleMatchPlayerState[];
+  bullets: TankTroubleMatchBulletState[];
+  targets: TankTroubleMatchTargetState[];
+  tank_explosions?: TankTroubleTankExplosionState[];
+  powerups?: TankTroublePowerupState[];
+  powerup_effects?: TankTroublePowerupEffectState[];
+  voters: TankTroubleVoteMarker[];
+  vote_count: number;
+  vote_required: number;
+  countdown_seconds: number;
+  countdown_active: boolean;
+  countdown_deadline_ms: number;
+  occupied_colors: string[];
+  available_colors: string[];
+  room_full: boolean;
   updated_at_ms: number;
 };
 
@@ -165,6 +407,7 @@ export type TankTroublePreviewRow = {
   player_id: string;
   country_code: string;
   score: number;
+  latency_ms?: number;
   active: boolean;
 };
 
@@ -178,6 +421,11 @@ export type TankTroublePreviewRect = {
 export type TankTroublePreviewTankState = {
   id: string;
   color: string;
+  weapon?: string;
+  shotgun_ammo?: number;
+  minigun_ammo?: number;
+  double_barrel_ammo?: number;
+  weapon_reload_ms?: number;
   x: number;
   y: number;
   angle: number;
@@ -188,11 +436,27 @@ export type TankTroublePreviewTankState = {
 export type TankTroublePreviewBulletState = {
   id: number;
   color: string;
+  projectile_type?: string;
   x: number;
   y: number;
   radius: number;
   vx: number;
   vy: number;
+  bounces_left?: number;
+  has_bounced?: boolean;
+  path_segments?: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  }>;
+  distance_travelled?: number;
+  segments?: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  }>;
 };
 
 export type TankTroublePreviewTargetState = {
@@ -231,12 +495,18 @@ export type TankTroublePreviewSceneState = {
   tanks: TankTroublePreviewTankState[];
   bullets: TankTroublePreviewBulletState[];
   targets: TankTroublePreviewTargetState[];
+  tankExplosions: TankTroubleTankExplosionState[];
   wallRipples: TankTroublePreviewRippleState[];
   bulletFades: TankTroublePreviewFadeState[];
 };
 
 export type TankTroublePreviewPlayerSnapshot = {
   color: string;
+  weapon?: string;
+  shotgun_ammo?: number;
+  minigun_ammo?: number;
+  double_barrel_ammo?: number;
+  weapon_reload_ms?: number;
   x: number;
   y: number;
   angle: number;
@@ -252,12 +522,14 @@ export type TankTroublePreviewPushRequest = {
   room: string;
   player_id: string;
   country_code?: string;
+  latency_ms?: number;
   snapshot_seq: number;
   authoritative_scene: boolean;
   theme: "light" | "dark";
   tank: TankTroublePreviewPlayerSnapshot;
   bullets: TankTroublePreviewBulletState[];
   targets: TankTroublePreviewTargetState[];
+  tankExplosions?: TankTroubleTankExplosionState[];
   updated_at_ms: number;
 };
 
@@ -354,6 +626,17 @@ export type LocalSetupStatus = {
 };
 
 export type LocalSetupResult = {
+  ready: boolean;
+  changed: boolean;
+  message: string;
+};
+
+export type TankTroubleSetupStatus = {
+  ready: boolean;
+  message: string;
+};
+
+export type TankTroubleSetupResult = {
   ready: boolean;
   changed: boolean;
   message: string;

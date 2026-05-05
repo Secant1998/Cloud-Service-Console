@@ -23,20 +23,6 @@ def build_tank_trouble_preview_html() -> str:
         --row-active: rgba(14, 116, 144, 0.3);
       }
 
-      :root[data-theme="light"] {
-        color-scheme: light;
-        --page-bg: #eef6ff;
-        --panel-bg: rgba(255, 255, 255, 0.86);
-        --panel-border: rgba(14, 165, 233, 0.18);
-        --panel-shadow: rgba(37, 99, 235, 0.16);
-        --text: #0f172a;
-        --muted: #5b6f86;
-        --accent: #0284c7;
-        --accent-soft: rgba(14, 165, 233, 0.12);
-        --row-bg: rgba(240, 247, 255, 0.92);
-        --row-active: rgba(191, 219, 254, 0.92);
-      }
-
       * {
         box-sizing: border-box;
       }
@@ -225,6 +211,38 @@ def build_tank_trouble_preview_html() -> str:
         text-transform: uppercase;
       }
 
+      .score-latency {
+        display: inline-flex;
+        min-width: 42px;
+        justify-content: center;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .score-latency.good {
+        color: #16a34a;
+        background: rgba(34, 197, 94, 0.13);
+      }
+
+      .score-latency.warn {
+        color: #d97706;
+        background: rgba(245, 158, 11, 0.15);
+      }
+
+      .score-latency.bad {
+        color: #dc2626;
+        background: rgba(239, 68, 68, 0.14);
+      }
+
+      :root[data-theme="dark"] .score-latency.good { color: #86efac; }
+      :root[data-theme="dark"] .score-latency.warn { color: #fde68a; }
+      :root[data-theme="dark"] .score-latency.bad { color: #fca5a5; }
+
       .score-player {
         min-width: 0;
         overflow: hidden;
@@ -350,8 +368,8 @@ const POLL_INTERVAL_MS = 45;
         return delta;
       }
 
-      function normalizeTheme(value) {
-        return String(value || "").trim().toLowerCase() === "light" ? "light" : "dark";
+      function normalizeTheme() {
+        return "dark";
       }
 
       function normalizeText(value) {
@@ -365,6 +383,33 @@ const POLL_INTERVAL_MS = 45;
         const green = Number.parseInt(value.slice(2, 4), 16) || 0;
         const blue = Number.parseInt(value.slice(4, 6), 16) || 0;
         return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+      }
+
+      function normalizeLatencyMs(value) {
+        const latencyMs = Number(value || 0);
+        if (!Number.isFinite(latencyMs) || latencyMs <= 0) {
+          return 0;
+        }
+        return Math.max(1, Math.min(9999, Math.round(latencyMs)));
+      }
+
+      function latencyClassName(value) {
+        const latencyMs = normalizeLatencyMs(value);
+        if (!latencyMs) {
+          return "unknown";
+        }
+        if (latencyMs <= 50) {
+          return "good";
+        }
+        if (latencyMs <= 150) {
+          return "warn";
+        }
+        return "bad";
+      }
+
+      function formatLatencyLabel(value) {
+        const latencyMs = normalizeLatencyMs(value);
+        return latencyMs ? `${latencyMs}ms` : "--ms";
       }
 
       function drawRoundedRectPath(context, x, y, width, height, radius) {
@@ -441,6 +486,76 @@ const POLL_INTERVAL_MS = 45;
         };
       }
 
+      function drawTankExplosions(context, explosions, theme) {
+        const darkMode = theme === "dark";
+        for (const explosion of explosions || []) {
+          const maxLife = Math.max(0.0001, Number(explosion.maxLife || 0.78));
+          const life = clamp(Number(explosion.life || 0), 0, maxLife);
+          const progress = clamp(1 - life / maxLife, 0, 1);
+          const alpha = Math.max(0, 1 - progress);
+          if (alpha <= 0) {
+            continue;
+          }
+          const palette = getPlayerPalette(explosion.color, theme);
+          const x = Number(explosion.x || 0);
+          const y = Number(explosion.y || 0);
+          const radius = Math.max(1, Number(explosion.radius || 20));
+          const shockRadius = radius * (1.15 + progress * 3.8);
+
+          context.save();
+          context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+          context.shadowColor = palette.glow;
+          context.shadowBlur = 26 * alpha;
+          context.beginPath();
+          context.arc(x, y, shockRadius, 0, Math.PI * 2);
+          context.lineWidth = 5.4 - progress * 3.4;
+          context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.78 : 0.6) * alpha);
+          context.stroke();
+
+          const gradient = context.createRadialGradient(x, y, 0, x, y, radius * (1.6 + progress * 2.3));
+          gradient.addColorStop(0, hexToRgba(palette.bright, (darkMode ? 0.42 : 0.32) * alpha));
+          gradient.addColorStop(0.42, hexToRgba(palette.base, (darkMode ? 0.24 : 0.18) * alpha));
+          gradient.addColorStop(1, hexToRgba(palette.base, 0));
+          context.fillStyle = gradient;
+          context.beginPath();
+          context.arc(x, y, radius * (1.6 + progress * 2.3), 0, Math.PI * 2);
+          context.fill();
+          context.restore();
+
+          context.save();
+          context.translate(x, y);
+          context.rotate(progress * Math.PI * 0.85 + Number(explosion.id || 0) * 0.17);
+          context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+          context.shadowColor = palette.glow;
+          context.shadowBlur = 18 * alpha;
+          const techRadius = radius * (1.85 + progress * 2.7);
+          for (let index = 0; index < 18; index += 1) {
+            if (index % 3 === 1) {
+              continue;
+            }
+            const start = (index / 18) * Math.PI * 2;
+            const end = start + (Math.PI * 2 / 18) * 0.52;
+            context.beginPath();
+            context.arc(0, 0, techRadius, start, end);
+            context.lineWidth = 2.1 - progress * 1.2;
+            context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.62 : 0.48) * alpha);
+            context.stroke();
+          }
+          for (let index = 0; index < 8; index += 1) {
+            const angle = (index / 8) * Math.PI * 2 + progress * 1.1;
+            const inner = radius * (0.7 + progress * 1.3);
+            const outer = radius * (1.25 + progress * 2.1);
+            context.beginPath();
+            context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+            context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+            context.lineWidth = 1.1;
+            context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.36 : 0.28) * alpha);
+            context.stroke();
+          }
+          context.restore();
+        }
+      }
+
       function sanitizeRect(value) {
         return {
           x: Number(value?.x || 0),
@@ -448,6 +563,20 @@ const POLL_INTERVAL_MS = 45;
           w: Number(value?.w || 0),
           h: Number(value?.h || 0),
         };
+      }
+
+      function sanitizeSegments(value) {
+        if (!Array.isArray(value)) {
+          return [];
+        }
+        return value
+          .map((segment) => ({
+            x1: Number(segment?.x1 || 0),
+            y1: Number(segment?.y1 || 0),
+            x2: Number(segment?.x2 || 0),
+            y2: Number(segment?.y2 || 0),
+          }))
+          .filter((segment) => Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) > 0.1);
       }
 
       function sanitizeScene(scene) {
@@ -463,6 +592,10 @@ const POLL_INTERVAL_MS = 45;
             ? scene.tanks.map((tank) => ({
                 id: normalizeText(tank?.id),
                 color: normalizeText(tank?.color) || "green",
+                weapon: normalizeText(tank?.weapon) || "default",
+                shotgun_ammo: Number(tank?.shotgun_ammo || 0),
+                minigun_ammo: Number(tank?.minigun_ammo || 0),
+                weapon_reload_ms: Number(tank?.weapon_reload_ms || 0),
                 x: Number(tank?.x || 0),
                 y: Number(tank?.y || 0),
                 angle: Number(tank?.angle || 0),
@@ -474,11 +607,15 @@ const POLL_INTERVAL_MS = 45;
             ? scene.bullets.map((bullet) => ({
                 id: Number(bullet?.id || 0),
                 color: normalizeText(bullet?.color) || "green",
+                projectile_type: normalizeText(bullet?.projectile_type) || "bullet",
                 x: Number(bullet?.x || 0),
                 y: Number(bullet?.y || 0),
                 radius: Number(bullet?.radius || 0),
                 vx: Number(bullet?.vx || 0),
                 vy: Number(bullet?.vy || 0),
+                path_segments: sanitizeSegments(bullet?.path_segments),
+                distance_travelled: Number(bullet?.distance_travelled || 0),
+                segments: sanitizeSegments(bullet?.segments),
               }))
             : [],
           targets: Array.isArray(scene.targets)
@@ -488,6 +625,17 @@ const POLL_INTERVAL_MS = 45;
                 y: Number(target?.y || 0),
                 radius: Number(target?.radius || 0),
                 phase: Number(target?.phase || 0),
+              }))
+            : [],
+          tankExplosions: Array.isArray(scene.tankExplosions)
+            ? scene.tankExplosions.map((explosion) => ({
+                id: Number(explosion?.id || 0),
+                x: Number(explosion?.x || 0),
+                y: Number(explosion?.y || 0),
+                radius: Number(explosion?.radius || 20),
+                color: normalizeText(explosion?.color) || "green",
+                life: Number(explosion?.life || 0),
+                maxLife: Math.max(0.0001, Number(explosion?.maxLife || 0.78)),
               }))
             : [],
           wallRipples: Array.isArray(scene.wallRipples)
@@ -530,6 +678,7 @@ const POLL_INTERVAL_MS = 45;
                 player_id: normalizeText(row?.player_id) || "--",
                 country_code: normalizeText(row?.country_code).toUpperCase(),
                 score: Number(row?.score || 0),
+                latency_ms: normalizeLatencyMs(row?.latency_ms),
                 active: Boolean(row?.active),
               }))
             : [],
@@ -545,6 +694,7 @@ const POLL_INTERVAL_MS = 45;
           player_id: "--",
           country_code: "",
           score: 0,
+          latency_ms: 0,
           active: false,
         }));
 
@@ -559,6 +709,10 @@ const POLL_INTERVAL_MS = 45;
           const name = document.createElement("div");
           name.className = "score-name";
 
+          const latency = document.createElement("span");
+          latency.className = `score-latency ${latencyClassName(row.latency_ms)}`;
+          latency.textContent = formatLatencyLabel(row.latency_ms);
+
           const country = document.createElement("span");
           country.className = "score-country";
           country.textContent = row.country_code || "--";
@@ -571,6 +725,7 @@ const POLL_INTERVAL_MS = 45;
           value.className = "score-value";
           value.textContent = Number.isFinite(row.score) ? String(row.score) : "-";
 
+          name.appendChild(latency);
           name.appendChild(country);
           name.appendChild(player);
           item.appendChild(rank);
@@ -652,6 +807,10 @@ const POLL_INTERVAL_MS = 45;
           current.radius = tank.radius;
           current.flash = Math.max(tank.flash, current.flash * 0.9);
           current.color = tank.color;
+          current.weapon = tank.weapon;
+          current.shotgun_ammo = tank.shotgun_ammo;
+          current.minigun_ammo = tank.minigun_ammo;
+          current.weapon_reload_ms = tank.weapon_reload_ms;
         }
         for (const id of Array.from(smoothedTanks.keys())) {
           if (!tankIds.has(id)) {
@@ -677,6 +836,10 @@ const POLL_INTERVAL_MS = 45;
           current.trailY = current.y;
           current.radius = bullet.radius;
           current.color = bullet.color;
+          current.projectile_type = bullet.projectile_type;
+          current.path_segments = bullet.path_segments;
+          current.distance_travelled = bullet.distance_travelled;
+          current.segments = bullet.segments;
           current.vx = bullet.vx;
           current.vy = bullet.vy;
           if (current.snapshotSeq !== frameSeq) {
@@ -698,95 +861,400 @@ const POLL_INTERVAL_MS = 45;
       }
 
       function drawTank(context, tank, theme, elapsedMs) {
-        const palette = getPlayerPalette(tank.color, theme);
-        const pulse = 0.5 + 0.5 * Math.sin(elapsedMs * 0.003 + tank.x * 0.014 + tank.y * 0.009);
-        const shellTop = theme === "dark" ? "rgba(8, 18, 34, 0.98)" : "rgba(250, 253, 255, 0.99)";
-        const shellBottom = theme === "dark" ? "rgba(17, 47, 80, 0.98)" : "rgba(204, 229, 255, 0.98)";
-        const trackFill = theme === "dark" ? "rgba(10, 26, 48, 0.98)" : "rgba(226, 237, 255, 0.98)";
-        const frameStroke = theme === "dark" ? "rgba(186, 230, 253, 0.34)" : "rgba(37, 99, 235, 0.28)";
+        const tankPalette = getPlayerPalette(tank.color, theme);
+        const darkMode = theme === "dark";
+        const wallTime = elapsedMs / 1000;
+        const radius = Number(tank.radius || 20);
+        const flash = Number(tank.flash || 0);
+        const tankPulse = 0.56 + 0.44 * Math.sin(wallTime * 3.2 + tank.x * 0.014 + tank.y * 0.011);
+        const tankShellTop = darkMode ? "rgba(8, 18, 34, 0.98)" : "rgba(250, 253, 255, 0.99)";
+        const tankShellBottom = darkMode ? "rgba(17, 47, 80, 0.98)" : "rgba(204, 229, 255, 0.98)";
+        const tankSideFill = darkMode ? "rgba(12, 27, 49, 0.96)" : "rgba(224, 238, 255, 0.96)";
+        const tankFrameStroke = darkMode ? "rgba(186, 230, 253, 0.34)" : "rgba(37, 99, 235, 0.28)";
+        const tankPanelStroke = darkMode ? "rgba(103, 232, 249, 0.34)" : "rgba(14, 165, 233, 0.26)";
+        const tankGlassTop = darkMode ? "rgba(224, 242, 254, 0.92)" : "rgba(255, 255, 255, 0.98)";
+        const tankGlassBottom = darkMode ? "rgba(56, 189, 248, 0.26)" : "rgba(147, 197, 253, 0.54)";
+        const tankCircuit = hexToRgba(tankPalette.bright, darkMode ? 0.48 : 0.4);
+        const tankCoreGlow = hexToRgba(tankPalette.base, darkMode ? 0.72 : 0.58);
+        const tankScan = hexToRgba(tankPalette.bright, darkMode ? 0.28 : 0.22);
+        const tankShadow = darkMode ? "rgba(8, 15, 29, 0.42)" : "rgba(37, 99, 235, 0.14)";
+        const tankScanOffset = ((wallTime * 42 + tank.x * 0.2 + tank.y * 0.13) % 42) - 21;
+        const tankNoseGlow = hexToRgba(tankPalette.bright, darkMode ? 0.8 : 0.62);
+        const tankRearGlow = hexToRgba(tankPalette.base, darkMode ? 0.84 : 0.64);
+        const weapon = String(tank.weapon || "default");
+        const reloadMs = Math.max(0, Number(tank.weapon_reload_ms || tank.weaponReloadMs || 0));
+        const reloadKick = weapon === "shotgun" ? Math.sin(clamp(reloadMs / 1500, 0, 1) * Math.PI) : 0;
+        const laserCharge = weapon === "laser" ? 0.55 + Math.sin(wallTime * 8) * 0.18 : 0;
+        const minigunSpin = weapon === "minigun" ? wallTime * 26 : 0;
 
         context.save();
         context.translate(tank.x, tank.y);
         context.rotate(tank.angle + Math.PI / 2);
 
         context.save();
-        context.shadowColor = palette.glow;
+        context.shadowColor = tankPalette.glow;
         context.shadowBlur = 18;
-        context.fillStyle = hexToRgba(palette.base, theme === "dark" ? 0.18 : 0.12);
+        context.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.18 : 0.12);
         context.beginPath();
-        context.arc(0, 0, tank.radius + 10 + pulse * 2, 0, Math.PI * 2);
+        context.arc(0, 0, radius + 9 + tankPulse * 2, 0, Math.PI * 2);
         context.fill();
         context.restore();
 
-        context.fillStyle = trackFill;
-        drawRoundedRectPath(context, -20, -17, 8, 34, 4);
+        context.save();
+        context.fillStyle = tankSideFill;
+        context.shadowColor = tankShadow;
+        context.shadowBlur = 10;
+        drawRoundedRectPath(context, -19, -16, 7, 32, 4);
         context.fill();
-        drawRoundedRectPath(context, 12, -17, 8, 34, 4);
+        drawRoundedRectPath(context, 12, -16, 7, 32, 4);
         context.fill();
+        context.restore();
 
-        const barrelGradient = context.createLinearGradient(0, -40, 0, -5);
-        barrelGradient.addColorStop(0, shellTop);
-        barrelGradient.addColorStop(1, shellBottom);
-        drawRoundedRectPath(context, -5.5, -39, 11, 36, 5.4);
+        context.save();
+        const barrelGradient = context.createLinearGradient(0, -31, 0, -3);
+        barrelGradient.addColorStop(0, tankShellTop);
+        barrelGradient.addColorStop(1, tankShellBottom);
+        const barrelWidth = weapon === "shotgun" ? 16.8 : weapon === "laser" ? 18 : weapon === "minigun" ? 19.5 : 10.4;
+        const barrelLength = weapon === "shotgun" ? 27 : weapon === "laser" ? 24 : weapon === "minigun" ? 33 : 35;
+        const barrelY = weapon === "shotgun" ? -31 + reloadKick * 3.5 : weapon === "laser" ? -31 : weapon === "minigun" ? -36 : -38;
+        drawRoundedRectPath(context, -barrelWidth / 2, barrelY, barrelWidth, barrelLength, weapon === "shotgun" ? 7.2 : weapon === "laser" ? 9 : weapon === "minigun" ? 8.5 : 5.1);
         context.fillStyle = barrelGradient;
         context.fill();
         context.lineWidth = 1;
-        context.strokeStyle = frameStroke;
+        context.strokeStyle = tankFrameStroke;
         context.stroke();
-
         context.beginPath();
-        context.moveTo(-9.5, -22);
-        context.lineTo(-12.5, -8);
-        context.lineTo(-8.5, 2);
-        context.lineTo(8.5, 2);
-        context.lineTo(12.5, -8);
-        context.lineTo(9.5, -22);
+        context.moveTo(0, -34);
+        context.lineTo(0, -8);
+        context.lineWidth = 1.1;
+        context.strokeStyle = tankCircuit;
+        context.stroke();
+        context.beginPath();
+        context.arc(0, barrelY + (weapon === "shotgun" ? 1.5 : weapon === "laser" ? 3 : weapon === "minigun" ? 2.4 : 1), weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2, 0, Math.PI * 2);
+        context.fillStyle = tankCoreGlow;
+        context.fill();
+        if (weapon === "shotgun") {
+          context.beginPath();
+          context.arc(-3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
+          context.arc(3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
+          context.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.46)";
+          context.fill();
+        } else if (weapon === "laser") {
+          context.save();
+          context.shadowColor = tankPalette.glow;
+          context.shadowBlur = 15;
+          context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.7 : 0.52);
+          context.lineWidth = 1.7;
+          for (let index = 0; index < 3; index += 1) {
+            const ringRadius = 5.2 + index * 3.2 + laserCharge * 1.1;
+            context.beginPath();
+            context.arc(0, barrelY + 3, ringRadius, -Math.PI * 0.74, Math.PI * 0.74);
+            context.stroke();
+          }
+          context.beginPath();
+          context.moveTo(0, barrelY - 7.5);
+          context.lineTo(-5.8, barrelY + 4.5);
+          context.lineTo(5.8, barrelY + 4.5);
+          context.closePath();
+          context.fillStyle = hexToRgba(tankPalette.bright, darkMode ? 0.72 : 0.5);
+          context.fill();
+          context.restore();
+        } else if (weapon === "minigun") {
+          context.save();
+          context.shadowColor = tankPalette.glow;
+          context.shadowBlur = 10;
+          context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.48 : 0.34);
+          context.lineWidth = 2;
+          for (let index = 0; index < 6; index += 1) {
+            const angle = minigunSpin + (index / 6) * Math.PI * 2;
+            const offset = Math.sin(angle) * 4.7;
+            context.beginPath();
+            context.moveTo(offset, barrelY + 3);
+            context.lineTo(offset * 0.42, -8);
+            context.stroke();
+          }
+          context.beginPath();
+          context.arc(0, barrelY + 2.4, 6.2 + Math.sin(minigunSpin) * 0.5, 0, Math.PI * 2);
+          context.fillStyle = darkMode ? "rgba(2, 6, 23, 0.78)" : "rgba(15, 23, 42, 0.38)";
+          context.fill();
+          context.restore();
+        }
+        context.beginPath();
+        context.moveTo(-8.5, -23);
+        context.lineTo(-11.5, -10);
+        context.lineTo(-8, 1);
+        context.lineTo(8, 1);
+        context.lineTo(11.5, -10);
+        context.lineTo(8.5, -23);
         context.closePath();
         context.fillStyle = barrelGradient;
-        context.shadowColor = palette.glow;
-        context.shadowBlur = 8;
+        context.shadowColor = tankNoseGlow;
+        context.shadowBlur = 7;
         context.fill();
         context.lineWidth = 1;
-        context.strokeStyle = hexToRgba(palette.bright, theme === "dark" ? 0.42 : 0.34);
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
         context.stroke();
+        context.beginPath();
+        context.moveTo(0, -20);
+        context.lineTo(-9, -7.5);
+        context.lineTo(9, -7.5);
+        context.closePath();
+        const noseGradient = context.createLinearGradient(0, -20, 0, -7.5);
+        noseGradient.addColorStop(0, tankGlassTop);
+        noseGradient.addColorStop(1, tankGlassBottom);
+        context.fillStyle = noseGradient;
+        context.shadowColor = tankNoseGlow;
+        context.shadowBlur = 9;
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
+        context.stroke();
+        context.restore();
 
-        const bodyGradient = context.createLinearGradient(-22, -22, 22, 22);
-        bodyGradient.addColorStop(0, shellTop);
-        bodyGradient.addColorStop(1, shellBottom);
-        drawRoundedRectPath(context, -22, -20, 44, 40, 14);
-        context.fillStyle = bodyGradient;
-        context.shadowBlur = 0;
+        context.save();
+        const hullGradient = context.createLinearGradient(0, -18, 0, 18);
+        hullGradient.addColorStop(0, tankShellTop);
+        hullGradient.addColorStop(1, tankShellBottom);
+        drawRoundedRectPath(context, -16, -18, 32, 36, 11);
+        context.fillStyle = hullGradient;
+        context.shadowColor = tankShadow;
+        context.shadowBlur = 12;
         context.fill();
         context.lineWidth = 1.2;
-        context.strokeStyle = frameStroke;
+        context.strokeStyle = tankFrameStroke;
+        context.stroke();
+
+        context.save();
+        drawRoundedRectPath(context, -16, -18, 32, 36, 11);
+        context.clip();
+        const scanGradient = context.createLinearGradient(tankScanOffset, 0, tankScanOffset + 18, 0);
+        scanGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+        scanGradient.addColorStop(0.5, tankScan);
+        scanGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+        context.fillStyle = scanGradient;
+        context.fillRect(-18 + tankScanOffset, -20, 18, 40);
+        context.restore();
+
+        context.beginPath();
+        context.moveTo(-10, -2);
+        context.lineTo(10, -2);
+        context.moveTo(-8, 7);
+        context.lineTo(8, 7);
+        context.lineWidth = 1.1;
+        context.strokeStyle = tankPanelStroke;
         context.stroke();
 
         context.beginPath();
-        context.arc(0, -1, 12.5, 0, Math.PI * 2);
-        const coreGradient = context.createRadialGradient(0, -4, 2, 0, 0, 18);
-        coreGradient.addColorStop(0, theme === "dark" ? "rgba(255, 255, 255, 0.98)" : "rgba(255, 255, 255, 1)");
-        coreGradient.addColorStop(1, hexToRgba(palette.base, theme === "dark" ? 0.7 : 0.54));
-        context.fillStyle = coreGradient;
-        context.fill();
-        context.strokeStyle = hexToRgba(palette.bright, theme === "dark" ? 0.46 : 0.3);
+        context.moveTo(-6, -6.5);
+        context.lineTo(0, -14.5);
+        context.lineTo(6, -6.5);
+        context.lineWidth = 1.4;
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.52 : 0.38);
         context.stroke();
 
         context.beginPath();
-        context.moveTo(0, -24);
-        context.lineTo(-7.5, -11);
-        context.lineTo(7.5, -11);
-        context.closePath();
-        context.fillStyle = hexToRgba(palette.bright, theme === "dark" ? 0.82 : 0.68);
-        context.fill();
+        context.setLineDash([7, 5]);
+        context.moveTo(-11, 12);
+        context.lineTo(11, 12);
+        context.lineWidth = 0.95;
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.22 : 0.2);
+        context.stroke();
+        context.setLineDash([]);
 
-        if (tank.flash > 0.001) {
-          context.fillStyle = hexToRgba(palette.bright, clamp(tank.flash * 1.6, 0, 0.8));
+        const canopyGradient = context.createLinearGradient(0, -12, 0, 6);
+        canopyGradient.addColorStop(0, tankGlassTop);
+        canopyGradient.addColorStop(1, tankGlassBottom);
+        drawRoundedRectPath(context, -9.5, -11.5, 19, 17, 7);
+        context.fillStyle = canopyGradient;
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.36 : 0.3);
+        context.stroke();
+
+        context.beginPath();
+        context.moveTo(-8, 9.5);
+        context.lineTo(8, 9.5);
+        context.moveTo(-9, 14.8);
+        context.lineTo(9, 14.8);
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.24 : 0.2);
+        context.stroke();
+
+        context.save();
+        drawRoundedRectPath(context, -11, 8.8, 22, 10.5, 4.8);
+        context.fillStyle = darkMode ? "rgba(6, 12, 24, 0.78)" : "rgba(219, 234, 254, 0.82)";
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(tankPalette.base, darkMode ? 0.26 : 0.18);
+        context.stroke();
+        context.restore();
+
+        context.fillStyle = tankRearGlow;
+        context.shadowColor = tankPalette.glow;
+        context.shadowBlur = 12;
+        for (const exhaustX of [-5, 5]) {
           context.beginPath();
-          context.arc(0, -37, 7 + pulse * 2, 0, Math.PI * 2);
+          context.arc(exhaustX, 13.5, 3.1 + tankPulse * 0.35, 0, Math.PI * 2);
+          context.fill();
+        }
+
+        context.beginPath();
+        for (const nodeX of [-10.5, 0, 10.5]) {
+          context.moveTo(nodeX, -15);
+          context.arc(nodeX, -15, 1.7 + tankPulse * 0.4, 0, Math.PI * 2);
+        }
+        context.fillStyle = tankPalette.bright;
+        context.shadowBlur = 6;
+        context.fill();
+        context.restore();
+
+        if (flash > 0) {
+          context.fillStyle = tankPalette.flash.replace(/, ([0-9.]+)\)$/, `, ${clamp(flash * 5.8, 0, 0.95)})`);
+          context.beginPath();
+          context.arc(0, -(radius + 18), 8 + flash * 24, 0, Math.PI * 2);
           context.fill();
         }
 
         context.restore();
+      }
+
+      function drawWalls(context, walls, theme, elapsedMs) {
+        const darkMode = theme === "dark";
+        const wallFill = darkMode
+          ? ["rgba(18, 46, 78, 0.98)", "rgba(5, 14, 26, 0.98)"]
+          : ["rgba(251, 253, 255, 0.995)", "rgba(210, 232, 255, 0.975)"];
+        const wallCore = darkMode ? "rgba(103, 232, 249, 0.24)" : "rgba(14, 165, 233, 0.22)";
+        const wallStroke = darkMode ? "rgba(165, 243, 252, 0.3)" : "rgba(59, 130, 246, 0.3)";
+        const wallSheen = darkMode ? "rgba(224, 242, 254, 0.18)" : "rgba(255, 255, 255, 0.82)";
+        const wallScan = darkMode ? "rgba(34, 211, 238, 0.32)" : "rgba(56, 189, 248, 0.3)";
+        const wallBracket = darkMode ? "rgba(191, 219, 254, 0.3)" : "rgba(37, 99, 235, 0.24)";
+        const wallNode = darkMode ? "#67e8f9" : "#0284c7";
+        const wallEdgeGlow = darkMode ? "rgba(34, 211, 238, 0.2)" : "rgba(96, 165, 250, 0.22)";
+        const wallTime = elapsedMs / 1000;
+
+        for (const wall of walls) {
+          const horizontal = wall.w >= wall.h;
+          const wallMidX = wall.x + wall.w / 2;
+          const wallMidY = wall.y + wall.h / 2;
+          const pulse = 0.58 + 0.42 * Math.sin(wallTime * 2.1 + wall.x * 0.018 + wall.y * 0.023);
+          const scanLength = horizontal ? wall.w + 40 : wall.h + 40;
+          const scanOffset = ((wallTime * 74 + wall.x * 0.62 + wall.y * 0.37) % scanLength) - 20;
+
+          context.save();
+          drawRoundedRectPath(context, wall.x, wall.y, wall.w, wall.h, 12);
+          const wallGradient = context.createLinearGradient(wall.x, wall.y, wall.x + wall.w, wall.y + wall.h);
+          wallGradient.addColorStop(0, wallFill[0]);
+          wallGradient.addColorStop(1, wallFill[1]);
+          context.fillStyle = wallGradient;
+          context.shadowColor = wallEdgeGlow;
+          context.shadowBlur = darkMode ? 14 : 11;
+          context.fill();
+          context.lineWidth = 1.2;
+          context.strokeStyle = wallStroke;
+          context.stroke();
+
+          context.save();
+          drawRoundedRectPath(context, wall.x, wall.y, wall.w, wall.h, 12);
+          context.clip();
+          const sheenGradient = horizontal
+            ? context.createLinearGradient(wall.x, wall.y, wall.x, wall.y + wall.h)
+            : context.createLinearGradient(wall.x, wall.y, wall.x + wall.w, wall.y);
+          sheenGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+          sheenGradient.addColorStop(0.5, wallSheen);
+          sheenGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+          context.globalAlpha = darkMode ? 0.72 : 0.82;
+          context.fillStyle = sheenGradient;
+          context.fillRect(wall.x, wall.y, wall.w, wall.h);
+
+          const scanGradient = horizontal
+            ? context.createLinearGradient(wall.x + scanOffset, wall.y, wall.x + scanOffset + 22, wall.y)
+            : context.createLinearGradient(wall.x, wall.y + scanOffset, wall.x, wall.y + scanOffset + 22);
+          scanGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+          scanGradient.addColorStop(0.5, wallScan);
+          scanGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+          context.globalAlpha = 0.62 + pulse * 0.24;
+          context.fillStyle = scanGradient;
+          if (horizontal) {
+            context.fillRect(wall.x + scanOffset, wall.y + 2, 22, Math.max(1, wall.h - 4));
+          } else {
+            context.fillRect(wall.x + 2, wall.y + scanOffset, Math.max(1, wall.w - 4), 22);
+          }
+          context.restore();
+
+          context.beginPath();
+          if (horizontal) {
+            context.moveTo(wall.x + 10, wall.y + wall.h / 2);
+            context.lineTo(wall.x + wall.w - 10, wall.y + wall.h / 2);
+          } else {
+            context.moveTo(wall.x + wall.w / 2, wall.y + 10);
+            context.lineTo(wall.x + wall.w / 2, wall.y + wall.h - 10);
+          }
+          context.lineWidth = darkMode ? 2.4 : 2.1;
+          context.strokeStyle = wallCore;
+          context.stroke();
+
+          context.beginPath();
+          context.setLineDash(horizontal ? [12, 8] : [10, 8]);
+          if (horizontal) {
+            context.moveTo(wall.x + 15, wallMidY - 4);
+            context.lineTo(wall.x + wall.w - 15, wallMidY - 4);
+            context.moveTo(wall.x + 15, wallMidY + 4);
+            context.lineTo(wall.x + wall.w - 15, wallMidY + 4);
+          } else {
+            context.moveTo(wallMidX - 4, wall.y + 15);
+            context.lineTo(wallMidX - 4, wall.y + wall.h - 15);
+            context.moveTo(wallMidX + 4, wall.y + 15);
+            context.lineTo(wallMidX + 4, wall.y + wall.h - 15);
+          }
+          context.lineWidth = 1;
+          context.strokeStyle = hexToRgba(wallNode, darkMode ? 0.16 + pulse * 0.12 : 0.12 + pulse * 0.1);
+          context.stroke();
+          context.setLineDash([]);
+
+          context.beginPath();
+          if (horizontal) {
+            context.moveTo(wall.x + 8, wall.y + 4);
+            context.lineTo(wall.x + 24, wall.y + 4);
+            context.moveTo(wall.x + 8, wall.y + wall.h - 4);
+            context.lineTo(wall.x + 24, wall.y + wall.h - 4);
+            context.moveTo(wall.x + wall.w - 8, wall.y + 4);
+            context.lineTo(wall.x + wall.w - 24, wall.y + 4);
+            context.moveTo(wall.x + wall.w - 8, wall.y + wall.h - 4);
+            context.lineTo(wall.x + wall.w - 24, wall.y + wall.h - 4);
+          } else {
+            context.moveTo(wall.x + 4, wall.y + 8);
+            context.lineTo(wall.x + 4, wall.y + 24);
+            context.moveTo(wall.x + wall.w - 4, wall.y + 8);
+            context.lineTo(wall.x + wall.w - 4, wall.y + 24);
+            context.moveTo(wall.x + 4, wall.y + wall.h - 8);
+            context.lineTo(wall.x + 4, wall.y + wall.h - 24);
+            context.moveTo(wall.x + wall.w - 4, wall.y + wall.h - 8);
+            context.lineTo(wall.x + wall.w - 4, wall.y + wall.h - 24);
+          }
+          context.lineWidth = 1.1;
+          context.strokeStyle = wallBracket;
+          context.stroke();
+
+          context.save();
+          context.shadowColor = wallNode;
+          context.shadowBlur = darkMode ? 10 : 8;
+          context.fillStyle = wallNode;
+          if (horizontal) {
+            for (const nodeX of [wall.x + 16, wallMidX, wall.x + wall.w - 16]) {
+              context.beginPath();
+              context.arc(nodeX, wallMidY, 2.2 + pulse * 0.8, 0, Math.PI * 2);
+              context.fill();
+            }
+          } else {
+            for (const nodeY of [wall.y + 16, wallMidY, wall.y + wall.h - 16]) {
+              context.beginPath();
+              context.arc(wallMidX, nodeY, 2.2 + pulse * 0.8, 0, Math.PI * 2);
+              context.fill();
+            }
+          }
+          context.restore();
+          context.restore();
+        }
       }
 
       function drawStage(now, dt) {
@@ -859,17 +1327,7 @@ const POLL_INTERVAL_MS = 45;
         ctx.fillStyle = scanGradient;
         ctx.fillRect(0, scanY - 60, WORLD_WIDTH, 120);
 
-        for (const wall of scene.walls) {
-          const wallGradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.w, wall.y + wall.h);
-          wallGradient.addColorStop(0, palette.wallInner);
-          wallGradient.addColorStop(1, palette.wallFill);
-          drawRoundedRectPath(ctx, wall.x, wall.y, wall.w, wall.h, Math.min(8, Math.min(wall.w, wall.h) / 2));
-          ctx.fillStyle = wallGradient;
-          ctx.fill();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = palette.wallStroke;
-          ctx.stroke();
-        }
+        drawWalls(ctx, scene.walls, theme, scene.elapsedMs);
 
         for (const ripple of scene.wallRipples) {
           const rippleAlpha = clamp(ripple.life / ripple.maxLife, 0, 1);
@@ -921,6 +1379,31 @@ const POLL_INTERVAL_MS = 45;
 
         for (const bullet of smoothedBullets.values()) {
           const bulletPalette = getPlayerPalette(bullet.color, theme);
+          const projectileType = String(bullet.projectile_type || "bullet");
+          if (projectileType === "laser" && Array.isArray(bullet.segments) && bullet.segments.length) {
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.shadowColor = bulletPalette.glow;
+            ctx.shadowBlur = theme === "dark" ? 22 : 16;
+            ctx.strokeStyle = hexToRgba(bulletPalette.base, theme === "dark" ? 0.36 : 0.24);
+            ctx.lineWidth = 14;
+            for (const segment of bullet.segments) {
+              ctx.beginPath();
+              ctx.moveTo(segment.x1, segment.y1);
+              ctx.lineTo(segment.x2, segment.y2);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = bulletPalette.bright;
+            ctx.lineWidth = Math.max(3.2, bullet.radius * 1.1);
+            for (const segment of bullet.segments) {
+              ctx.beginPath();
+              ctx.moveTo(segment.x1, segment.y1);
+              ctx.lineTo(segment.x2, segment.y2);
+              ctx.stroke();
+            }
+            ctx.restore();
+            continue;
+          }
           const trailDx = bullet.x - (bullet.trailX ?? bullet.x);
           const trailDy = bullet.y - (bullet.trailY ?? bullet.y);
           const trailLength = Math.hypot(trailDx, trailDy);
@@ -937,13 +1420,15 @@ const POLL_INTERVAL_MS = 45;
           }
           ctx.save();
           ctx.shadowColor = bulletPalette.glow;
-          ctx.shadowBlur = 14;
+          ctx.shadowBlur = projectileType === "minigun" ? 10 : 14;
           ctx.fillStyle = bulletPalette.bright;
           ctx.beginPath();
           ctx.arc(bullet.x, bullet.y, bullet.radius + 1.2, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
+
+        drawTankExplosions(ctx, scene.tankExplosions || [], theme);
 
         for (const tank of smoothedTanks.values()) {
           drawTank(ctx, tank, theme, now);

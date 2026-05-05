@@ -30,6 +30,7 @@ from config import (
     REMOTE_PORT_META,
     REMOTE_SERVICE_META,
     REMOTE_SERVICE_ORDER,
+    TANK_GAME_SERVER_PORT,
     load_config_defaults,
     normalize_host,
 )
@@ -47,6 +48,7 @@ from models import (
     LoginRequest,
     LoginSettingsResponse,
     LocalSetupResult,
+    LocalSetupRunRequest,
     LocalSetupStatus,
     LogsResponse,
     NetworkEndpointStatus,
@@ -55,12 +57,18 @@ from models import (
     PortStatus,
     ServiceStatus,
     SettingsRequest,
+    TankTroubleMatchRequest,
+    TankTroubleMatchState,
     TankTroubleLatencyRequest,
     TankTroubleLatencyState,
     TankTroublePreviewClearRequest,
     TankTroublePreviewPushRequest,
+    TankTroublePageUrlResponse,
     TankTroubleRoomRequest,
+    TankTroubleRoomStatusRequest,
     TankTroubleRoomState,
+    TankTroubleSetupResult,
+    TankTroubleSetupStatus,
 )
 from service_manager import ServiceManager
 from settings_store import load_login_settings, save_login_settings
@@ -76,12 +84,9 @@ VIDEO_PREVIEW_STREAM_NAME = "main-camera"
 VIDEO_PREVIEW_TIMEOUT_SECONDS = 15
 CONTROL_MONITOR_DEFAULT_SESSION = "robot-control"
 CONTROL_MONITOR_POLL_INTERVAL_SEC = 1.0
+CONTROL_MONITOR_TURN_PORT = 3478
 CONTROL_MONITOR_TURN_USERNAME = "telemetry"
 CONTROL_MONITOR_TURN_CREDENTIAL = "123456"
-CONTROL_MONITOR_TURN_URLS = [
-    "turn:150.109.100.30:3478?transport=udp",
-    "turn:150.109.100.30:3478?transport=tcp",
-]
 CONTROL_MONITOR_REQUEST_TIMEOUT_SECONDS = 25
 
 
@@ -94,6 +99,7 @@ class BackendState:
         self._local_setup_lock = threading.Lock()
         self._ingest_mode_lock = threading.Lock()
         self._tank_trouble_lock = threading.Lock()
+        self._tank_trouble_setup_lock = threading.Lock()
         self.current_config = None
         self.current_client = None
         self._tank_trouble_bridge = None
@@ -183,7 +189,7 @@ class BackendState:
         return normalize_host(self.defaults.default_host)
 
     def build_disconnected_status(self, source: str = "status") -> DashboardStatus:
-        display_host = self.resolve_network_host()
+        display_host = self.resolve_network_host() or "-"
         default_port = 443 if self.defaults.public_scheme == "https" else 80
         if self.defaults.api_port == default_port:
             public_base_url = f"{self.defaults.public_scheme}://{display_host}"
@@ -490,11 +496,14 @@ class BackendState:
         finally:
             self._local_setup_lock.release()
 
-    def ensure_local_setup(self) -> LocalSetupResult:
+    def ensure_local_setup(self, password: str) -> LocalSetupResult:
         if not self._local_setup_lock.acquire(blocking=False):
             raise RuntimeError("一键配置正在进行中。")
 
         try:
+            runtime_config, _ = self.get_session()
+            if str(password or "") != runtime_config.ssh_password:
+                raise RuntimeError("密码验证失败，未执行一键配置。")
             ready, _ = self.evaluate_local_setup_ready()
             if ready:
                 return LocalSetupResult(ready=True, changed=False, message="环境已就绪")
@@ -616,12 +625,16 @@ class BackendState:
     def logs(self) -> LogsResponse:
         return LogsResponse(logs=self.log_store.get_logs())
 
-    @staticmethod
-    def build_control_monitor_config() -> ControlMonitorConfigResponse:
+    def build_control_monitor_config(self) -> ControlMonitorConfigResponse:
+        config, _ = self.get_session()
+        turn_host = normalize_host(config.public_host)
         return ControlMonitorConfigResponse(
             session=CONTROL_MONITOR_DEFAULT_SESSION,
             poll_interval_sec=CONTROL_MONITOR_POLL_INTERVAL_SEC,
-            turn_urls=CONTROL_MONITOR_TURN_URLS,
+            turn_urls=[
+                f"turn:{turn_host}:{CONTROL_MONITOR_TURN_PORT}?transport=udp",
+                f"turn:{turn_host}:{CONTROL_MONITOR_TURN_PORT}?transport=tcp",
+            ],
             turn_username=CONTROL_MONITOR_TURN_USERNAME,
             turn_credential=CONTROL_MONITOR_TURN_CREDENTIAL,
         )
@@ -698,6 +711,44 @@ class BackendState:
                 self._tank_trouble_bridge = TankTroubleCloudBridge(config)
             return self._tank_trouble_bridge
 
+    def get_tank_trouble_room_status(self, payload: TankTroubleRoomStatusRequest) -> TankTroubleRoomState:
+        config, client = self.get_session()
+        bridge = self._get_tank_trouble_bridge(config)
+        result = bridge.room_status(
+            client,
+            room=payload.room,
+        )
+        return TankTroubleRoomState.model_validate(result)
+
+    def get_tank_trouble_spectator_page_url(self, room: str = "main") -> TankTroublePageUrlResponse:
+        config, client = self.get_session()
+        bridge = self._get_tank_trouble_bridge(config)
+        bridge.ensure_server(client)
+        return TankTroublePageUrlResponse(room=room, url=bridge.spectator_page_url(room))
+
+    def check_tank_trouble_setup(self) -> TankTroubleSetupStatus:
+        config, client = self.get_session()
+        bridge = self._get_tank_trouble_bridge(config)
+        ready, message = bridge.check_setup_ready(client)
+        return TankTroubleSetupStatus(ready=ready, message="服务器已就绪" if ready else message)
+
+    def ensure_tank_trouble_setup(self) -> TankTroubleSetupResult:
+        if not self._tank_trouble_setup_lock.acquire(blocking=False):
+            raise RuntimeError("Tank Trouble setup is already running.")
+        try:
+            config, client = self.get_session()
+            bridge = self._get_tank_trouble_bridge(config)
+            changed = bridge.setup_server(client)
+            self.log_store.append(
+                f"Tank Trouble cloud bundle checked on {config.public_host}:{TANK_GAME_SERVER_PORT}; changed={changed}."
+            )
+            return TankTroubleSetupResult(ready=True, changed=changed, message="服务器已同步到当前版本")
+        except Exception as exc:
+            self.log_store.append(f"Tank Trouble setup failed: {exc}", level="error")
+            raise
+        finally:
+            self._tank_trouble_setup_lock.release()
+
     def sync_tank_trouble_room(self, payload: TankTroubleRoomRequest) -> TankTroubleRoomState:
         config, client = self.get_session()
         bridge = self._get_tank_trouble_bridge(config)
@@ -706,6 +757,7 @@ class BackendState:
             room=payload.room,
             player_id=payload.player_id,
             country_code=payload.country_code,
+            preferred_color=payload.preferred_color,
         )
         validated = TankTroubleRoomState.model_validate(result)
         self._tank_trouble_preview_runtime.cache_room_state(payload, validated)
@@ -736,6 +788,23 @@ class BackendState:
         validated = TankTroubleRoomState.model_validate(result)
         self._tank_trouble_preview_runtime.clear_room_state(payload)
         return validated
+
+    def sync_tank_trouble_match(self, payload: TankTroubleMatchRequest) -> TankTroubleMatchState:
+        config, client = self.get_session()
+        bridge = self._get_tank_trouble_bridge(config)
+        result = bridge.sync_match(client, payload.model_dump())
+        return TankTroubleMatchState.model_validate(result)
+
+    def leave_tank_trouble_match(self, payload: TankTroubleRoomRequest) -> ApiResponse:
+        config, client = self.get_session()
+        bridge = self._get_tank_trouble_bridge(config)
+        bridge.leave_match(
+            client,
+            room=payload.room,
+            player_id=payload.player_id,
+            country_code=payload.country_code,
+        )
+        return ApiResponse(success=True, message="Online match state cleared.")
 
     def sync_tank_trouble_latency(self, payload: TankTroubleLatencyRequest) -> TankTroubleLatencyState:
         config, client = self.get_session()
@@ -1144,6 +1213,38 @@ def api_control_monitor_answer(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@app.post("/api/games/tank-trouble/room/status", response_model=TankTroubleRoomState)
+def api_tank_trouble_room_status(payload: TankTroubleRoomStatusRequest) -> TankTroubleRoomState:
+    try:
+        return state.get_tank_trouble_room_status(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/games/tank-trouble/spectator/page-url", response_model=TankTroublePageUrlResponse)
+def api_tank_trouble_spectator_page_url(room: str = "main") -> TankTroublePageUrlResponse:
+    try:
+        return state.get_tank_trouble_spectator_page_url(room)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/games/tank-trouble/setup/check", response_model=TankTroubleSetupStatus)
+def api_tank_trouble_setup_check() -> TankTroubleSetupStatus:
+    try:
+        return state.check_tank_trouble_setup()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/games/tank-trouble/setup/run", response_model=TankTroubleSetupResult)
+def api_tank_trouble_setup_run() -> TankTroubleSetupResult:
+    try:
+        return state.ensure_tank_trouble_setup()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @app.post("/api/games/tank-trouble/room/sync", response_model=TankTroubleRoomState)
 def api_tank_trouble_room_sync(payload: TankTroubleRoomRequest) -> TankTroubleRoomState:
     try:
@@ -1166,6 +1267,74 @@ def api_tank_trouble_room_leave(payload: TankTroubleRoomRequest) -> TankTroubleR
         return state.leave_tank_trouble_room(payload)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/games/tank-trouble/match/sync", response_model=TankTroubleMatchState)
+def api_tank_trouble_match_sync(payload: TankTroubleMatchRequest) -> TankTroubleMatchState:
+    try:
+        return state.sync_tank_trouble_match(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/games/tank-trouble/match/leave", response_model=ApiResponse)
+def api_tank_trouble_match_leave(payload: TankTroubleRoomRequest) -> ApiResponse:
+    try:
+        return state.leave_tank_trouble_match(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.websocket("/api/games/tank-trouble/match/ws")
+async def websocket_tank_trouble_match_sync(websocket: WebSocket) -> None:
+    await websocket.accept()
+    try:
+        while True:
+            message = await websocket.receive_json()
+            if not isinstance(message, dict):
+                await websocket.send_json({"type": "error", "message": "message must be an object"})
+                continue
+
+            message_type = str(message.get("type") or "sync").strip().lower()
+            payload = message.get("payload")
+
+            if message_type == "leave":
+                try:
+                    leave_payload = TankTroubleRoomRequest.model_validate(payload or {})
+                    await asyncio.to_thread(state.leave_tank_trouble_match, leave_payload)
+                    await websocket.send_json({"type": "left", "ok": True})
+                except Exception as exc:
+                    await websocket.send_json({"type": "error", "message": str(exc)})
+                continue
+
+            try:
+                loop = asyncio.get_running_loop()
+                drain_deadline = loop.time() + 0.006
+                while True:
+                    timeout = min(0.0015, max(0.0, drain_deadline - loop.time()))
+                    if timeout <= 0:
+                        break
+                    try:
+                        next_message = await asyncio.wait_for(websocket.receive_json(), timeout=timeout)
+                    except asyncio.TimeoutError:
+                        break
+                    if not isinstance(next_message, dict):
+                        continue
+                    next_message_type = str(next_message.get("type") or "sync").strip().lower()
+                    next_payload = next_message.get("payload")
+                    if next_message_type == "leave":
+                        leave_payload = TankTroubleRoomRequest.model_validate(next_payload or {})
+                        await asyncio.to_thread(state.leave_tank_trouble_match, leave_payload)
+                        await websocket.send_json({"type": "left", "ok": True})
+                        return
+                    payload = next_payload
+                sync_payload = TankTroubleMatchRequest.model_validate(payload or {})
+                next_state = await asyncio.to_thread(state.sync_tank_trouble_match, sync_payload)
+                await websocket.send_json({"type": "state", "state": next_state.model_dump()})
+            except Exception as exc:
+                await websocket.send_json({"type": "error", "message": str(exc)})
+    except WebSocketDisconnect:
+        return
 
 
 @app.post("/api/games/tank-trouble/latency/sync", response_model=TankTroubleLatencyState)
@@ -1333,9 +1502,9 @@ def api_check_local_setup() -> LocalSetupStatus:
 
 
 @app.post("/api/local-setup/run", response_model=LocalSetupResult)
-def api_run_local_setup() -> LocalSetupResult:
+def api_run_local_setup(payload: LocalSetupRunRequest) -> LocalSetupResult:
     try:
-        return state.ensure_local_setup()
+        return state.ensure_local_setup(payload.password)
     except Exception as exc:
         state.log_store.append(f"Cloud setup run failed: {exc}", level="error")
         raise HTTPException(status_code=400, detail=str(exc))

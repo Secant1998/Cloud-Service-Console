@@ -30,7 +30,7 @@ def _load_settings_from_path(path: Path, defaults: AppDefaults) -> LoginSettings
     auto_login = bool(raw.get("auto_login")) and remember_password and bool(password)
 
     return LoginSettings(
-        host=normalize_host(str(raw.get("host") or defaults.default_host)) or defaults.default_host,
+        host=normalize_host(str(raw.get("host") or "")) or defaults.default_host,
         username=str(raw.get("username") or defaults.default_ssh_user).strip() or defaults.default_ssh_user,
         password=password,
         remember_password=remember_password,
@@ -59,7 +59,7 @@ def load_login_settings(defaults: AppDefaults) -> LoginSettings:
 
 def save_login_settings(defaults: AppDefaults, settings: LoginSettings) -> LoginSettings:
     clean_settings = LoginSettings(
-        host=normalize_host(settings.host) or defaults.default_host,
+        host=normalize_host(settings.host),
         username=str(settings.username or "").strip() or defaults.default_ssh_user,
         password=str(settings.password or "") if settings.remember_password else "",
         remember_password=bool(settings.remember_password),

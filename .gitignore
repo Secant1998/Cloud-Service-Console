@@ -5,6 +5,7 @@ Thumbs.db
 
 # Logs
 *.log
+build-logs/
 
 # Python
 __pycache__/

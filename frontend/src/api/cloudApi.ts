@@ -8,6 +8,7 @@ import type {
   IngestModeSwitchRequest,
   LoginRequest,
   LoginSettings,
+  LocalSetupRunRequest,
   LocalSetupResult,
   LocalSetupStatus,
   LogsResponse,
@@ -15,12 +16,18 @@ import type {
   PortChecksResponse,
   PortStatus,
   SettingsRequest,
+  TankTroubleMatchRequest,
+  TankTroubleMatchState,
   TankTroubleLatencyRequest,
   TankTroubleLatencyState,
+  TankTroublePageUrlResponse,
   TankTroublePreviewClearRequest,
   TankTroublePreviewPushRequest,
   TankTroubleRoomRequest,
+  TankTroubleRoomStatusRequest,
   TankTroubleRoomState,
+  TankTroubleSetupResult,
+  TankTroubleSetupStatus,
 } from "../types/cloud";
 
 const FALLBACK_API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8765";
@@ -226,9 +233,10 @@ export function checkLocalSetup() {
   return request<LocalSetupStatus>("/api/local-setup/check");
 }
 
-export function runLocalSetup() {
+export function runLocalSetup(payload: LocalSetupRunRequest) {
   return request<LocalSetupResult>("/api/local-setup/run", {
     method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
@@ -261,8 +269,34 @@ export function syncTankTroubleRoom(payload: TankTroubleRoomRequest) {
   });
 }
 
+export function getTankTroubleRoomStatus(payload: TankTroubleRoomStatusRequest) {
+  return request<TankTroubleRoomState>("/api/games/tank-trouble/room/status", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function toggleTankTroubleRoomVote(payload: TankTroubleRoomRequest) {
   return request<TankTroubleRoomState>("/api/games/tank-trouble/room/vote-toggle", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function syncTankTroubleMatch(payload: TankTroubleMatchRequest) {
+  return request<TankTroubleMatchState>("/api/games/tank-trouble/match/sync", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function openTankTroubleMatchSocket() {
+  const apiBase = await getApiBase();
+  return new WebSocket(toWebSocketUrl(apiBase, "/api/games/tank-trouble/match/ws"));
+}
+
+export function leaveTankTroubleMatch(payload: TankTroubleRoomRequest) {
+  return request<ApiResponse>("/api/games/tank-trouble/match/leave", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -301,6 +335,22 @@ export async function getBackendBaseUrl() {
 export async function getTankTroublePreviewPageUrl() {
   const apiBase = await getApiBase();
   return `${apiBase}/tank-trouble/preview`;
+}
+
+export function getTankTroubleSpectatorPageUrl(room = "main") {
+  return request<TankTroublePageUrlResponse>(
+    `/api/games/tank-trouble/spectator/page-url?room=${encodeURIComponent(room)}`,
+  );
+}
+
+export function checkTankTroubleSetup() {
+  return request<TankTroubleSetupStatus>("/api/games/tank-trouble/setup/check");
+}
+
+export function runTankTroubleSetup() {
+  return request<TankTroubleSetupResult>("/api/games/tank-trouble/setup/run", {
+    method: "POST",
+  });
 }
 
 export function pushTankTroublePreview(payload: TankTroublePreviewPushRequest) {

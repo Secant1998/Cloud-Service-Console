@@ -1,6 +1,6 @@
 [package]
 name = "cloud-service-console"
-version = "0.3.1"
+version = "0.3.50"
 description = "Cloud Service Console v3 desktop shell"
 authors = ["OpenAI Codex"]
 edition = "2021"

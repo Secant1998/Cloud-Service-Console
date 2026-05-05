@@ -120,6 +120,21 @@ class LocalSetupResult(BaseModel):
     message: str
 
 
+class LocalSetupRunRequest(BaseModel):
+    password: str
+
+
+class TankTroubleSetupStatus(BaseModel):
+    ready: bool
+    message: str
+
+
+class TankTroubleSetupResult(BaseModel):
+    ready: bool
+    changed: bool = False
+    message: str
+
+
 class IngestModeSwitchRequest(BaseModel):
     target_mode: str
 
@@ -155,6 +170,35 @@ class TankTroubleRoomRequest(BaseModel):
     room: str = "main"
     player_id: str
     country_code: str = ""
+    preferred_color: str = ""
+
+
+class TankTroubleRoomStatusRequest(BaseModel):
+    room: str = "main"
+
+
+class TankTroublePageUrlResponse(BaseModel):
+    ok: bool = True
+    room: str = "main"
+    url: str
+
+
+class TankTroubleRoomPlayerState(BaseModel):
+    player_id: str
+    country_code: str = ""
+    color: str = "green"
+    score: int = 0
+    hits: int = 0
+    deaths: int = 0
+    latency_ms: int = 0
+    connected: bool = True
+    voted: bool = False
+
+
+class TankTroubleVoteMarker(BaseModel):
+    player_id: str
+    country_code: str = ""
+    color: str = "green"
 
 
 class TankTroubleRoomState(BaseModel):
@@ -172,6 +216,205 @@ class TankTroubleRoomState(BaseModel):
     countdown_deadline_ms: int = 0
     local_player_voted: bool = False
     local_player_color: str = "green"
+    local_player_present: bool = False
+    active_players: List[TankTroubleRoomPlayerState] = Field(default_factory=list)
+    voters: List[TankTroubleVoteMarker] = Field(default_factory=list)
+    occupied_colors: List[str] = Field(default_factory=list)
+    available_colors: List[str] = Field(default_factory=list)
+    room_full: bool = False
+    updated_at_ms: int = 0
+
+
+class TankTroubleMatchInputState(BaseModel):
+    forward: bool = False
+    backward: bool = False
+    left: bool = False
+    right: bool = False
+    fire_seq: int = 0
+    fire_held: bool = False
+
+
+class TankTroubleMatchLocalPlayerSyncState(BaseModel):
+    x: float
+    y: float
+    angle: float
+    radius: float = 20.0
+
+
+class TankTroubleMatchRequest(BaseModel):
+    room: str = "main"
+    player_id: str
+    country_code: str = ""
+    preferred_color: str = ""
+    input_seq: int = 0
+    map_seed: int = 0
+    latency_ms: int = 0
+    input: TankTroubleMatchInputState = Field(default_factory=TankTroubleMatchInputState)
+    local_player: TankTroubleMatchLocalPlayerSyncState | None = None
+
+
+class TankTroubleMatchPlayerState(BaseModel):
+    player_id: str
+    country_code: str = ""
+    color: str = "green"
+    weapon: str = "default"
+    shotgun_ammo: int = 0
+    minigun_ammo: int = 0
+    double_barrel_ammo: int = 0
+    weapon_reload_ms: int = 0
+    shield_active_ms: int = 0
+    shield_visible_ms: int = 0
+    shield_elapsed_ms: int = 0
+    shield_radius: float = 0.0
+    x: float
+    y: float
+    angle: float
+    radius: float
+    flash: float = 0.0
+    score: int = 0
+    hits: int = 0
+    deaths: int = 0
+    shots: int = 0
+    alive: bool = True
+    respawn_in_ms: int = 0
+    latency_ms: int = 0
+    input: TankTroubleMatchInputState = Field(default_factory=TankTroubleMatchInputState)
+    server_time_ms: int = 0
+
+
+class TankTroubleMatchBulletState(BaseModel):
+    id: int
+    owner_id: str = ""
+    color: str = "green"
+    projectile_type: str = "bullet"
+    x: float
+    y: float
+    radius: float
+    vx: float = 0.0
+    vy: float = 0.0
+    life: float = 0.0
+    age: float = 0.0
+    bounces_left: int = 0
+    has_bounced: bool = False
+    owner_shield_released: bool = True
+    path_segments: List[dict] = Field(default_factory=list)
+    distance_travelled: float = 0.0
+    segments: List[dict] = Field(default_factory=list)
+    server_time_ms: int = 0
+
+
+class TankTroubleMatchTargetState(BaseModel):
+    id: int
+    x: float
+    y: float
+    radius: float
+    phase: float = 0.0
+
+
+class TankTroubleTankExplosionState(BaseModel):
+    id: int
+    x: float
+    y: float
+    radius: float
+    color: str = "green"
+    life: float
+    maxLife: float
+    seed: int = 0
+    created_at_ms: int = 0
+    killer_id: str = ""
+    victim_id: str = ""
+    killer_color: str = ""
+    victim_color: str = ""
+    weapon: str = "bullet"
+    bullet_id: int = 0
+    suicide: bool = False
+
+
+class TankTroublePowerupState(BaseModel):
+    id: int
+    kind: str = "cash"
+    color: str = "#9ca3af"
+    symbol: str = "$"
+    effect: str = "score"
+    score_delta: int = 100
+    x: float
+    y: float
+    radius: float
+    phase: float = 0.0
+
+
+class TankTroublePowerupEffectState(BaseModel):
+    id: int
+    powerup_id: int = 0
+    player_id: str = ""
+    kind: str = "cash"
+    color: str = "#9ca3af"
+    symbol: str = "$"
+    effect: str = "score"
+    score_delta: int = 100
+    x: float
+    y: float
+    radius: float
+    created_at_ms: int = 0
+
+
+class TankTroubleMatchLocalState(BaseModel):
+    player_id: str
+    country_code: str = ""
+    color: str = "green"
+    weapon: str = "default"
+    shotgun_ammo: int = 0
+    minigun_ammo: int = 0
+    double_barrel_ammo: int = 0
+    weapon_reload_ms: int = 0
+    shield_active_ms: int = 0
+    shield_visible_ms: int = 0
+    shield_elapsed_ms: int = 0
+    shield_radius: float = 0.0
+    x: float
+    y: float
+    angle: float
+    radius: float
+    flash: float = 0.0
+    score: int = 0
+    hits: int = 0
+    deaths: int = 0
+    shots: int = 0
+    fire_ack_seq: int = 0
+    alive: bool = True
+    respawn_in_ms: int = 0
+    latency_ms: int = 0
+    server_time_ms: int = 0
+
+
+class TankTroubleMatchState(BaseModel):
+    ok: bool = True
+    room: str = "main"
+    map_seed: int
+    map_id: str
+    snapshot_seq: int = 0
+    ack_input_seq: int = 0
+    local_player_color: str = "green"
+    local_state: TankTroubleMatchLocalState | None = None
+    local_player_voted: bool = False
+    active_player_ids: List[str] = Field(default_factory=list)
+    active_player_count: int = 0
+    active_players: List[TankTroubleRoomPlayerState] = Field(default_factory=list)
+    players: List[TankTroubleMatchPlayerState] = Field(default_factory=list)
+    bullets: List[TankTroubleMatchBulletState] = Field(default_factory=list)
+    targets: List[TankTroubleMatchTargetState] = Field(default_factory=list)
+    tank_explosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
+    powerups: List[TankTroublePowerupState] = Field(default_factory=list)
+    powerup_effects: List[TankTroublePowerupEffectState] = Field(default_factory=list)
+    voters: List[TankTroubleVoteMarker] = Field(default_factory=list)
+    vote_count: int = 0
+    vote_required: int = 0
+    countdown_seconds: int = 0
+    countdown_active: bool = False
+    countdown_deadline_ms: int = 0
+    occupied_colors: List[str] = Field(default_factory=list)
+    available_colors: List[str] = Field(default_factory=list)
+    room_full: bool = False
     updated_at_ms: int = 0
 
 
@@ -266,6 +509,7 @@ class TankTroublePreviewRow(BaseModel):
     player_id: str = "--"
     country_code: str = ""
     score: int = 0
+    latency_ms: int = 0
     active: bool = False
 
 
@@ -279,6 +523,11 @@ class TankTroublePreviewRect(BaseModel):
 class TankTroublePreviewTankState(BaseModel):
     id: str
     color: str = "green"
+    weapon: str = "default"
+    shotgun_ammo: int = 0
+    minigun_ammo: int = 0
+    double_barrel_ammo: int = 0
+    weapon_reload_ms: int = 0
     x: float
     y: float
     angle: float
@@ -289,11 +538,17 @@ class TankTroublePreviewTankState(BaseModel):
 class TankTroublePreviewBulletState(BaseModel):
     id: int
     color: str = "green"
+    projectile_type: str = "bullet"
     x: float
     y: float
     radius: float
     vx: float = 0.0
     vy: float = 0.0
+    bounces_left: int = 0
+    has_bounced: bool = False
+    path_segments: List[dict] = Field(default_factory=list)
+    distance_travelled: float = 0.0
+    segments: List[dict] = Field(default_factory=list)
 
 
 class TankTroublePreviewTargetState(BaseModel):
@@ -332,12 +587,18 @@ class TankTroublePreviewSceneState(BaseModel):
     tanks: List[TankTroublePreviewTankState] = Field(default_factory=list)
     bullets: List[TankTroublePreviewBulletState] = Field(default_factory=list)
     targets: List[TankTroublePreviewTargetState] = Field(default_factory=list)
+    tankExplosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
     wallRipples: List[TankTroublePreviewRippleState] = Field(default_factory=list)
     bulletFades: List[TankTroublePreviewFadeState] = Field(default_factory=list)
 
 
 class TankTroublePreviewPlayerSnapshot(BaseModel):
     color: str = "green"
+    weapon: str = "default"
+    shotgun_ammo: int = 0
+    minigun_ammo: int = 0
+    double_barrel_ammo: int = 0
+    weapon_reload_ms: int = 0
     x: float
     y: float
     angle: float
@@ -353,12 +614,14 @@ class TankTroublePreviewPushRequest(BaseModel):
     room: str = "main"
     player_id: str = ""
     country_code: str = ""
+    latency_ms: int = 0
     snapshot_seq: int = 0
     authoritative_scene: bool = False
     theme: str = "dark"
     tank: TankTroublePreviewPlayerSnapshot
     bullets: List[TankTroublePreviewBulletState] = Field(default_factory=list)
     targets: List[TankTroublePreviewTargetState] = Field(default_factory=list)
+    tankExplosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
     updated_at_ms: int = 0
 
 

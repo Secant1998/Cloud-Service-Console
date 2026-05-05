@@ -13,7 +13,8 @@ type LoginPageProps = {
   onLoggedIn: () => void;
 };
 
-const DEFAULT_HOST = "150.109.100.30";
+const DEFAULT_HOST = "";
+const HOST_HINT = "输入云服务器 IP";
 
 const initialForm: LoginRequest = {
   host: "",
@@ -141,7 +142,7 @@ export function LoginPage({ theme, updater, onToggleTheme, onInstallUpdate, onLo
           </div>
           <div className="connection-preview panel">
             <div className="connection-preview-label">连接预览</div>
-            <div className="connection-preview-value">{form.username || "ubuntu"}@{form.host || DEFAULT_HOST}</div>
+            <div className="connection-preview-value">{form.username || "ubuntu"}@{form.host || HOST_HINT}</div>
             <div className="connection-preview-note">程序内置默认端口与协议，首次只需要填写服务器和密码。</div>
           </div>
         </section>
@@ -160,7 +161,7 @@ export function LoginPage({ theme, updater, onToggleTheme, onInstallUpdate, onLo
                 value={form.host}
                 onChange={(event) => updateField("host", event.target.value)}
                 onKeyDown={handleHostKeyDown}
-                placeholder={DEFAULT_HOST}
+                placeholder={HOST_HINT}
                 autoComplete="off"
                 disabled={bootLoading || loading}
               />

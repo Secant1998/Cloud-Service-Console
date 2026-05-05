@@ -19,6 +19,7 @@ from models import (
     TankTroublePreviewState,
     TankTroublePreviewTankState,
     TankTroublePreviewTargetState,
+    TankTroubleTankExplosionState,
     TankTroubleRoomRequest,
     TankTroubleRoomState,
 )
@@ -264,6 +265,7 @@ class _RoomCacheEntry:
 class _PreviewBullet:
     id: int
     color: str
+    projectile_type: str
     x: float
     y: float
     radius: float
@@ -272,6 +274,9 @@ class _PreviewBullet:
     life: float
     bounces_left: int
     age: float
+    path_segments: list[dict]
+    distance_travelled: float
+    segments: list[dict]
 
 
 @dataclass
@@ -321,10 +326,12 @@ class _PreviewSession:
     hits: int
     target_hits: int
     ricochets: int
+    latency_ms: int
     tank: TankTroublePreviewPlayerSnapshot
     walls: list[TankTroublePreviewRect]
     targets: list[TankTroublePreviewTargetState]
     bullets: list[_PreviewBullet]
+    tank_explosions: list[TankTroubleTankExplosionState]
     wall_ripples: list[_PreviewRipple]
     bullet_fades: list[_PreviewFade]
 
@@ -364,6 +371,7 @@ def _normalize_preview_bullets(
             _PreviewBullet(
                 id=bullet_id,
                 color=_normalize_color(bullet.color or default_color),
+                projectile_type=str(getattr(bullet, "projectile_type", "bullet") or "bullet"),
                 x=float(bullet.x),
                 y=float(bullet.y),
                 radius=max(1.0, float(bullet.radius or BULLET_RADIUS)),
@@ -372,9 +380,40 @@ def _normalize_preview_bullets(
                 life=BULLET_LIFE,
                 bounces_left=BULLET_BOUNCES,
                 age=0.0,
+                path_segments=list(getattr(bullet, "path_segments", []) or []),
+                distance_travelled=max(0.0, float(getattr(bullet, "distance_travelled", 0.0) or 0.0)),
+                segments=list(getattr(bullet, "segments", []) or []),
             )
         )
     return normalized_bullets
+
+
+def _normalize_tank_explosions(explosions: list[TankTroubleTankExplosionState]) -> list[TankTroubleTankExplosionState]:
+    normalized: list[TankTroubleTankExplosionState] = []
+    seen_ids: set[int] = set()
+    for index, explosion in enumerate(explosions):
+        explosion_id = max(1, int(explosion.id or index + 1))
+        if explosion_id in seen_ids:
+            continue
+        seen_ids.add(explosion_id)
+        max_life = max(0.12, float(explosion.maxLife or 0.78))
+        life = _clamp(float(explosion.life or max_life), 0.0, max_life)
+        if life <= 0:
+            continue
+        normalized.append(
+            TankTroubleTankExplosionState(
+                id=explosion_id,
+                x=float(explosion.x),
+                y=float(explosion.y),
+                radius=max(1.0, float(explosion.radius or PLAYER_RADIUS)),
+                color=_normalize_color(explosion.color),
+                life=life,
+                maxLife=max_life,
+                seed=max(0, int(explosion.seed or 0)),
+                created_at_ms=max(0, int(explosion.created_at_ms or 0)),
+            )
+        )
+    return normalized[-40:]
 
 
 class TankTroublePreviewRuntime:
@@ -419,6 +458,8 @@ class TankTroublePreviewRuntime:
         tank: TankTroublePreviewPlayerSnapshot,
         bullets: list[_PreviewBullet],
         targets: list[TankTroublePreviewTargetState],
+        tank_explosions: list[TankTroubleTankExplosionState],
+        latency_ms: int = 0,
     ) -> _PreviewSession:
         walls = _build_training_walls(map_seed)
         initial_targets = targets if authoritative_scene and targets else _build_preview_targets(map_seed, walls, tank)
@@ -447,10 +488,12 @@ class TankTroublePreviewRuntime:
             hits=max(0, int(tank.hits or 0)),
             target_hits=max(0, int(tank.hits or 0)),
             ricochets=0,
+            latency_ms=max(0, int(latency_ms or 0)),
             tank=tank,
             walls=walls,
             targets=initial_targets,
             bullets=bullets,
+            tank_explosions=tank_explosions,
             wall_ripples=[],
             bullet_fades=[],
         )
@@ -569,6 +612,7 @@ class TankTroublePreviewRuntime:
             _PreviewBullet(
                 id=session.next_bullet_id,
                 color=session.player_color,
+                projectile_type="bullet",
                 x=spawn_x + vx * age_sec,
                 y=spawn_y + vy * age_sec,
                 radius=BULLET_RADIUS,
@@ -577,6 +621,9 @@ class TankTroublePreviewRuntime:
                 life=max(0.0, BULLET_LIFE - age_sec),
                 bounces_left=BULLET_BOUNCES,
                 age=age_sec,
+                path_segments=[],
+                distance_travelled=0.0,
+                segments=[],
             )
         )
         session.next_bullet_id += 1
@@ -600,6 +647,7 @@ class TankTroublePreviewRuntime:
                 next_bullet = _PreviewBullet(
                     id=bullet.id,
                     color=bullet.color,
+                    projectile_type=bullet.projectile_type,
                     x=bullet.x + bullet.vx * step_dt,
                     y=bullet.y + bullet.vy * step_dt,
                     radius=bullet.radius,
@@ -608,6 +656,9 @@ class TankTroublePreviewRuntime:
                     life=bullet.life - step_dt,
                     bounces_left=bullet.bounces_left,
                     age=bullet.age + step_dt,
+                    path_segments=list(bullet.path_segments or []),
+                    distance_travelled=bullet.distance_travelled,
+                    segments=list(bullet.segments or []),
                 )
 
                 for wall in session.walls:
@@ -708,11 +759,16 @@ class TankTroublePreviewRuntime:
             raise RuntimeError("player_id is required.")
 
         updated_at_ms = int(payload.updated_at_ms or _now_ms())
+        latency_ms = max(0, min(9999, int(payload.latency_ms or 0)))
         snapshot_seq = max(0, int(payload.snapshot_seq or 0))
         authoritative_scene = bool(payload.authoritative_scene)
         theme = _normalize_theme(payload.theme)
         tank = TankTroublePreviewPlayerSnapshot(
             color=_normalize_color(payload.tank.color),
+            weapon=str(getattr(payload.tank, "weapon", "default") or "default"),
+            shotgun_ammo=max(0, int(getattr(payload.tank, "shotgun_ammo", 0) or 0)),
+            minigun_ammo=max(0, int(getattr(payload.tank, "minigun_ammo", 0) or 0)),
+            weapon_reload_ms=max(0, int(getattr(payload.tank, "weapon_reload_ms", 0) or 0)),
             x=float(payload.tank.x),
             y=float(payload.tank.y),
             angle=float(payload.tank.angle),
@@ -724,6 +780,7 @@ class TankTroublePreviewRuntime:
         )
         bullets = _normalize_preview_bullets(payload.bullets if authoritative_scene else [], tank.color)
         targets = _normalize_preview_targets(payload.targets if authoritative_scene else [])
+        tank_explosions = _normalize_tank_explosions(payload.tankExplosions if authoritative_scene else [])
 
         with self._lock:
             room_cache = self._room_cache.get(self._room_cache_key(room, player_id))
@@ -755,6 +812,8 @@ class TankTroublePreviewRuntime:
                     tank=tank,
                     bullets=bullets,
                     targets=targets,
+                    tank_explosions=tank_explosions,
+                    latency_ms=latency_ms,
                 )
                 self._active_session_id = session_id
                 return ApiResponse(success=True, message="Tank preview session created.")
@@ -780,6 +839,7 @@ class TankTroublePreviewRuntime:
             existing.score = max(0, int(tank.score or 0))
             existing.hits = max(0, int(tank.hits or 0))
             existing.target_hits = max(0, int(tank.hits or 0))
+            existing.latency_ms = latency_ms
             existing.updated_at_ms = updated_at_ms
             existing.last_reported_at_ms = updated_at_ms
             existing.frame_seq += 1
@@ -788,6 +848,7 @@ class TankTroublePreviewRuntime:
             if authoritative_scene:
                 existing.bullets = bullets
                 existing.targets = targets
+                existing.tank_explosions = tank_explosions
                 existing.wall_ripples = []
                 existing.bullet_fades = []
                 existing.last_reported_shots = tank.shots
@@ -838,18 +899,32 @@ class TankTroublePreviewRuntime:
 
     def _build_rows(self, session: _PreviewSession, room_state: TankTroubleRoomState | None) -> list[TankTroublePreviewRow]:
         active_player_ids = list(room_state.active_player_ids[:SCOREBOARD_LIMIT]) if room_state else []
+        active_player_index = {
+            player.player_id: player
+            for player in (room_state.active_players if room_state else [])
+        }
         rows: list[TankTroublePreviewRow] = []
 
         if not active_player_ids:
             active_player_ids = [session.player_id]
 
         for index, entry_player_id in enumerate(active_player_ids[:SCOREBOARD_LIMIT]):
+            player_state = active_player_index.get(entry_player_id)
             rows.append(
                 TankTroublePreviewRow(
                     rank=index + 1,
                     player_id=_limit_text(entry_player_id or "--", 32) or "--",
-                    country_code=session.country_code if entry_player_id == session.player_id else "",
-                    score=session.score if entry_player_id == session.player_id else 0,
+                    country_code=(
+                        player_state.country_code
+                        if player_state
+                        else session.country_code if entry_player_id == session.player_id else ""
+                    ),
+                    score=player_state.score if player_state else session.score if entry_player_id == session.player_id else 0,
+                    latency_ms=(
+                        session.latency_ms
+                        if entry_player_id == session.player_id
+                        else player_state.latency_ms if player_state else 0
+                    ),
                     active=entry_player_id == session.player_id,
                 )
             )
@@ -876,6 +951,10 @@ class TankTroublePreviewRuntime:
                 TankTroublePreviewTankState(
                     id=session.player_id,
                     color=session.player_color,
+                    weapon=str(getattr(session.tank, "weapon", "default") or "default"),
+                    shotgun_ammo=max(0, int(getattr(session.tank, "shotgun_ammo", 0) or 0)),
+                    minigun_ammo=max(0, int(getattr(session.tank, "minigun_ammo", 0) or 0)),
+                    weapon_reload_ms=max(0, int(getattr(session.tank, "weapon_reload_ms", 0) or 0)),
                     x=session.tank.x,
                     y=session.tank.y,
                     angle=session.tank.angle,
@@ -887,15 +966,20 @@ class TankTroublePreviewRuntime:
                 TankTroublePreviewBulletState(
                     id=bullet.id,
                     color=bullet.color,
+                    projectile_type=bullet.projectile_type,
                     x=bullet.x,
                     y=bullet.y,
                     radius=bullet.radius,
                     vx=bullet.vx,
                     vy=bullet.vy,
+                    path_segments=list(bullet.path_segments or []),
+                    distance_travelled=bullet.distance_travelled,
+                    segments=list(bullet.segments or []),
                 )
                 for bullet in session.bullets
             ],
             targets=[target.model_copy(deep=True) for target in session.targets],
+            tankExplosions=[explosion.model_copy(deep=True) for explosion in session.tank_explosions],
             wallRipples=[
                 TankTroublePreviewRippleState(
                     id=ripple.id,

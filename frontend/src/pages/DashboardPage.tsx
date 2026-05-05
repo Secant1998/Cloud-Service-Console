@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  checkLocalSetup,
   checkAllPorts,
   checkPort,
   getControlMonitorConfig,
@@ -53,10 +52,56 @@ const STREAM_NAME = "main-camera";
 const STREAM_CONNECT_TIMEOUT_MS = 7000;
 const DEFAULT_VIDEO_ASPECT_RATIO = 16 / 9;
 const CONTROL_MONITOR_KEY_ROWS = [
-  ["Q", "W", "E", "R", "T"],
-  ["A", "S", "D", "F"],
-  ["Z", "X", "C"],
+  ["TAB", "Q", "W", "E", "R", "T", "F", "ESC"],
+  ["A", "S", "D", "Z", "X"],
+  ["I", "K", "J", "L", "U", "O", ";", "ENTER"],
+  ["N", "M", "H", "Y"],
 ];
+
+const CONTROL_MONITOR_SPECIAL_KEY_LABELS: Record<string, string> = {
+  ENTER: "ENTER",
+  ESCAPE: "ESC",
+  SEMICOLON: ";",
+  SPACE: "SPACE",
+  TAB: "TAB",
+};
+
+function normalizeControlMonitorKeyName(value: unknown) {
+  const rawKey = String(value || "").trim();
+  if (!rawKey) {
+    return "";
+  }
+
+  const upperKey = rawKey.toUpperCase();
+  if (upperKey.length === 1) {
+    return upperKey;
+  }
+
+  const keyboardCodeMatch = /^KEY([A-Z])$/.exec(upperKey);
+  if (keyboardCodeMatch) {
+    return keyboardCodeMatch[1];
+  }
+
+  const digitCodeMatch = /^DIGIT([0-9])$/.exec(upperKey);
+  if (digitCodeMatch) {
+    return digitCodeMatch[1];
+  }
+
+  return CONTROL_MONITOR_SPECIAL_KEY_LABELS[upperKey] ?? upperKey;
+}
+
+function unwrapControlMonitorPayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const message = value as Record<string, unknown>;
+  if (message.payload && typeof message.payload === "object" && !Array.isArray(message.payload)) {
+    return message.payload as Record<string, unknown>;
+  }
+
+  return message;
+}
 
 const VIEW_META: Record<ConsoleView, { title: string }> = {
   overview: { title: "云服务控制台" },
@@ -68,8 +113,8 @@ const VIEW_META: Record<ConsoleView, { title: string }> = {
 
 const emptyStatus: DashboardStatus = {
   connected: false,
-  ssh_target: "ubuntu@150.109.100.30",
-  public_base_url: "http://150.109.100.30:18081",
+  ssh_target: "ubuntu@-",
+  public_base_url: "http://-:18081",
   ingest_mode: "unknown",
   pending_offers: "-",
   service_running_count: "0 / 4",
@@ -153,7 +198,7 @@ function normalizePressedControlKeys(value: unknown) {
   }
   const unique = new Set<string>();
   for (const item of value) {
-    const nextKey = String(item || "").trim().toUpperCase();
+    const nextKey = normalizeControlMonitorKeyName(item);
     if (nextKey) {
       unique.add(nextKey);
     }
@@ -216,6 +261,9 @@ export function DashboardPage({
   const [setupProgress, setSetupProgress] = useState(0);
   const [setupMessage, setSetupMessage] = useState("");
   const [setupTone, setSetupTone] = useState<"idle" | "progress" | "success" | "error">("idle");
+  const [setupPasswordDialogOpen, setSetupPasswordDialogOpen] = useState(false);
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupPasswordError, setSetupPasswordError] = useState("");
   const [modeSwitchBusy, setModeSwitchBusy] = useState(false);
   const [modeSwitchProgress, setModeSwitchProgress] = useState(0);
   const [modeSwitchMessage, setModeSwitchMessage] = useState("");
@@ -843,19 +891,34 @@ export function DashboardPage({
       }
 
       try {
-        const payload = JSON.parse(payloadText) as {
-          type?: string;
-          pressedKeys?: unknown;
-        };
+        const payload = unwrapControlMonitorPayload(JSON.parse(payloadText));
+        if (!payload) {
+          setStatusSafe("收到无法识别的控制消息");
+          return;
+        }
+
         const messageType = String(payload.type || "").trim();
+        const pressedKeyPayload = payload.pressedKeys ?? payload.pressed_keys ?? payload.keys;
 
         if (messageType === "keyboard_sample") {
-          setControlMonitorPressedKeys(normalizePressedControlKeys(payload.pressedKeys));
+          setControlMonitorPressedKeys(normalizePressedControlKeys(pressedKeyPayload));
           setControlMonitorMessageCount((current) => current + 1);
           updateLastEventAt();
           setStatusSafe("正在接收前端键盘控制");
+        } else if (messageType === "vr_sample") {
+          setControlMonitorPressedKeys([]);
+          setControlMonitorMessageCount((current) => current + 1);
+          updateLastEventAt();
+          setStatusSafe("正在接收前端 VR 控制，键盘样本为空");
+        } else if (messageType === "text_instruction") {
+          setControlMonitorPressedKeys([]);
+          setControlMonitorMessageCount((current) => current + 1);
+          updateLastEventAt();
+          setStatusSafe("正在接收前端文本控制，键盘样本为空");
         } else if (messageType === "client_hello") {
-          setStatusSafe("控制通道已连接，等待键盘输入");
+          setControlMonitorMessageCount((current) => current + 1);
+          updateLastEventAt();
+          setStatusSafe("控制通道已连接，等待控制输入");
         } else if (messageType === "ping") {
           try {
             channel.send(JSON.stringify({ type: "pong" }));
@@ -1148,36 +1211,59 @@ export function DashboardPage({
     }, 180);
   }
 
-  async function handleLocalSetup() {
+  function handleLocalSetup() {
     if (setupBusy) {
       return;
     }
 
     setError("");
     clearSetupMessageTimer();
+    setSetupPassword("");
+    setSetupPasswordError("");
+    setSetupPasswordDialogOpen(true);
+  }
 
+  async function submitLocalSetupPassword(event: React.FormEvent) {
+    event.preventDefault();
+    if (setupBusy) {
+      return;
+    }
+
+    const password = setupPassword;
+    if (!password) {
+      setSetupPasswordError("请输入 SSH 密码。");
+      return;
+    }
+
+    setSetupPasswordError("");
+    setSetupBusy(true);
+    startSetupProgressAnimation();
     try {
-      const check = await checkLocalSetup();
-      if (check.ready) {
-        showSetupFeedback("环境已就绪", "success");
-        return;
-      }
-
-      setSetupBusy(true);
-      startSetupProgressAnimation();
-      await runLocalSetup();
+      await runLocalSetup({ password });
       stopSetupProgressAnimation();
       setSetupProgress(100);
       window.setTimeout(() => {
         setSetupBusy(false);
+        setSetupPasswordDialogOpen(false);
+        setSetupPassword("");
         showSetupFeedback("环境已就绪", "success");
       }, 180);
     } catch (err) {
       stopSetupProgressAnimation();
       setSetupBusy(false);
-      const message = err instanceof Error ? err.message : "本地环境配置失败";
+      const message = err instanceof Error ? err.message : "云端环境配置失败";
+      setSetupPasswordError(message);
       showSetupFeedback(message, "error", 3200);
     }
+  }
+
+  function closeLocalSetupPasswordDialog() {
+    if (setupBusy) {
+      return;
+    }
+    setSetupPasswordDialogOpen(false);
+    setSetupPassword("");
+    setSetupPasswordError("");
   }
 
   function clearModeSwitchMessageTimer() {
@@ -1645,6 +1731,41 @@ export function DashboardPage({
       {activeView === "health" ? renderHealth() : null}
       {activeView === "activity" ? renderActivity() : null}
       {activeView === "games" ? renderGames() : null}
+
+      {setupPasswordDialogOpen ? (
+        <div className="setup-password-overlay" role="presentation">
+          <form className="setup-password-dialog panel" onSubmit={submitLocalSetupPassword}>
+            <div>
+              <div className="section-title">确认一键配置</div>
+              <div className="section-subtitle">再次输入当前云服务器 SSH 密码，验证通过后才会执行配置。</div>
+            </div>
+            <label className="field">
+              <span>SSH 密码</span>
+              <input
+                className="input"
+                type="password"
+                value={setupPassword}
+                autoFocus
+                autoComplete="current-password"
+                disabled={setupBusy}
+                onChange={(event) => {
+                  setSetupPassword(event.target.value);
+                  setSetupPasswordError("");
+                }}
+              />
+            </label>
+            {setupPasswordError ? <div className="setup-password-error">{setupPasswordError}</div> : null}
+            <div className="setup-password-actions">
+              <Button variant="ghost" type="button" disabled={setupBusy} onClick={closeLocalSetupPasswordDialog}>
+                取消
+              </Button>
+              <Button variant="primary" type="submit" loading={setupBusy}>
+                验证并配置
+              </Button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {loading ? <div className="loading-overlay">正在加载控制台...</div> : null}
     </AppShell>

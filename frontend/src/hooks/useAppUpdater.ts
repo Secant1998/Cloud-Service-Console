@@ -4,6 +4,7 @@ export type AppUpdaterState = {
   supported: boolean;
   checking: boolean;
   available: boolean;
+  preparing: boolean;
   installing: boolean;
   currentVersion: string;
   latestVersion: string;
@@ -17,6 +18,7 @@ const initialUpdaterState: AppUpdaterState = {
   supported: false,
   checking: false,
   available: false,
+  preparing: false,
   installing: false,
   currentVersion: "",
   latestVersion: "",
@@ -70,6 +72,7 @@ export function useAppUpdater() {
             setUpdater((current) => ({
               ...current,
               checking: false,
+              preparing: false,
               installing: false,
               available: true,
               message: "更新安装失败",
@@ -81,6 +84,7 @@ export function useAppUpdater() {
           if (event.status === "PENDING") {
             setUpdater((current) => ({
               ...current,
+              preparing: false,
               installing: true,
               message: current.latestVersion ? `正在安装 v${current.latestVersion}` : "正在安装更新",
               error: "",
@@ -92,6 +96,7 @@ export function useAppUpdater() {
             setUpdater((current) => ({
               ...current,
               checking: false,
+              preparing: false,
               installing: false,
               available: false,
               message: "更新已安装，正在重启",
@@ -110,6 +115,7 @@ export function useAppUpdater() {
             supported: true,
             checking: false,
             available: true,
+            preparing: false,
             installing: false,
             currentVersion,
             latestVersion: result.manifest.version,
@@ -125,6 +131,7 @@ export function useAppUpdater() {
           supported: true,
           checking: false,
           available: false,
+          preparing: false,
           installing: false,
           currentVersion,
           latestVersion: "",
@@ -142,6 +149,7 @@ export function useAppUpdater() {
           ...current,
           supported: true,
           checking: false,
+          preparing: false,
           installing: false,
           error: error instanceof Error ? error.message : "更新检查失败",
         }));
@@ -165,16 +173,17 @@ export function useAppUpdater() {
 
     let shouldInstall = false;
     setUpdater((current) => {
-      if (!current.available || current.installing) {
+      if (!current.available || current.installing || current.preparing) {
         return current;
       }
 
       shouldInstall = true;
       return {
         ...current,
+        preparing: true,
         installing: true,
         error: "",
-        message: current.latestVersion ? `正在安装 v${current.latestVersion}` : "正在安装更新",
+        message: "正在关闭本地 backend，准备安装更新",
       };
     });
 
@@ -183,10 +192,15 @@ export function useAppUpdater() {
     }
 
     try {
-      const updaterApi = await import("@tauri-apps/api/updater");
+      const [{ invoke }, updaterApi] = await Promise.all([
+        import("@tauri-apps/api/tauri"),
+        import("@tauri-apps/api/updater"),
+      ]);
+      await invoke("prepare_update_install");
       await updaterApi.installUpdate();
       setUpdater((current) => ({
         ...current,
+        preparing: false,
         installing: false,
         available: false,
         message: "更新已安装，正在重启",
@@ -195,6 +209,7 @@ export function useAppUpdater() {
     } catch (error) {
       setUpdater((current) => ({
         ...current,
+        preparing: false,
         installing: false,
         available: true,
         message: "更新安装失败",
