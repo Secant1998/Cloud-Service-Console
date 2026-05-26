@@ -14,10 +14,12 @@ import {
   toggleTankTroubleRoomVote,
 } from "../api/cloudApi";
 import type {
+  TankTroubleCustomOptions,
   TankTroubleMatchBulletState,
   TankTroubleMatchInputState,
   TankTroubleMatchLocalPlayerSyncState,
   TankTroubleMatchLocalState,
+  TankTroubleMineState,
   TankTroubleMatchRequest,
   TankTroubleMatchState,
   TankTroubleLatencyCloneState,
@@ -37,10 +39,12 @@ import type {
   TankTroubleVoteMarker,
 } from "../types/cloud";
 import { Button } from "./Button";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 type TankTroublePanelProps = {
   theme: "light" | "dark";
   localCountryCode?: string;
+  canRunSetup?: boolean;
 };
 
 type GameKey = "tank-trouble";
@@ -53,8 +57,8 @@ type GameChoice = {
   accent: string;
 };
 
-type GameSessionMode = "online" | "latency";
-type GameLaunchMode = GameSessionMode | "spectator";
+type GameSessionMode = "online" | "latency" | "custom" | "local";
+type GameLaunchMode = GameSessionMode;
 type TankTroubleSetupPhase = "idle" | "checking" | "running" | "ready" | "error";
 
 type PlayerColorKey = "green" | "red" | "blue" | "yellow";
@@ -72,6 +76,7 @@ type GameSession = {
   room: string;
   playerColor: string;
   mode: GameSessionMode;
+  customOptions?: TankTroubleCustomOptions;
 };
 
 type Rect = {
@@ -122,6 +127,12 @@ type Bullet = Circle & {
   age: number;
   hasBounced?: boolean;
   projectileType?: string;
+  targetId?: string;
+  targetColor?: string;
+  flameColor?: string;
+  targetFlameColor?: string;
+  locked?: boolean;
+  steerLockedUntilAge?: number;
   pathSegments?: AimSegment[];
   distanceTravelled?: number;
   segments?: AimSegment[];
@@ -136,6 +147,11 @@ type BulletFade = Circle & {
   age?: number;
   color?: string;
   projectileType?: string;
+  targetId?: string;
+  targetColor?: string;
+  flameColor?: string;
+  targetFlameColor?: string;
+  locked?: boolean;
   pathSegments?: AimSegment[];
   distanceTravelled?: number;
   segments?: AimSegment[];
@@ -171,6 +187,36 @@ type WallRipple = {
   wall: Rect;
 };
 
+type ShieldPulseEffect = {
+  id: number;
+  x: number;
+  y: number;
+  impactX: number;
+  impactY: number;
+  radius: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  source: "impact" | "blast";
+};
+
+type LandMine = Circle & {
+  id: number;
+  ownerId: string;
+  color: string;
+  triggerRadius: number;
+  blastRadius: number;
+  age: number;
+  armed: boolean;
+  triggered: boolean;
+  triggerStartedAtMs: number;
+  createdAtMs: number;
+  serverTimeMs: number;
+  visibleAlpha?: number;
+  local?: boolean;
+  fireSeq?: number;
+};
+
 type AimSegment = {
   x1: number;
   y1: number;
@@ -178,7 +224,13 @@ type AimSegment = {
   y2: number;
 };
 
-type ShieldCollider = Pick<PlayerTank, "id" | "x" | "y" | "shieldRadius">;
+type ShieldCollider = {
+  id: string;
+  x: number;
+  y: number;
+  shieldRadius: number;
+  color: string;
+};
 
 type TankExplosionParticle = {
   id: number;
@@ -200,6 +252,7 @@ type TankExplosionEffect = {
   y: number;
   radius: number;
   color: string;
+  weapon?: string;
   life: number;
   maxLife: number;
   particles: TankExplosionParticle[];
@@ -218,6 +271,10 @@ type TankPowerup = Circle & {
   effect: string;
   scoreDelta: number;
   phase: number;
+  disabled?: boolean;
+  respawnAtMs?: number;
+  homeX?: number;
+  homeY?: number;
 };
 
 type TankPowerupPickupEffect = Circle & {
@@ -229,6 +286,20 @@ type TankPowerupPickupEffect = Circle & {
   symbol: string;
   effect: string;
   scoreDelta: number;
+  life: number;
+  maxLife: number;
+};
+
+type HealPlusEffect = {
+  id: number;
+  x: number;
+  y: number;
+  offsetX: number;
+  offsetY: number;
+  driftX: number;
+  rise: number;
+  size: number;
+  delay: number;
   life: number;
   maxLife: number;
 };
@@ -250,10 +321,16 @@ type PlayerTank = Circle & {
   angle: number;
   cooldown: number;
   flash: number;
+  hp?: number;
+  maxHp?: number;
+  smokeBelow50SinceMs?: number;
+  smokeBelow25SinceMs?: number;
   weapon?: string;
   shotgunAmmo?: number;
   minigunAmmo?: number;
   doubleBarrelAmmo?: number;
+  mineAmmo?: number;
+  missileAmmo?: number;
   weaponReloadMs?: number;
   shieldActiveMs?: number;
   shieldVisibleMs?: number;
@@ -323,6 +400,7 @@ type TankTroublePreviewSnapshot = {
   tank: TankTroublePreviewPlayerSnapshot;
   bullets: TankTroublePreviewBulletState[];
   targets: TankTroublePreviewTargetState[];
+  mines: TankTroubleMineState[];
   tankExplosions: TankTroubleTankExplosionState[];
 };
 
@@ -336,6 +414,7 @@ type TankTroubleEngine = {
   render: (ctx: CanvasRenderingContext2D) => void;
   snapshot: () => TankTroubleSnapshot;
   applyMatchState?: (state: TankTroubleMatchState) => void;
+  setCustomOptions?: (options: TankTroubleCustomOptions) => void;
   buildMatchSyncState: () => TankTroubleMatchLocalPlayerSyncState | undefined;
   getMatchFireSeq: () => number;
   buildPreviewSnapshot: () => TankTroublePreviewSnapshot;
@@ -369,8 +448,8 @@ const TANK_TROUBLE_ROOM = "tank-trouble-main";
 const ROOM_POLL_INTERVAL_MS = 1200;
 const LATENCY_SYNC_IDLE_INTERVAL_MS = 90;
 const LATENCY_SYNC_RUSH_INTERVAL_MS = 12;
-const ONLINE_SYNC_IDLE_INTERVAL_MS = 90;
-const ONLINE_SYNC_RUSH_INTERVAL_MS = 16;
+const ONLINE_SYNC_IDLE_INTERVAL_MS = 45;
+const ONLINE_SYNC_RUSH_INTERVAL_MS = 25;
 const ONLINE_SYNC_BUFFER_LIMIT_BYTES = 96 * 1024;
 const PREVIEW_PUSH_INTERVAL_MS = 50;
 const WORLD_WIDTH = 1280;
@@ -394,6 +473,13 @@ const BULLET_LIFE = 10;
 const BULLET_BOUNCES = 7;
 const SHOOT_COOLDOWN = 0.24;
 const MAX_BULLETS = 5;
+const PLAYER_RESPAWN_MS = 1000;
+const DEFAULT_BULLET_DAMAGE = 23;
+const SHOTGUN_DAMAGE = 9;
+const MINIGUN_DAMAGE = 13;
+const LASER_DAMAGE = 80;
+const LAND_MINE_DAMAGE = 40;
+const GUIDED_MISSILE_DAMAGE = 80;
 const BULLET_SPRITE_PIXEL_RATIO = 2;
 const BULLET_SPATIAL_CELL_SIZE = LOGICAL_GRID_SIZE * 0.85;
 const HEAVY_PROJECTILE_THRESHOLD = 34;
@@ -431,6 +517,37 @@ const DOUBLE_BARREL_AMMO = 10;
 const DOUBLE_BARREL_COOLDOWN = SHOOT_COOLDOWN / 2;
 const DOUBLE_BARREL_RECOIL_MS = Math.round(DOUBLE_BARREL_COOLDOWN * 1000);
 const DOUBLE_BARREL_BARREL_OFFSET = 7.2;
+const MINE_AMMO = 3;
+const MINE_COOLDOWN = 0.16;
+const MINE_ARM_DELAY_MS = 1000;
+const MINE_DETONATION_DELAY_MS = 1000;
+const MINE_RADIUS = PLAYER_RADIUS * 2 / 3;
+const MINE_TRIGGER_RADIUS = PLAYER_RADIUS * 1.5;
+const MINE_BLAST_RADIUS = PLAYER_RADIUS * 4.95;
+const MINE_FADE_START_MS = 3000;
+const MINE_FADE_DURATION_MS = 2000;
+const MINE_REVEAL_RATE = 6;
+const GUIDED_MISSILE_AMMO = 1;
+const GUIDED_MISSILE_RADIUS = BULLET_RADIUS * 1.25;
+const GUIDED_MISSILE_HIT_RADIUS = BULLET_RADIUS * 0.52;
+const GUIDED_MISSILE_SPEED = LOGICAL_GRID_SIZE * 1.72;
+const GUIDED_MISSILE_LIFE = 10;
+const GUIDED_MISSILE_COOLDOWN = 0.34;
+const GUIDED_MISSILE_LOCK_DELAY = 2.5;
+const GUIDED_MISSILE_TURN_RATE = Math.PI * 1.08;
+const GUIDED_MISSILE_TURN_RAMP_SECONDS = 0.85;
+const TOW_MISSILE_AMMO = 1;
+const TOW_MISSILE_RADIUS = GUIDED_MISSILE_RADIUS;
+const TOW_MISSILE_HIT_RADIUS = GUIDED_MISSILE_HIT_RADIUS;
+const TOW_MISSILE_SPEED = GUIDED_MISSILE_SPEED;
+const TOW_MISSILE_LIFE = GUIDED_MISSILE_LIFE - 2;
+const TOW_MISSILE_COOLDOWN = GUIDED_MISSILE_COOLDOWN;
+const TOW_MISSILE_TURN_RATE = Math.PI * 1.18;
+const TOW_MISSILE_FADE_LIFE = 0.28;
+const TOW_MISSILE_BOUNCE_SNAP_MS = 110;
+const MAX_TANK_HP = 100;
+const HEAL_AMOUNT = 50;
+const DAMAGE_SMOKE_DELAY_MS = 500;
 const SHIELD_RADIUS = PLAYER_RADIUS + 30;
 const SHIELD_ACTIVE_MS = 3000;
 const SHIELD_FLICKER_MS = 1500;
@@ -443,7 +560,37 @@ const POWERUP_ICON_SOURCES: Record<string, string> = {
   minigun: "/tank-trouble/powerups/minigun.png",
   double_barrel: "/tank-trouble/powerups/double-barrel.png",
   shield: "/tank-trouble/powerups/shield.png",
+  land_mine: "/tank-trouble/powerups/land-mine.png",
+  heal: "/tank-trouble/powerups/plus.png",
+  guided_missile: "/tank-trouble/powerups/missile.png",
+  tow_missile: "/tank-trouble/powerups/tow-missile.png",
 };
+
+const DEFAULT_CUSTOM_OPTIONS: TankTroubleCustomOptions = {
+  health_system: false,
+  persistent_buffs: false,
+  same_place_respawn: false,
+};
+
+const LOCAL_TEST_CUSTOM_OPTIONS: TankTroubleCustomOptions = {
+  health_system: true,
+  persistent_buffs: true,
+  same_place_respawn: true,
+};
+
+const CUSTOM_OPTION_ITEMS: Array<{ key: keyof TankTroubleCustomOptions; label: string }> = [
+  { key: "health_system", label: "血量系统" },
+  { key: "persistent_buffs", label: "BUFF常驻" },
+  { key: "same_place_respawn", label: "原地重生" },
+];
+
+function defaultCustomOptions(): TankTroubleCustomOptions {
+  return { ...DEFAULT_CUSTOM_OPTIONS };
+}
+
+function localTestCustomOptions(): TankTroubleCustomOptions {
+  return { ...LOCAL_TEST_CUSTOM_OPTIONS };
+}
 
 const SCOREBOARD_RANK_ICON_SOURCES: Record<number, string> = {
   1: "/tank-trouble/scoreboard/rank-1.png",
@@ -489,6 +636,15 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function stringHash(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 function smoothStep(value: number) {
   const t = clamp(value, 0, 1);
   return t * t * (3 - 2 * t);
@@ -523,7 +679,22 @@ function createSeededRandom(seed: number) {
 }
 
 function shouldSpawnProjectileSmoke(projectileType?: string) {
-  return String(projectileType || "bullet") !== "laser";
+  const normalizedType = String(projectileType || "bullet");
+  return normalizedType !== "laser" && normalizedType !== "guided_missile" && normalizedType !== "tow_missile";
+}
+
+function isSteeredMissileType(projectileType?: string) {
+  const normalizedType = String(projectileType || "bullet");
+  return normalizedType === "guided_missile" || normalizedType === "tow_missile";
+}
+
+function isTowMissileType(projectileType?: string) {
+  return String(projectileType || "bullet") === "tow_missile";
+}
+
+function isTowMissileWeapon(weapon?: string) {
+  const normalizedWeapon = String(weapon || "default");
+  return normalizedWeapon === "tow_missile" || normalizedWeapon === "tow_missile_active";
 }
 
 function createBulletSmokeEffect(fade: BulletFade, seed: number): BulletSmokeEffect {
@@ -831,12 +1002,14 @@ function safeFireSpawnPoint(
 }
 
 function resetTankWeaponState(
-  tank: Pick<PlayerTank, "weapon" | "shotgunAmmo" | "minigunAmmo" | "doubleBarrelAmmo" | "weaponReloadMs">,
+  tank: Pick<PlayerTank, "weapon" | "shotgunAmmo" | "minigunAmmo" | "doubleBarrelAmmo" | "mineAmmo" | "missileAmmo" | "weaponReloadMs">,
 ) {
   tank.weapon = "default";
   tank.shotgunAmmo = 0;
   tank.minigunAmmo = 0;
   tank.doubleBarrelAmmo = 0;
+  tank.mineAmmo = 0;
+  tank.missileAmmo = 0;
   tank.weaponReloadMs = 0;
 }
 
@@ -1070,8 +1243,9 @@ function buildReflectedRaySegments(
       }
     }
     for (const shield of shields) {
-      const shieldRadius = Number(shield.shieldRadius || SHIELD_RADIUS) + LASER_RADIUS;
-      if (distance(x, y, shield.x, shield.y) < shieldRadius - 0.5) {
+      const shieldCoreRadius = Number(shield.shieldRadius || SHIELD_RADIUS);
+      const shieldRadius = shieldCoreRadius + LASER_RADIUS;
+      if (distance(x, y, shield.x, shield.y) < shieldCoreRadius - 0.5) {
         continue;
       }
       const hit = rayCircleHit(
@@ -1267,6 +1441,28 @@ function storePlayerId(playerId: string) {
   }
 }
 
+function createPlayerIdSuffix() {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID().slice(0, 4);
+  }
+  return Math.random().toString(36).slice(2, 6);
+}
+
+function resolveJoinPlayerId(basePlayerId: string, roomState: TankTroubleRoomState | null | undefined) {
+  const normalized = basePlayerId.trim();
+  const activeIds = new Set((roomState?.active_player_ids || []).map((entry) => String(entry || "").trim()));
+  if (!activeIds.has(normalized)) {
+    return normalized;
+  }
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const candidate = `${normalized}-${createPlayerIdSuffix()}`.slice(0, 24);
+    if (!activeIds.has(candidate)) {
+      return candidate;
+    }
+  }
+  return `${normalized}-${Date.now().toString(36).slice(-4)}`.slice(0, 24);
+}
+
 function normalizeControlBindings(value: unknown): ControlBindings {
   const parsed = value && typeof value === "object" ? (value as Partial<ControlBindings>) : {};
   const next: ControlBindings = { ...DEFAULT_CONTROL_BINDINGS };
@@ -1408,12 +1604,43 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function resolveGameColor(value: string | undefined, theme: "light" | "dark", fallback = "#f8fafc") {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return fallback;
+  }
+  if (normalized.startsWith("#")) {
+    return normalized;
+  }
+  return getPlayerPalette(normalized, theme).bright;
+}
+
+function mixHexColors(from: string, to: string, amount: number) {
+  const read = (value: string) => {
+    const normalized = String(value || "#ffffff").replace("#", "");
+    const padded = (normalized.length === 3 ? normalized.replace(/(.)/g, "$1$1") : normalized).padEnd(6, "f");
+    return {
+      r: Number.parseInt(padded.slice(0, 2), 16) || 0,
+      g: Number.parseInt(padded.slice(2, 4), 16) || 0,
+      b: Number.parseInt(padded.slice(4, 6), 16) || 0,
+    };
+  };
+  const source = read(from);
+  const target = read(to);
+  const t = clamp(amount, 0, 1);
+  const channel = (start: number, end: number) => Math.round(start + (end - start) * t).toString(16).padStart(2, "0");
+  return `#${channel(source.r, target.r)}${channel(source.g, target.g)}${channel(source.b, target.b)}`;
+}
+
 function getPlayerPalette(playerColor: string, theme: "light" | "dark") {
   const normalized = String(playerColor || "").trim().toLowerCase();
   let baseColor = "#22c55e";
   let brightColor = theme === "dark" ? "#86efac" : "#16a34a";
 
-  if (normalized === "red") {
+  if (normalized.startsWith("#")) {
+    baseColor = normalized;
+    brightColor = normalized;
+  } else if (normalized === "red") {
     baseColor = "#ef4444";
     brightColor = theme === "dark" ? "#fca5a5" : "#dc2626";
   } else if (normalized === "blue") {
@@ -1432,6 +1659,680 @@ function getPlayerPalette(playerColor: string, theme: "light" | "dark") {
     flash: hexToRgba(brightColor, theme === "dark" ? 0.9 : 0.76),
     ripple: hexToRgba(brightColor, theme === "dark" ? 0.72 : 0.58),
   };
+}
+
+function normalizeMineState(mine: TankTroubleMineState, fallbackVisibleAlpha = 1): LandMine {
+  const createdAtMs = Number(mine.created_at_ms || 0);
+  const serverTimeMs = Number(mine.server_time_ms || Date.now());
+  const age = Math.max(0, Number(mine.age ?? (createdAtMs ? (serverTimeMs - createdAtMs) / 1000 : 0)));
+  return {
+    id: Number(mine.id || 0),
+    ownerId: String(mine.owner_id || ""),
+    color: String(mine.color || "green"),
+    x: Number(mine.x || 0),
+    y: Number(mine.y || 0),
+    radius: Math.max(1, Number(mine.radius || MINE_RADIUS)),
+    triggerRadius: Math.max(1, Number(mine.trigger_radius || MINE_TRIGGER_RADIUS)),
+    blastRadius: Math.max(1, Number(mine.blast_radius || MINE_BLAST_RADIUS)),
+    age,
+    armed: Boolean(mine.armed),
+    triggered: Boolean(mine.triggered),
+    triggerStartedAtMs: Number(mine.trigger_started_at_ms || 0),
+    createdAtMs,
+    serverTimeMs,
+    visibleAlpha: clamp(fallbackVisibleAlpha, 0, 1),
+    fireSeq: Number(mine.fire_seq || 0) || undefined,
+  };
+}
+
+function serializeMineState(mine: LandMine, nowMs = Date.now()): TankTroubleMineState {
+  const createdAtMs = Number(mine.createdAtMs || nowMs);
+  const age = Math.max(0, Number(mine.age || 0));
+  return {
+    id: mine.id,
+    owner_id: mine.ownerId,
+    color: mine.color,
+    x: mine.x,
+    y: mine.y,
+    radius: mine.radius,
+    trigger_radius: mine.triggerRadius,
+    blast_radius: mine.blastRadius,
+    age,
+    armed: mine.armed || age * 1000 >= MINE_ARM_DELAY_MS,
+    triggered: mine.triggered,
+    trigger_started_at_ms: mine.triggerStartedAtMs || 0,
+    created_at_ms: createdAtMs,
+    fire_seq: mine.fireSeq,
+    server_time_ms: nowMs,
+  };
+}
+
+function defaultMineAlphaForAge(ageSeconds: number) {
+  const ageMs = Math.max(0, ageSeconds * 1000);
+  if (ageMs <= MINE_FADE_START_MS) {
+    return 1;
+  }
+  return clamp(1 - (ageMs - MINE_FADE_START_MS) / MINE_FADE_DURATION_MS, 0, 1);
+}
+
+function drawLandMine(
+  ctx: CanvasRenderingContext2D,
+  mine: Pick<LandMine, "x" | "y" | "radius" | "triggerRadius" | "color" | "age" | "armed" | "triggered" | "visibleAlpha" | "id">,
+  theme: "light" | "dark",
+  elapsedMs: number,
+  options: { compact?: boolean } = {},
+) {
+  const alpha = clamp(Number(mine.visibleAlpha ?? defaultMineAlphaForAge(mine.age || 0)), 0, 1);
+  if (alpha <= 0.012) {
+    return;
+  }
+
+  const darkMode = theme === "dark";
+  const palette = getPlayerPalette(mine.color || "green", theme);
+  const radius = Math.max(1, Number(mine.radius || MINE_RADIUS));
+  const triggerRadius = Math.max(radius, Number(mine.triggerRadius || MINE_TRIGGER_RADIUS));
+  const armed = Boolean(mine.armed);
+  const triggered = Boolean(mine.triggered);
+  const blinkFrequency = triggered ? 5 : armed ? 1 : 0;
+  const blink = blinkFrequency > 0 ? 0.28 + 0.72 * Math.max(0, Math.sin((elapsedMs / 1000) * Math.PI * 2 * blinkFrequency)) : 0.2;
+  const lampAlpha = clamp((triggered ? 0.82 : armed ? 0.62 : 0.24) * blink + (triggered ? 0.18 : 0.08), 0, 1);
+  const bodyTop = darkMode ? "#d1d5db" : "#f1f5f9";
+  const bodyMid = darkMode ? "#64748b" : "#94a3b8";
+  const bodyBottom = darkMode ? "#1f2937" : "#475569";
+  const ringStroke = darkMode ? "rgba(226, 232, 240, 0.44)" : "rgba(15, 23, 42, 0.2)";
+
+  ctx.save();
+  ctx.translate(mine.x, mine.y);
+  ctx.globalAlpha = alpha;
+
+  if (!options.compact && (armed || triggered || alpha > 0.45)) {
+    ctx.save();
+    ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+    ctx.beginPath();
+    ctx.arc(0, 0, triggerRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = hexToRgba(palette.bright, (triggered ? 0.24 : 0.08) * alpha * (0.65 + blink * 0.35));
+    ctx.lineWidth = triggered ? 2.6 : 1.1;
+    ctx.setLineDash(triggered ? [7, 7] : [3, 9]);
+    ctx.lineDashOffset = -elapsedMs * (triggered ? 0.05 : 0.015);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.shadowColor = triggered ? palette.glow : darkMode ? "rgba(148, 163, 184, 0.42)" : "rgba(15, 23, 42, 0.2)";
+  ctx.shadowBlur = triggered ? 18 : 8;
+  const bodyGradient = ctx.createRadialGradient(-radius * 0.36, -radius * 0.42, radius * 0.12, 0, 0, radius * 1.15);
+  bodyGradient.addColorStop(0, bodyTop);
+  bodyGradient.addColorStop(0.48, bodyMid);
+  bodyGradient.addColorStop(1, bodyBottom);
+  ctx.fillStyle = bodyGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.1, radius * 0.12);
+  ctx.strokeStyle = ringStroke;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = darkMode ? "rgba(15, 23, 42, 0.68)" : "rgba(30, 41, 59, 0.34)";
+  ctx.lineWidth = Math.max(1, radius * 0.075);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index / 8) * Math.PI * 2 + (mine.id || 0) * 0.11;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * radius * 0.22, Math.sin(angle) * radius * 0.22);
+    ctx.lineTo(Math.cos(angle) * radius * 0.63, Math.sin(angle) * radius * 0.63);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 12 * lampAlpha;
+  ctx.fillStyle = hexToRgba(palette.bright, lampAlpha);
+  ctx.beginPath();
+  ctx.arc(0, -radius * 0.05, Math.max(2.2, radius * 0.21 + (triggered ? blink * 1.2 : 0)), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = darkMode ? "rgba(248, 250, 252, 0.86)" : "rgba(255, 255, 255, 0.7)";
+  ctx.beginPath();
+  ctx.arc(-radius * 0.07, -radius * 0.12, Math.max(0.8, radius * 0.055), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  if (triggered) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = hexToRgba(palette.bright, 0.18 + blink * 0.28);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (1.3 + blink * 0.55), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawMines(
+  ctx: CanvasRenderingContext2D,
+  mines: LandMine[],
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  for (const mine of mines) {
+    drawLandMine(ctx, mine, theme, elapsedMs);
+  }
+}
+
+function advanceMinesVisuals(
+  mines: LandMine[],
+  tanks: Array<Pick<PlayerTank, "x" | "y" | "radius"> & { alive?: boolean }>,
+  dt: number,
+) {
+  return mines.map((mine) => {
+    const age = Math.max(0, Number(mine.age || 0) + dt);
+    const armed = mine.armed || age * 1000 >= MINE_ARM_DELAY_MS;
+    const nearTank = tanks.some((tank) => {
+      if (tank.alive === false) {
+        return false;
+      }
+      return distance(mine.x, mine.y, tank.x, tank.y) <= mine.triggerRadius + Math.max(1, Number(tank.radius || PLAYER_RADIUS));
+    });
+    const reveal = nearTank || mine.triggered;
+    const baseAlpha = defaultMineAlphaForAge(age);
+    const targetAlpha = reveal ? 1 : baseAlpha;
+    const currentAlpha = clamp(Number(mine.visibleAlpha ?? targetAlpha), 0, 1);
+    const revealStep = dt * MINE_REVEAL_RATE;
+    const fadeStep = dt / (MINE_FADE_DURATION_MS / 1000);
+    const visibleAlpha =
+      targetAlpha > currentAlpha
+        ? Math.min(targetAlpha, currentAlpha + revealStep)
+        : Math.max(targetAlpha, currentAlpha - fadeStep);
+
+    const locallyTriggered = armed && Boolean(mine.local) && nearTank;
+    return {
+      ...mine,
+      age,
+      armed,
+      triggered: mine.triggered || locallyTriggered,
+      triggerStartedAtMs: mine.triggered
+        ? mine.triggerStartedAtMs
+        : locallyTriggered
+          ? Date.now()
+          : mine.triggerStartedAtMs,
+      visibleAlpha,
+    };
+  });
+}
+
+function drawTankMountedMine(
+  ctx: CanvasRenderingContext2D,
+  tankColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  drawLandMine(
+    ctx,
+    {
+      id: 0,
+      x: 0,
+      y: 0,
+      radius: Math.max(8, MINE_RADIUS * 0.72),
+      triggerRadius: Math.max(9, MINE_RADIUS * 0.78),
+      color: tankColor,
+      age: 0,
+      armed: true,
+      triggered: false,
+      visibleAlpha: 1,
+    },
+    theme,
+    elapsedMs,
+    { compact: true },
+  );
+}
+
+function drawGuidedMissileIcon(
+  ctx: CanvasRenderingContext2D,
+  length: number,
+  width: number,
+  theme: "light" | "dark",
+  accent = "#38bdf8",
+) {
+  const darkMode = theme === "dark";
+  const bodyTop = darkMode ? "#e2e8f0" : "#64748b";
+  const bodyMid = darkMode ? "#94a3b8" : "#475569";
+  const bodyBottom = darkMode ? "#334155" : "#1f2937";
+  const finFill = darkMode ? "#64748b" : "#94a3b8";
+  const stroke = darkMode ? "rgba(248, 250, 252, 0.42)" : "rgba(15, 23, 42, 0.34)";
+  const halfLength = length / 2;
+  const halfWidth = width / 2;
+
+  ctx.save();
+  const bodyGradient = ctx.createLinearGradient(-halfLength, 0, halfLength, 0);
+  bodyGradient.addColorStop(0, bodyBottom);
+  bodyGradient.addColorStop(0.42, bodyMid);
+  bodyGradient.addColorStop(1, bodyTop);
+  ctx.shadowColor = hexToRgba(accent, darkMode ? 0.52 : 0.34);
+  ctx.shadowBlur = Math.max(6, width * 0.34);
+
+  ctx.fillStyle = finFill;
+  ctx.beginPath();
+  ctx.moveTo(-halfLength * 0.46, -halfWidth * 0.72);
+  ctx.lineTo(-halfLength * 0.12, -halfWidth * 1.42);
+  ctx.lineTo(halfLength * 0.04, -halfWidth * 0.58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-halfLength * 0.46, halfWidth * 0.72);
+  ctx.lineTo(-halfLength * 0.12, halfWidth * 1.42);
+  ctx.lineTo(halfLength * 0.04, halfWidth * 0.58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-halfLength * 0.82, -halfWidth * 0.58);
+  ctx.lineTo(-halfLength * 0.62, -halfWidth * 1.18);
+  ctx.lineTo(-halfLength * 0.38, -halfWidth * 0.52);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-halfLength * 0.82, halfWidth * 0.58);
+  ctx.lineTo(-halfLength * 0.62, halfWidth * 1.18);
+  ctx.lineTo(-halfLength * 0.38, halfWidth * 0.52);
+  ctx.closePath();
+  ctx.fill();
+
+  drawRoundedRectPath(ctx, -halfLength * 0.8, -halfWidth * 0.42, length * 0.92, halfWidth * 0.84, halfWidth * 0.42);
+  ctx.fillStyle = bodyGradient;
+  ctx.fill();
+  ctx.lineWidth = Math.max(0.9, width * 0.07);
+  ctx.strokeStyle = stroke;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(halfLength * 0.08, -halfWidth * 0.42);
+  ctx.lineTo(halfLength * 0.86, 0);
+  ctx.lineTo(halfLength * 0.08, halfWidth * 0.42);
+  ctx.closePath();
+  ctx.fillStyle = darkMode ? "#cbd5e1" : "#334155";
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.stroke();
+
+  ctx.shadowBlur = Math.max(5, width * 0.24);
+  ctx.strokeStyle = hexToRgba(accent, darkMode ? 0.92 : 0.74);
+  ctx.lineWidth = Math.max(1.8, width * 0.12);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-halfLength * 0.52, 0);
+  ctx.lineTo(-halfLength * 0.14, 0);
+  ctx.moveTo(halfLength * 0.2, 0);
+  ctx.lineTo(halfLength * 0.38, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawTowMissileIcon(
+  ctx: CanvasRenderingContext2D,
+  length: number,
+  width: number,
+  theme: "light" | "dark",
+  accent = "#38bdf8",
+) {
+  const darkMode = theme === "dark";
+  const halfLength = length / 2;
+  const halfWidth = width / 2;
+  const bodyGradient = ctx.createLinearGradient(-halfLength, 0, halfLength, 0);
+  bodyGradient.addColorStop(0, darkMode ? "#1f2937" : "#334155");
+  bodyGradient.addColorStop(0.48, darkMode ? "#94a3b8" : "#64748b");
+  bodyGradient.addColorStop(1, darkMode ? "#e5e7eb" : "#cbd5e1");
+  const stroke = darkMode ? "rgba(248, 250, 252, 0.44)" : "rgba(15, 23, 42, 0.3)";
+
+  ctx.save();
+  ctx.shadowColor = hexToRgba(accent, darkMode ? 0.42 : 0.26);
+  ctx.shadowBlur = Math.max(4, width * 0.24);
+  ctx.fillStyle = darkMode ? "#64748b" : "#94a3b8";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-halfLength * 0.2, side * halfWidth * 0.48);
+    ctx.lineTo(halfLength * 0.06, side * halfWidth * 1.68);
+    ctx.lineTo(halfLength * 0.28, side * halfWidth * 0.46);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-halfLength * 0.68, side * halfWidth * 0.42);
+    ctx.lineTo(-halfLength * 0.5, side * halfWidth * 1.02);
+    ctx.lineTo(-halfLength * 0.32, side * halfWidth * 0.38);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawRoundedRectPath(ctx, -halfLength * 0.72, -halfWidth * 0.38, length * 1.16, halfWidth * 0.76, halfWidth * 0.36);
+  ctx.fillStyle = bodyGradient;
+  ctx.fill();
+  ctx.lineWidth = Math.max(0.85, width * 0.065);
+  ctx.strokeStyle = stroke;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(halfLength * 0.42, -halfWidth * 0.38);
+  ctx.lineTo(halfLength * 0.78, 0);
+  ctx.lineTo(halfLength * 0.42, halfWidth * 0.38);
+  ctx.closePath();
+  ctx.fillStyle = darkMode ? "#f8fafc" : "#1f2937";
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.stroke();
+
+  ctx.strokeStyle = hexToRgba(accent, darkMode ? 0.68 : 0.48);
+  ctx.lineWidth = Math.max(1, width * 0.08);
+  ctx.lineCap = "round";
+  for (const x of [-0.34, -0.04, 0.24]) {
+    ctx.beginPath();
+    ctx.moveTo(halfLength * x, -halfWidth * 0.24);
+    ctx.lineTo(halfLength * x, halfWidth * 0.24);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawTankMissileLauncher(
+  ctx: CanvasRenderingContext2D,
+  tankColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const darkMode = theme === "dark";
+  const palette = getPlayerPalette(tankColor, theme);
+  const pulse = 0.5 + Math.sin(elapsedMs * 0.006) * 0.5;
+  ctx.save();
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 5 + pulse * 3;
+  const tubeGradient = ctx.createLinearGradient(0, -20, 0, 15);
+  tubeGradient.addColorStop(0, darkMode ? "#dbeafe" : "#64748b");
+  tubeGradient.addColorStop(0.48, darkMode ? "#64748b" : "#475569");
+  tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#cbd5e1");
+  drawRoundedRectPath(ctx, -7.8, -20, 15.6, 35, 5.8);
+  ctx.fillStyle = tubeGradient;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.42 : 0.32);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(0, -2.5);
+  ctx.rotate(-Math.PI / 2);
+  drawGuidedMissileIcon(ctx, 23, 8.6, theme, palette.bright);
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(0, -20, 5.1, 0, Math.PI * 2);
+  ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.5)";
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.62 : 0.42);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawTankTowLauncher(
+  ctx: CanvasRenderingContext2D,
+  tankColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const darkMode = theme === "dark";
+  const palette = getPlayerPalette(tankColor, theme);
+  const pulse = 0.5 + Math.sin(elapsedMs * 0.0048) * 0.5;
+  ctx.save();
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 4 + pulse * 2.2;
+
+  const mountGradient = ctx.createLinearGradient(-12, -6, 12, 10);
+  mountGradient.addColorStop(0, darkMode ? "#dbeafe" : "#f8fafc");
+  mountGradient.addColorStop(0.52, darkMode ? "#64748b" : "#94a3b8");
+  mountGradient.addColorStop(1, darkMode ? "#172033" : "#475569");
+  drawRoundedRectPath(ctx, -12, -8, 24, 16, 5.4);
+  ctx.fillStyle = mountGradient;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.38 : 0.28);
+  ctx.stroke();
+
+  const tubeGradient = ctx.createLinearGradient(0, -22, 0, 14);
+  tubeGradient.addColorStop(0, darkMode ? "#eef2ff" : "#dbeafe");
+  tubeGradient.addColorStop(0.45, darkMode ? "#94a3b8" : "#64748b");
+  tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#334155");
+  drawRoundedRectPath(ctx, -6.4, -21, 12.8, 36, 4.2);
+  ctx.fillStyle = tubeGradient;
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.44 : 0.3);
+  ctx.stroke();
+
+  drawRoundedRectPath(ctx, 7.2, -14, 6.8, 13, 3.2);
+  ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.88)" : "rgba(241, 245, 249, 0.86)";
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.46 : 0.32);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(0, -3.2);
+  ctx.rotate(-Math.PI / 2);
+  drawTowMissileIcon(ctx, 22, 7.6, theme, palette.bright);
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(0, -21, 4.3, 0, Math.PI * 2);
+  ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.86)" : "rgba(15, 23, 42, 0.5)";
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.62 : 0.42);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGuidedMissileProjectile(
+  ctx: CanvasRenderingContext2D,
+  bullet: Pick<Bullet, "x" | "y" | "radius" | "vx" | "vy" | "targetColor" | "flameColor" | "locked">,
+  ownerColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+  alpha = 1,
+) {
+  const speed = Math.hypot(bullet.vx, bullet.vy) || 1;
+  const angle = Math.atan2(bullet.vy, bullet.vx);
+  const palette = getPlayerPalette(ownerColor, theme);
+  const flameColor = bullet.flameColor || (bullet.locked && bullet.targetColor ? resolveGameColor(bullet.targetColor, theme) : "#f8fafc");
+  const flamePalette = getPlayerPalette(flameColor, theme);
+  const length = Math.max(14, bullet.radius * 3.05);
+  const width = Math.max(7.2, bullet.radius * 1.18);
+  const flamePulse = 0.68 + Math.sin(elapsedMs * 0.024 + bullet.x * 0.03 + bullet.y * 0.02) * 0.22;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(bullet.x, bullet.y);
+  ctx.rotate(angle);
+
+  ctx.save();
+  ctx.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+  ctx.shadowColor = flamePalette.glow;
+  ctx.shadowBlur = 11;
+  const flameLength = length * (0.42 + flamePulse * 0.16);
+  const flameGradient = ctx.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.34, 0);
+  flameGradient.addColorStop(0, hexToRgba(flamePalette.base, 0));
+  flameGradient.addColorStop(0.45, hexToRgba(flamePalette.base, 0.54));
+  flameGradient.addColorStop(1, hexToRgba(flamePalette.bright, 0.9));
+  ctx.fillStyle = flameGradient;
+  ctx.beginPath();
+  ctx.moveTo(-length * 0.38, -width * 0.3);
+  ctx.lineTo(-length * 0.5 - flameLength, 0);
+  ctx.lineTo(-length * 0.38, width * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  drawGuidedMissileIcon(ctx, length, width, theme, palette.bright);
+  if (bullet.locked) {
+    ctx.save();
+    ctx.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+    ctx.strokeStyle = hexToRgba(flamePalette.bright, theme === "dark" ? 0.72 : 0.48);
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(0, 0, width * 1.24 + flamePulse * 2.2, -Math.PI * 0.72, Math.PI * 0.72);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawTowMissileProjectile(
+  ctx: CanvasRenderingContext2D,
+  bullet: Pick<Bullet, "x" | "y" | "radius" | "vx" | "vy">,
+  ownerColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+  alpha = 1,
+) {
+  const angle = Math.atan2(bullet.vy, bullet.vx);
+  const palette = getPlayerPalette(ownerColor, theme);
+  const length = Math.max(11, bullet.radius * 2.12);
+  const width = Math.max(6.8, bullet.radius * 1.08);
+  const flamePulse = 0.62 + Math.sin(elapsedMs * 0.026 + bullet.x * 0.02 + bullet.y * 0.025) * 0.2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(bullet.x, bullet.y);
+  ctx.rotate(angle);
+
+  ctx.save();
+  ctx.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+  ctx.shadowColor = "rgba(248, 250, 252, 0.72)";
+  ctx.shadowBlur = 10;
+  const flameLength = length * (0.36 + flamePulse * 0.14);
+  const flameGradient = ctx.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.32, 0);
+  flameGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+  flameGradient.addColorStop(0.45, "rgba(226, 232, 240, 0.46)");
+  flameGradient.addColorStop(1, "rgba(248, 250, 252, 0.92)");
+  ctx.fillStyle = flameGradient;
+  ctx.beginPath();
+  ctx.moveTo(-length * 0.38, -width * 0.26);
+  ctx.lineTo(-length * 0.5 - flameLength, 0);
+  ctx.lineTo(-length * 0.38, width * 0.26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  drawTowMissileIcon(ctx, length, width, theme, palette.bright);
+  ctx.restore();
+}
+
+function drawGuidedMissileExpiryEffect(
+  ctx: CanvasRenderingContext2D,
+  fade: Pick<BulletFade, "x" | "y" | "radius" | "life" | "maxLife" | "color" | "targetColor">,
+  ownerColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const progress = clamp(1 - fade.life / Math.max(0.001, fade.maxLife), 0, 1);
+  const alpha = 1 - smoothStep(progress);
+  const palette = getPlayerPalette(fade.targetColor || fade.color || ownerColor, theme);
+  const darkMode = theme === "dark";
+  const radius = Math.max(16, fade.radius * (2.35 + progress * 4.8));
+  const coreRadius = Math.max(5, fade.radius * (0.9 + progress * 1.5));
+  const ringJitter = Math.sin(elapsedMs * 0.034 + fade.x * 0.02 + fade.y * 0.015) * 1.5;
+
+  ctx.save();
+  ctx.translate(fade.x, fade.y);
+  ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 16 * alpha;
+
+  const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+  coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.72 : 0.84));
+  coreGradient.addColorStop(0.44, hexToRgba(palette.bright, darkMode ? 0.5 : 0.42));
+  coreGradient.addColorStop(1, hexToRgba(palette.base, 0));
+  ctx.fillStyle = coreGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineCap = "round";
+  for (let index = 0; index < 2; index += 1) {
+    ctx.setLineDash(index === 0 ? [7, 7] : [3, 10]);
+    ctx.lineDashOffset = -progress * (36 + index * 18);
+    ctx.lineWidth = 2.1 - index * 0.6;
+    ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.78 : 0.54) * alpha * (1 - index * 0.2));
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (0.72 + index * 0.23) + ringJitter, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (index / 6) * Math.PI * 2 + progress * 0.45;
+    const inner = fade.radius * (1.05 + progress * 1.2);
+    const outer = radius * (0.72 + (index % 2) * 0.12);
+    ctx.strokeStyle = hexToRgba(palette.bright, alpha * (darkMode ? 0.36 : 0.24));
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawTowMissileExpiryEffect(
+  ctx: CanvasRenderingContext2D,
+  fade: Pick<BulletFade, "x" | "y" | "radius" | "life" | "maxLife" | "color" | "targetColor">,
+  ownerColor: string,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const progress = clamp(1 - fade.life / Math.max(0.001, fade.maxLife), 0, 1);
+  const alpha = 1 - smoothStep(progress);
+  const palette = getPlayerPalette(fade.targetColor || fade.color || ownerColor, theme);
+  const darkMode = theme === "dark";
+  const radius = Math.max(12, fade.radius * (1.85 + progress * 2.65));
+  const coreRadius = Math.max(5, fade.radius * (0.75 + progress * 0.9));
+  const ringPulse = Math.sin(elapsedMs * 0.028 + fade.x * 0.017 + fade.y * 0.013) * 0.8;
+
+  ctx.save();
+  ctx.translate(fade.x, fade.y);
+  ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 10 * alpha;
+
+  const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+  coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.64 : 0.72));
+  coreGradient.addColorStop(0.28, hexToRgba(palette.bright, darkMode ? 0.42 : 0.34));
+  coreGradient.addColorStop(0.66, hexToRgba(palette.base, darkMode ? 0.14 : 0.1));
+  coreGradient.addColorStop(1, hexToRgba(palette.base, 0));
+  ctx.fillStyle = coreGradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineCap = "round";
+  ctx.setLineDash([6, 8]);
+  ctx.lineDashOffset = -progress * 30;
+  ctx.lineWidth = 1.7;
+  ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.66 : 0.46) * alpha);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.78 + ringPulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = hexToRgba("#f8fafc", (darkMode ? 0.38 : 0.26) * alpha);
+  ctx.beginPath();
+  ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 const bulletSpriteCache = new Map<string, HTMLCanvasElement>();
@@ -1510,6 +2411,7 @@ function createTankExplosion(
   tank: Pick<Circle, "x" | "y" | "radius">,
   color: string,
   seed: number,
+  weapon = "bullet",
 ): TankExplosionEffect {
   const rng = createSeededRandom(seed);
   const particles: TankExplosionParticle[] = [];
@@ -1541,6 +2443,7 @@ function createTankExplosion(
     y: tank.y,
     radius: tank.radius,
     color,
+    weapon,
     life: 0.78,
     maxLife: 0.78,
     particles,
@@ -1560,10 +2463,39 @@ function createTankExplosionFromState(state: TankTroubleTankExplosionState, fall
       },
       String(state.color || "green"),
       Number(state.seed || fallbackSeed) >>> 0,
+      String(state.weapon || "bullet"),
     ),
     life,
     maxLife,
   };
+}
+
+function drawHitEffect(ctx: CanvasRenderingContext2D, explosion: TankExplosionEffect, theme: "light" | "dark") {
+  const darkMode = theme === "dark";
+  const palette = getPlayerPalette(explosion.color, theme);
+  const progress = clamp(1 - explosion.life / explosion.maxLife, 0, 1);
+  const alpha = Math.max(0, 1 - progress);
+  ctx.save();
+  ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+  ctx.shadowColor = palette.glow;
+  ctx.shadowBlur = 10 * alpha;
+  ctx.beginPath();
+  ctx.arc(explosion.x, explosion.y, explosion.radius * (0.58 + progress * 1.25), 0, Math.PI * 2);
+  ctx.lineWidth = 2.4 - progress * 1.1;
+  ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.72 : 0.56) * alpha);
+  ctx.stroke();
+  for (let index = 0; index < 5; index += 1) {
+    const angle = explosion.id * 0.73 + index * ((Math.PI * 2) / 5);
+    const inner = explosion.radius * (0.16 + progress * 0.4);
+    const outer = explosion.radius * (0.68 + progress * 0.9);
+    ctx.beginPath();
+    ctx.moveTo(explosion.x + Math.cos(angle) * inner, explosion.y + Math.sin(angle) * inner);
+    ctx.lineTo(explosion.x + Math.cos(angle) * outer, explosion.y + Math.sin(angle) * outer);
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.52 : 0.38) * alpha);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function serializeTankExplosion(explosion: TankExplosionEffect): TankTroubleTankExplosionState {
@@ -1573,6 +2505,7 @@ function serializeTankExplosion(explosion: TankExplosionEffect): TankTroubleTank
     y: explosion.y,
     radius: explosion.radius,
     color: explosion.color,
+    weapon: explosion.weapon || "bullet",
     life: Math.max(0, explosion.life),
     maxLife: explosion.maxLife,
   };
@@ -1606,6 +2539,10 @@ function drawTankExplosions(
   const darkMode = theme === "dark";
 
   for (const explosion of explosions) {
+    if (String(explosion.weapon || "bullet").startsWith("hit:")) {
+      drawHitEffect(ctx, explosion, theme);
+      continue;
+    }
     const palette = getPlayerPalette(explosion.color, theme);
     const progress = clamp(1 - explosion.life / explosion.maxLife, 0, 1);
     const shockAlpha = Math.max(0, 1 - progress);
@@ -1759,6 +2696,53 @@ function advancePowerupPickupEffects(effects: TankPowerupPickupEffect[], dt: num
     .filter((effect) => effect.life > 0);
 }
 
+function createHealPlusEffects(
+  effect: Pick<TankPowerupPickupEffect, "id" | "x" | "y" | "playerId">,
+  tank: Pick<PlayerTank, "x" | "y" | "radius">,
+): HealPlusEffect[] {
+  const rng = createSeededRandom((effect.id ^ stringHash(effect.playerId || "heal") ^ Math.floor(tank.x * 13) ^ Math.floor(tank.y * 17)) >>> 0);
+  const placed: Array<{ x: number; y: number }> = [];
+  const effects: HealPlusEffect[] = [];
+  const baseSize = Math.max(15, tank.radius * 0.86);
+  for (let index = 0; index < 3; index += 1) {
+    let offsetX = 0;
+    let offsetY = 0;
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const side = rng() > 0.5 ? 1 : -1;
+      const angle = -Math.PI * (0.16 + rng() * 0.78);
+      const distanceFromTank = tank.radius * (1.02 + rng() * 0.92);
+      offsetX = Math.cos(angle) * distanceFromTank * side + (rng() - 0.5) * tank.radius * 0.38;
+      offsetY = Math.sin(angle) * distanceFromTank + (rng() - 0.5) * tank.radius * 0.26;
+      const tooClose = placed.some((point) => distance(point.x, point.y, offsetX, offsetY) < tank.radius * 0.88);
+      if (!tooClose || attempt === 11) {
+        break;
+      }
+    }
+    placed.push({ x: offsetX, y: offsetY });
+    const duration = 1.14 + rng() * 0.22;
+    effects.push({
+      id: effect.id * 10 + index,
+      x: tank.x,
+      y: tank.y,
+      offsetX,
+      offsetY,
+      driftX: (rng() - 0.5) * tank.radius * 0.5,
+      rise: tank.radius * (1.18 + rng() * 0.72),
+      size: baseSize * (0.82 + rng() * 0.42),
+      delay: index * 0.07 + rng() * 0.06,
+      life: duration,
+      maxLife: duration,
+    });
+  }
+  return effects;
+}
+
+function advanceHealPlusEffects(effects: HealPlusEffect[], dt: number) {
+  return effects
+    .map((effect) => ({ ...effect, life: effect.life - dt }))
+    .filter((effect) => effect.life > -effect.delay);
+}
+
 function getPowerupPickupLabel(effect: { effect?: string; scoreDelta?: number }) {
   const effectName = String(effect.effect || "score").toLowerCase();
   if (effectName === "score") {
@@ -1778,6 +2762,18 @@ function getPowerupPickupLabel(effect: { effect?: string; scoreDelta?: number })
   }
   if (effectName === "shield") {
     return "SHIELD";
+  }
+  if (effectName === "land_mine") {
+    return "AT MINE";
+  }
+  if (effectName === "heal") {
+    return "HEAL";
+  }
+  if (effectName === "guided_missile") {
+    return "GUIDED MISSILE";
+  }
+  if (effectName === "tow_missile") {
+    return "TOW";
   }
   return effectName.toUpperCase();
 }
@@ -2061,6 +3057,73 @@ function drawPowerupSymbol(
     drawPowerupPngIcon(ctx, powerup.kind, powerup.radius, () => drawShieldPowerupIcon(ctx, powerup.radius, theme));
     return;
   }
+  if (powerup.kind === "land_mine") {
+    drawPowerupPngIcon(ctx, powerup.kind, powerup.radius, () => {
+      const darkMode = theme === "dark";
+      ctx.save();
+      ctx.translate(0, 0);
+      ctx.shadowColor = darkMode ? "rgba(248, 250, 252, 0.42)" : "rgba(15, 23, 42, 0.32)";
+      ctx.shadowBlur = 6;
+      const bodyRadius = powerup.radius * 0.92;
+      const topRadius = powerup.radius * 0.62;
+      const edgeFill = darkMode ? "#334155" : "#cbd5e1";
+      const coreFill = darkMode ? "#e2e8f0" : "#94a3b8";
+      ctx.fillStyle = edgeFill;
+      ctx.beginPath();
+      ctx.ellipse(0, powerup.radius * 0.08, bodyRadius * 1.08, bodyRadius * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = darkMode ? "#64748b" : "#e2e8f0";
+      ctx.beginPath();
+      ctx.ellipse(0, -powerup.radius * 0.05, bodyRadius * 0.92, bodyRadius * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = coreFill;
+      ctx.beginPath();
+      ctx.arc(0, -powerup.radius * 0.17, topRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = darkMode ? "rgba(226, 232, 240, 0.45)" : "rgba(71, 85, 105, 0.34)";
+      ctx.lineWidth = Math.max(1, powerup.radius * 0.12);
+      ctx.stroke();
+      ctx.beginPath();
+      for (let index = 0; index < 6; index += 1) {
+        const angle = -Math.PI / 2 + (index / 6) * Math.PI * 2;
+        const inner = powerup.radius * 0.24;
+        const outer = powerup.radius * 0.62;
+        ctx.moveTo(Math.cos(angle) * inner, -powerup.radius * 0.17 + Math.sin(angle) * inner);
+        ctx.lineTo(Math.cos(angle) * outer, -powerup.radius * 0.17 + Math.sin(angle) * outer);
+      }
+      ctx.strokeStyle = darkMode ? "rgba(148, 163, 184, 0.52)" : "rgba(100, 116, 139, 0.42)";
+      ctx.lineWidth = Math.max(0.9, powerup.radius * 0.06);
+      ctx.stroke();
+      ctx.restore();
+    });
+    return;
+  }
+  if (powerup.kind === "heal") {
+    drawPowerupPngIcon(ctx, powerup.kind, powerup.radius, () => {
+      ctx.save();
+      ctx.shadowColor = theme === "dark" ? "rgba(134, 239, 172, 0.72)" : "rgba(22, 163, 74, 0.34)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = theme === "dark" ? "#bbf7d0" : "#22c55e";
+      drawRoundedRectPath(ctx, -powerup.radius * 0.18, -powerup.radius * 0.66, powerup.radius * 0.36, powerup.radius * 1.32, powerup.radius * 0.16);
+      ctx.fill();
+      drawRoundedRectPath(ctx, -powerup.radius * 0.66, -powerup.radius * 0.18, powerup.radius * 1.32, powerup.radius * 0.36, powerup.radius * 0.16);
+      ctx.fill();
+      ctx.restore();
+    });
+    return;
+  }
+  if (powerup.kind === "guided_missile") {
+    drawPowerupPngIcon(ctx, powerup.kind, powerup.radius, () =>
+      drawGuidedMissileIcon(ctx, powerup.radius * 1.9, powerup.radius * 1.9, theme),
+    );
+    return;
+  }
+  if (powerup.kind === "tow_missile") {
+    drawPowerupPngIcon(ctx, powerup.kind, powerup.radius, () =>
+      drawTowMissileIcon(ctx, powerup.radius * 1.75, powerup.radius * 1.35, theme),
+    );
+    return;
+  }
 
   drawPowerupPngIcon(ctx, "cash", powerup.radius, () => drawCashPowerupIcon(ctx, powerup.radius, theme, fillStyle));
 }
@@ -2160,6 +3223,47 @@ function drawPowerupPickupEffects(
     const labelY = effect.y - effect.radius * (1.6 + progress * 1.4);
     ctx.strokeText(label, effect.x, labelY);
     ctx.fillText(label, effect.x, labelY);
+    ctx.restore();
+  }
+}
+
+function drawHealPlusEffects(
+  ctx: CanvasRenderingContext2D,
+  effects: HealPlusEffect[],
+  theme: "light" | "dark",
+) {
+  const darkMode = theme === "dark";
+  for (const effect of effects) {
+    const activeLife = effect.life + effect.delay;
+    const progress = clamp(1 - activeLife / effect.maxLife, 0, 1);
+    if (progress <= 0 || progress >= 1) {
+      continue;
+    }
+    const eased = smoothStep(progress);
+    const alpha = Math.sin(progress * Math.PI) * 0.94;
+    const x = effect.x + effect.offsetX + effect.driftX * eased;
+    const y = effect.y + effect.offsetY - effect.rise * eased;
+    const size = effect.size * (0.88 + 0.18 * Math.sin(progress * Math.PI));
+    const thickness = Math.max(3, size * 0.22);
+    const arm = size * 0.5;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = darkMode ? "rgba(134, 239, 172, 0.84)" : "rgba(34, 197, 94, 0.42)";
+    ctx.shadowBlur = 12 * alpha;
+    ctx.fillStyle = darkMode ? "#bbf7d0" : "#2fbf67";
+    drawRoundedRectPath(ctx, -thickness / 2, -arm, thickness, arm * 2, thickness / 2);
+    ctx.fill();
+    drawRoundedRectPath(ctx, -arm, -thickness / 2, arm * 2, thickness, thickness / 2);
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.8, thickness * 0.22);
+    ctx.strokeStyle = darkMode ? "rgba(240, 253, 244, 0.62)" : "rgba(236, 253, 245, 0.72)";
+    drawRoundedRectPath(ctx, -thickness / 2, -arm, thickness, arm * 2, thickness / 2);
+    ctx.stroke();
+    drawRoundedRectPath(ctx, -arm, -thickness / 2, arm * 2, thickness, thickness / 2);
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -2489,6 +3593,43 @@ function drawKillWeaponIcon(
     drawSkullWeaponIcon(ctx, x, y, size, theme);
     return;
   }
+  if (weapon === "land_mine") {
+    drawLandMine(
+      ctx,
+      {
+        id: 0,
+        x,
+        y,
+        radius: size * 0.34,
+        triggerRadius: size * 0.46,
+        color: "yellow",
+        age: 1,
+        armed: true,
+        triggered: false,
+        visibleAlpha: 1,
+      },
+      theme,
+      0,
+      { compact: true },
+    );
+    return;
+  }
+  if (weapon === "guided_missile") {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 4);
+    drawGuidedMissileIcon(ctx, size * 0.9, size * 0.36, theme);
+    ctx.restore();
+    return;
+  }
+  if (weapon === "tow_missile") {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 4);
+    drawTowMissileIcon(ctx, size * 0.82, size * 0.34, theme);
+    ctx.restore();
+    return;
+  }
   drawBulletWeaponIcon(ctx, x, y, size, theme);
 }
 
@@ -2547,7 +3688,8 @@ function drawKillFeedEntries(
 
 function drawSharedTankSprite(
   ctx: CanvasRenderingContext2D,
-  tank: Pick<PlayerTank, "x" | "y" | "radius" | "angle" | "flash">,
+  tank: Pick<PlayerTank, "x" | "y" | "radius" | "angle" | "flash"> &
+    Partial<Pick<PlayerTank, "weapon" | "weaponReloadMs" | "doubleBarrelAmmo" | "mineAmmo" | "missileAmmo">>,
   tankColor: string,
   theme: "light" | "dark",
   elapsedMs: number,
@@ -2586,10 +3728,10 @@ function drawSharedTankSprite(
 
   ctx.save();
   ctx.shadowColor = tankPalette.glow;
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.18 : 0.12);
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.13 : 0.09);
   ctx.beginPath();
-  ctx.arc(0, 0, tank.radius + 9 + tankPulse * 2, 0, Math.PI * 2);
+  ctx.arc(0, 0, tank.radius + 5.5 + tankPulse * 1.4, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
@@ -2639,122 +3781,126 @@ function drawSharedTankSprite(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = tankCoreGlow;
-    ctx.fill();
+      ctx.fillStyle = tankCoreGlow;
+      ctx.fill();
   };
-  if (weapon === "double_barrel") {
-    for (const offset of [-DOUBLE_BARREL_BARREL_OFFSET, DOUBLE_BARREL_BARREL_OFFSET]) {
-      const recoil = Math.abs(offset - doubleBarrelRecoilOffset) < 0.1 ? doubleBarrelRecoil * 7.2 : 0;
-      drawSingleBarrel(offset, recoil, 4.1, 7.8);
+  if (weapon !== "land_mine" && weapon !== "guided_missile" && !isTowMissileWeapon(weapon)) {
+    if (weapon === "double_barrel") {
+      for (const offset of [-DOUBLE_BARREL_BARREL_OFFSET, DOUBLE_BARREL_BARREL_OFFSET]) {
+        const recoil = Math.abs(offset - doubleBarrelRecoilOffset) < 0.1 ? doubleBarrelRecoil * 7.2 : 0;
+        drawSingleBarrel(offset, recoil, 4.1, 7.8);
+      }
+    } else {
+      drawSingleBarrel(
+        0,
+        0,
+        weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2,
+      );
     }
-  } else {
-    drawSingleBarrel(
-      0,
-      0,
-      weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2,
-    );
-  }
-  if (weapon === "shotgun") {
-    const pumpY = -9.5 + shotgunPump * 6.2;
-    ctx.save();
-    ctx.shadowColor = tankPalette.glow;
-    ctx.shadowBlur = 8 * shotgunPump;
-    drawRoundedRectPath(ctx, -13.8, pumpY, 27.6, 7.2, 3.6);
-    ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.86)" : "rgba(191, 219, 254, 0.82)";
-    ctx.fill();
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.54 : 0.38);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-9, pumpY + 3.6);
-    ctx.lineTo(9, pumpY + 3.6);
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.42 : 0.28);
-    ctx.stroke();
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(-3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
-    ctx.arc(3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
-    ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.46)";
-    ctx.fill();
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.3);
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-  } else if (weapon === "laser") {
-    ctx.save();
-    ctx.shadowColor = tankPalette.glow;
-    ctx.shadowBlur = 15;
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.7 : 0.52);
-    ctx.lineWidth = 1.7;
-    for (let index = 0; index < 3; index += 1) {
-      const radius = 5.2 + index * 3.2 + laserCharge * 1.1;
-      ctx.beginPath();
-      ctx.arc(0, barrelY + 3, radius, -Math.PI * 0.74, Math.PI * 0.74);
+    if (weapon === "shotgun") {
+      const pumpY = -9.5 + shotgunPump * 6.2;
+      ctx.save();
+      ctx.shadowColor = tankPalette.glow;
+      ctx.shadowBlur = 8 * shotgunPump;
+      drawRoundedRectPath(ctx, -13.8, pumpY, 27.6, 7.2, 3.6);
+      ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.86)" : "rgba(191, 219, 254, 0.82)";
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.54 : 0.38);
+      ctx.lineWidth = 1;
       ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-9, pumpY + 3.6);
+      ctx.lineTo(9, pumpY + 3.6);
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.42 : 0.28);
+      ctx.stroke();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(-3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
+      ctx.arc(3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.46)";
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.3);
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    } else if (weapon === "laser") {
+      ctx.save();
+      ctx.shadowColor = tankPalette.glow;
+      ctx.shadowBlur = 15;
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.7 : 0.52);
+      ctx.lineWidth = 1.7;
+      for (let index = 0; index < 3; index += 1) {
+        const radius = 5.2 + index * 3.2 + laserCharge * 1.1;
+        ctx.beginPath();
+        ctx.arc(0, barrelY + 3, radius, -Math.PI * 0.74, Math.PI * 0.74);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, barrelY - 7.5);
+      ctx.lineTo(-5.8, barrelY + 4.5);
+      ctx.lineTo(5.8, barrelY + 4.5);
+      ctx.closePath();
+      ctx.fillStyle = hexToRgba(tankPalette.bright, darkMode ? 0.72 : 0.5);
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.32);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    } else if (weapon === "minigun") {
+      ctx.save();
+      ctx.shadowColor = tankPalette.glow;
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.48 : 0.34);
+      ctx.lineWidth = 2;
+      for (let index = 0; index < 6; index += 1) {
+        const angle = minigunSpin + (index / 6) * Math.PI * 2;
+        const offset = Math.sin(angle) * 4.7;
+        ctx.beginPath();
+        ctx.moveTo(offset, barrelY + 3);
+        ctx.lineTo(offset * 0.42, -8);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(0, barrelY + 2.4, 6.2 + Math.sin(minigunSpin) * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.78)" : "rgba(15, 23, 42, 0.38)";
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.52 : 0.36);
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      ctx.restore();
     }
+  }
+  if (weapon !== "guided_missile" && !isTowMissileWeapon(weapon)) {
     ctx.beginPath();
-    ctx.moveTo(0, barrelY - 7.5);
-    ctx.lineTo(-5.8, barrelY + 4.5);
-    ctx.lineTo(5.8, barrelY + 4.5);
+    ctx.moveTo(-8.5, -23);
+    ctx.lineTo(-11.5, -10);
+    ctx.lineTo(-8, 1);
+    ctx.lineTo(8, 1);
+    ctx.lineTo(11.5, -10);
+    ctx.lineTo(8.5, -23);
     ctx.closePath();
-    ctx.fillStyle = hexToRgba(tankPalette.bright, darkMode ? 0.72 : 0.5);
+    ctx.fillStyle = barrelGradient;
+    ctx.shadowColor = tankNoseGlow;
+    ctx.shadowBlur = 7;
     ctx.fill();
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.32);
     ctx.lineWidth = 1;
+    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
     ctx.stroke();
-    ctx.restore();
-  } else if (weapon === "minigun") {
-    ctx.save();
-    ctx.shadowColor = tankPalette.glow;
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.48 : 0.34);
-    ctx.lineWidth = 2;
-    for (let index = 0; index < 6; index += 1) {
-      const angle = minigunSpin + (index / 6) * Math.PI * 2;
-      const offset = Math.sin(angle) * 4.7;
-      ctx.beginPath();
-      ctx.moveTo(offset, barrelY + 3);
-      ctx.lineTo(offset * 0.42, -8);
-      ctx.stroke();
-    }
     ctx.beginPath();
-    ctx.arc(0, barrelY + 2.4, 6.2 + Math.sin(minigunSpin) * 0.5, 0, Math.PI * 2);
-    ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.78)" : "rgba(15, 23, 42, 0.38)";
+    ctx.moveTo(0, -20);
+    ctx.lineTo(-9, -7.5);
+    ctx.lineTo(9, -7.5);
+    ctx.closePath();
+    const noseGradient = ctx.createLinearGradient(0, -20, 0, -7.5);
+    noseGradient.addColorStop(0, tankGlassTop);
+    noseGradient.addColorStop(1, tankGlassBottom);
+    ctx.fillStyle = noseGradient;
+    ctx.shadowColor = tankNoseGlow;
+    ctx.shadowBlur = 9;
     ctx.fill();
-    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.52 : 0.36);
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
     ctx.stroke();
-    ctx.restore();
   }
-  ctx.beginPath();
-  ctx.moveTo(-8.5, -23);
-  ctx.lineTo(-11.5, -10);
-  ctx.lineTo(-8, 1);
-  ctx.lineTo(8, 1);
-  ctx.lineTo(11.5, -10);
-  ctx.lineTo(8.5, -23);
-  ctx.closePath();
-  ctx.fillStyle = barrelGradient;
-  ctx.shadowColor = tankNoseGlow;
-  ctx.shadowBlur = 7;
-  ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -20);
-  ctx.lineTo(-9, -7.5);
-  ctx.lineTo(9, -7.5);
-  ctx.closePath();
-  const noseGradient = ctx.createLinearGradient(0, -20, 0, -7.5);
-  noseGradient.addColorStop(0, tankGlassTop);
-  noseGradient.addColorStop(1, tankGlassBottom);
-  ctx.fillStyle = noseGradient;
-  ctx.shadowColor = tankNoseGlow;
-  ctx.shadowBlur = 9;
-  ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
-  ctx.stroke();
   ctx.restore();
 
   ctx.save();
@@ -2854,7 +4000,23 @@ function drawSharedTankSprite(
   ctx.fill();
   ctx.restore();
 
-  if (tank.flash > 0) {
+  if (weapon === "land_mine") {
+    ctx.save();
+    drawTankMountedMine(ctx, tankColor, theme, elapsedMs);
+    ctx.restore();
+  }
+  if (weapon === "guided_missile") {
+    ctx.save();
+    drawTankMissileLauncher(ctx, tankColor, theme, elapsedMs);
+    ctx.restore();
+  }
+  if (isTowMissileWeapon(weapon)) {
+    ctx.save();
+    drawTankTowLauncher(ctx, tankColor, theme, elapsedMs);
+    ctx.restore();
+  }
+
+  if (tank.flash > 0 && weapon !== "land_mine") {
     ctx.fillStyle = tankPalette.flash.replace(/, ([0-9.]+)\)$/, `, ${clamp(tank.flash * 5.8, 0, 0.95)})`);
     ctx.beginPath();
     ctx.arc(0, -(tank.radius + 18), 8 + tank.flash * 24, 0, Math.PI * 2);
@@ -2934,6 +4096,228 @@ function drawTankShield(
   ctx.restore();
 }
 
+function drawShieldPulseEffects(
+  ctx: CanvasRenderingContext2D,
+  effects: ShieldPulseEffect[],
+  theme: "light" | "dark",
+) {
+  const darkMode = theme === "dark";
+  for (const effect of effects) {
+    const maxLife = Math.max(0.01, effect.maxLife);
+    const progress = clamp(1 - effect.life / maxLife, 0, 1);
+    const eased = smoothStep(progress);
+    const alpha = Math.max(0, 1 - eased);
+    if (alpha <= 0.01) {
+      continue;
+    }
+    const palette = getPlayerPalette(effect.color, theme);
+    const radius = Math.max(PLAYER_RADIUS + 10, effect.radius);
+    const impactAngle = Math.atan2(effect.impactY - effect.y, effect.impactX - effect.x);
+    const ringRadius = radius * (0.9 + eased * 0.24);
+
+    ctx.save();
+    ctx.translate(effect.x, effect.y);
+    ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+    ctx.shadowColor = palette.glow;
+    ctx.shadowBlur = (effect.source === "blast" ? 16 : 12) * alpha;
+
+    const gradient = ctx.createRadialGradient(0, 0, radius * 0.42, 0, 0, radius * (1.08 + eased * 0.18));
+    gradient.addColorStop(0, hexToRgba(palette.bright, 0));
+    gradient.addColorStop(0.78, hexToRgba(palette.base, (darkMode ? 0.1 : 0.07) * alpha));
+    gradient.addColorStop(1, hexToRgba(palette.bright, (darkMode ? 0.22 : 0.16) * alpha));
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (1.04 + eased * 0.16), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.lineCap = "round";
+    ctx.lineWidth = (effect.source === "blast" ? 2.8 : 2.2) - eased * 1.1;
+    ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.7 : 0.52) * alpha);
+    ctx.beginPath();
+    ctx.arc(0, 0, ringRadius, impactAngle - Math.PI * 0.56, impactAngle + Math.PI * 0.56);
+    ctx.stroke();
+
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = hexToRgba(darkMode ? "#e0f2fe" : palette.base, (darkMode ? 0.34 : 0.22) * alpha);
+    ctx.setLineDash([6, 9]);
+    ctx.lineDashOffset = -progress * 24;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (0.72 + eased * 0.12), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const flareCount = effect.source === "blast" ? 5 : 3;
+    for (let index = 0; index < flareCount; index += 1) {
+      const offset = (index - (flareCount - 1) / 2) * 0.34;
+      const angle = impactAngle + offset;
+      const inner = radius * (0.42 + eased * 0.2);
+      const outer = radius * (0.78 + eased * 0.28);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.lineWidth = 1.35 - eased * 0.35;
+      ctx.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.44 : 0.32) * alpha);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function mixChannel(left: number, right: number, ratio: number) {
+  return Math.round(left + (right - left) * clamp(ratio, 0, 1));
+}
+
+function healthColorChannels(hp: number, maxHp: number) {
+  const ratio = clamp(hp / Math.max(1, maxHp), 0, 1);
+  const red = [190, 71, 65];
+  const yellow = [213, 169, 65];
+  const green = [78, 166, 106];
+  const left = ratio < 0.5 ? red : yellow;
+  const right = ratio < 0.5 ? yellow : green;
+  const blend = ratio < 0.5 ? ratio / 0.5 : (ratio - 0.5) / 0.5;
+  return [
+    mixChannel(left[0], right[0], blend),
+    mixChannel(left[1], right[1], blend),
+    mixChannel(left[2], right[2], blend),
+  ];
+}
+
+function healthColor(hp: number, maxHp: number) {
+  const [red, green, blue] = healthColorChannels(hp, maxHp);
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
+function healthColorRgba(hp: number, maxHp: number, alpha: number) {
+  const [red, green, blue] = healthColorChannels(hp, maxHp);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function updateTankHealthThresholds(tank: Pick<PlayerTank, "hp" | "smokeBelow50SinceMs" | "smokeBelow25SinceMs">, elapsedMs: number) {
+  const hp = Number(tank.hp ?? MAX_TANK_HP);
+  tank.smokeBelow50SinceMs = hp < 50 ? tank.smokeBelow50SinceMs ?? elapsedMs : undefined;
+  tank.smokeBelow25SinceMs = hp < 25 ? tank.smokeBelow25SinceMs ?? elapsedMs : undefined;
+}
+
+function drawDamageSmoke(
+  ctx: CanvasRenderingContext2D,
+  tank: Pick<PlayerTank, "id" | "x" | "y" | "radius" | "hp" | "smokeBelow50SinceMs" | "smokeBelow25SinceMs">,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const hp = Number(tank.hp ?? MAX_TANK_HP);
+  const below25 = hp < 25 && tank.smokeBelow25SinceMs !== undefined && elapsedMs - tank.smokeBelow25SinceMs >= DAMAGE_SMOKE_DELAY_MS;
+  const below50 = hp < 50 && tank.smokeBelow50SinceMs !== undefined && elapsedMs - tank.smokeBelow50SinceMs >= DAMAGE_SMOKE_DELAY_MS;
+  if (!below25 && !below50) {
+    return;
+  }
+  const darkMode = theme === "dark";
+  const baseAlpha = below25 ? 0.74 : 0.58;
+  const seed = stringHash(tank.id);
+  ctx.save();
+  ctx.globalCompositeOperation = darkMode ? "screen" : "source-over";
+  for (let index = 0; index < 9; index += 1) {
+    const phase = (elapsedMs * (0.00038 + index * 0.00002) + index * 0.17 + (seed % 17) * 0.011) % 1;
+    const side = index % 2 === 0 ? -1 : 1;
+    const x =
+      tank.x +
+      side * (tank.radius * (0.36 + index * 0.035)) +
+      Math.sin(phase * Math.PI * 2 + seed) * 7.2;
+    const y =
+      tank.y -
+      tank.radius * (0.62 + phase * 1.55) +
+      Math.cos(phase * Math.PI * 2 + index) * 4.4;
+    const radius = tank.radius * (0.34 + phase * 0.42);
+    const alpha = baseAlpha * Math.pow(1 - phase, 0.72) * (below25 ? 1 : 0.92);
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, below25 ? hexToRgba("#111827", alpha) : hexToRgba("#f1f5f9", alpha));
+    gradient.addColorStop(0.5, below25 ? hexToRgba("#4b5563", alpha * 0.66) : hexToRgba("#cbd5e1", alpha * 0.58));
+    gradient.addColorStop(1, below25 ? hexToRgba("#020617", 0) : hexToRgba("#94a3b8", 0));
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawTankHealthBadge(
+  ctx: CanvasRenderingContext2D,
+  tank: Pick<PlayerTank, "id" | "x" | "y" | "radius" | "hp" | "maxHp">,
+  theme: "light" | "dark",
+  elapsedMs: number,
+) {
+  const maxHp = Math.max(1, Number(tank.maxHp ?? MAX_TANK_HP));
+  const hp = clamp(Number(tank.hp ?? maxHp), 0, maxHp);
+  const ratio = clamp(hp / maxHp, 0, 1);
+  const width = 56;
+  const height = 9;
+  const x = tank.x - width / 2;
+  const y = tank.y - tank.radius - 30;
+  const darkMode = theme === "dark";
+  const injuredPulse = hp < maxHp ? 0.5 + 0.5 * Math.sin(elapsedMs * 0.008) : 0;
+
+  ctx.save();
+  ctx.font = "700 12px 'Segoe UI'";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = darkMode ? "rgba(219, 234, 254, 0.92)" : "rgba(15, 23, 42, 0.68)";
+  ctx.fillText(truncatePlayerIdLabel(tank.id), tank.x, y - 4);
+
+  drawRoundedRectPath(ctx, x, y, width, height, 3);
+  ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.66)" : "rgba(241, 245, 249, 0.78)";
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle =
+    hp < maxHp
+      ? healthColorRgba(hp, maxHp, darkMode ? 0.34 + injuredPulse * 0.22 : 0.24 + injuredPulse * 0.18)
+      : darkMode
+        ? "rgba(203, 213, 225, 0.28)"
+        : "rgba(15, 23, 42, 0.16)";
+  ctx.shadowColor = hp < maxHp ? healthColorRgba(hp, maxHp, 0.22 + injuredPulse * 0.16) : "transparent";
+  ctx.shadowBlur = hp < maxHp ? 5 + injuredPulse * 3 : 0;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const fillWidth = Math.max(0, (width - 2) * ratio);
+  if (fillWidth > 0) {
+    drawRoundedRectPath(ctx, x + 1, y + 1, fillWidth, height - 2, 2);
+    const fillColor = healthColor(hp, maxHp);
+    const fillGradient = ctx.createLinearGradient(x, y + 1, x, y + height - 1);
+    fillGradient.addColorStop(0, healthColorRgba(hp, maxHp, 0.96));
+    fillGradient.addColorStop(0.52, fillColor);
+    fillGradient.addColorStop(1, healthColorRgba(hp, maxHp, 0.78));
+    ctx.fillStyle = fillGradient;
+    ctx.fill();
+
+    const shineWidth = 16;
+    const shineProgress = (elapsedMs * 0.00032 + (stringHash(tank.id) % 17) / 17) % 1;
+    const shineX = x + 1 - shineWidth + (width + shineWidth) * shineProgress;
+    if (shineX < x + 1 + fillWidth && shineX + shineWidth > x + 1) {
+      ctx.save();
+      drawRoundedRectPath(ctx, x + 1, y + 1, fillWidth, height - 2, 2);
+      ctx.clip();
+      const shineGradient = ctx.createLinearGradient(shineX, y, shineX + shineWidth, y);
+      shineGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+      shineGradient.addColorStop(0.5, darkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.34)");
+      shineGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = shineGradient;
+      ctx.fillRect(shineX, y + 1, shineWidth, height - 2);
+      ctx.restore();
+    }
+  }
+
+  ctx.beginPath();
+  for (let index = 1; index < 4; index += 1) {
+    const tickX = x + (width * index) / 4;
+    ctx.moveTo(tickX, y + 1);
+    ctx.lineTo(tickX, y + height - 1);
+  }
+  ctx.lineWidth = 0.65;
+  ctx.strokeStyle = darkMode ? "rgba(248, 250, 252, 0.2)" : "rgba(15, 23, 42, 0.14)";
+  ctx.stroke();
+  ctx.restore();
+}
+
 function computeVerticalWhitespaceRatio(stageWidth: number, stageHeight: number) {
   if (stageWidth <= 0 || stageHeight <= 0) {
     return 0;
@@ -2957,6 +4341,15 @@ function normalizePlayerColorKey(value: string): PlayerColorKey {
   return "green";
 }
 
+function normalizeCustomOptions(value?: Partial<TankTroubleCustomOptions> | null): TankTroubleCustomOptions {
+  return {
+    ...defaultCustomOptions(),
+    health_system: Boolean(value?.health_system),
+    persistent_buffs: Boolean(value?.persistent_buffs),
+    same_place_respawn: Boolean(value?.same_place_respawn),
+  };
+}
+
 function buildSessionFromRoomState(
   playerId: string,
   roomState: TankTroubleRoomState,
@@ -2970,6 +4363,7 @@ function buildSessionFromRoomState(
     room: roomState.room || TANK_TROUBLE_ROOM,
     playerColor: preferredColor ?? normalizePlayerColorKey(roomState.local_player_color),
     mode,
+    customOptions: normalizeCustomOptions(roomState.custom_options),
   };
 }
 
@@ -2980,7 +4374,8 @@ function buildSessionFromMatchState(playerId: string, matchState: TankTroubleMat
     mapId: matchState.map_id,
     room: matchState.room || TANK_TROUBLE_ROOM,
     playerColor: normalizePlayerColorKey(matchState.local_player_color),
-    mode: "online",
+    mode: matchState.match_mode === "custom" ? "custom" : "online",
+    customOptions: normalizeCustomOptions(matchState.custom_options),
   };
 }
 
@@ -3001,6 +4396,10 @@ function buildRoomStateFromMatchState(matchState: TankTroubleMatchState): TankTr
     room: matchState.room,
     map_seed: matchState.map_seed,
     map_id: matchState.map_id,
+    match_mode: matchState.match_mode,
+    custom_options: normalizeCustomOptions(matchState.custom_options),
+    match_mode_owner_id: matchState.match_mode_owner_id,
+    mode_locked: matchState.mode_locked,
     active_player_ids: matchState.active_player_ids,
     active_player_count: matchState.active_player_count,
     voted_player_ids: matchState.voters.map((entry) => entry.player_id),
@@ -3279,7 +4678,7 @@ function pickSpawnPoint(
   return { x: ARENA_X + 100, y: ARENA_Y + 100, radius };
 }
 
-function createTargets(seed: number, walls: Rect[], player: PlayerTank) {
+function createTargets(seed: number, walls: Rect[], player: Pick<Circle, "x" | "y" | "radius">) {
   const rng = createSeededRandom(seed ^ 0x5e3f9ab1);
   const targets: TrainingTarget[] = [];
   const occupied: Circle[] = [{ x: player.x, y: player.y, radius: player.radius + 28 }];
@@ -3334,12 +4733,32 @@ function shouldRefreshOnlineRoomUi(
   return nowMs - lastRefreshMs >= 140;
 }
 
+function projectileDamage(projectileType?: string) {
+  if (projectileType === "shotgun") {
+    return SHOTGUN_DAMAGE;
+  }
+  if (projectileType === "minigun") {
+    return MINIGUN_DAMAGE;
+  }
+  if (projectileType === "laser") {
+    return LASER_DAMAGE;
+  }
+  if (projectileType === "land_mine") {
+    return LAND_MINE_DAMAGE;
+  }
+  if (projectileType === "guided_missile" || projectileType === "tow_missile") {
+    return GUIDED_MISSILE_DAMAGE;
+  }
+  return DEFAULT_BULLET_DAMAGE;
+}
+
 function createTankTroubleEngine(options: {
   playerId: string;
   seed: number;
   mapTag: string;
   theme: "light" | "dark";
   playerColor: string;
+  customOptions?: TankTroubleCustomOptions;
 }): TankTroubleEngine {
   const walls = buildTrainingWalls(options.seed);
   const wallIndex = buildWallSpatialIndex(walls);
@@ -3377,6 +4796,7 @@ function createTankTroubleEngine(options: {
   const mapTag = options.mapTag || `MAP-${(options.seed >>> 0).toString(16).slice(-4).toUpperCase()}`;
   let targets: TrainingTarget[] = [];
   let wallRipples: WallRipple[] = [];
+  let shieldPulseEffects: ShieldPulseEffect[] = [];
   let bulletFades: BulletFade[] = [];
   let bulletSmokeEffects: BulletSmokeEffect[] = [];
   let tankExplosions: TankExplosionEffect[] = [];
@@ -3611,6 +5031,33 @@ function createTankTroubleEngine(options: {
       maxLife: 0.34,
     });
     nextRippleId += 1;
+  }
+
+  function pushShieldPulse(
+    x: number,
+    y: number,
+    color: string,
+    radius = SHIELD_RADIUS,
+    centerX = x,
+    centerY = y,
+    source: "impact" | "blast" = "impact",
+  ) {
+    shieldPulseEffects.push({
+      id: nextRippleId,
+      x: centerX,
+      y: centerY,
+      impactX: x,
+      impactY: y,
+      radius: Math.max(PLAYER_RADIUS + 10, radius),
+      color,
+      life: source === "blast" ? 0.46 : 0.36,
+      maxLife: source === "blast" ? 0.46 : 0.36,
+      source,
+    });
+    nextRippleId += 1;
+    if (shieldPulseEffects.length > 36) {
+      shieldPulseEffects = shieldPulseEffects.slice(-36);
+    }
   }
 
   function pushBulletFade(bullet: Bullet) {
@@ -3860,6 +5307,12 @@ function createTankTroubleEngine(options: {
           life: ripple.life - dt,
         }))
         .filter((ripple) => ripple.life > 0);
+      shieldPulseEffects = shieldPulseEffects
+        .map((effect) => ({
+          ...effect,
+          life: effect.life - dt,
+        }))
+        .filter((effect) => effect.life > 0);
       bulletFades = advanceBulletFadesWithSmoke(bulletFades, dt, pushBulletSmoke);
       bulletSmokeEffects = advanceBulletSmokeEffects(bulletSmokeEffects, dt);
       tankExplosions = advanceTankExplosions(tankExplosions, dt);
@@ -4593,6 +6046,7 @@ function createTankTroubleEngine(options: {
       } else if (!latencyOnly) {
         drawTankSprite(ctx, player, options.playerColor);
       }
+      drawShieldPulseEffects(ctx, shieldPulseEffects, theme);
 
     },
     snapshot() {
@@ -4629,6 +6083,7 @@ function createTankTroubleEngine(options: {
           shotgun_ammo: 0,
           minigun_ammo: 0,
           double_barrel_ammo: 0,
+          mine_ammo: 0,
           weapon_reload_ms: 0,
           shots,
           score,
@@ -4652,6 +6107,7 @@ function createTankTroubleEngine(options: {
           radius: target.radius,
           phase: target.phase,
         })),
+        mines: [],
         tankExplosions: tankExplosions.map(serializeTankExplosion),
       };
     },
@@ -4736,6 +6192,8 @@ function createOnlineTankTroubleEngine(options: {
   mapTag: string;
   theme: "light" | "dark";
   playerColor: string;
+  customOptions?: TankTroubleCustomOptions;
+  localOnly?: boolean;
 }): TankTroubleEngine {
   type OnlinePlayer = {
     id: string;
@@ -4747,18 +6205,26 @@ function createOnlineTankTroubleEngine(options: {
     targetY: number;
     angle: number;
     targetAngle: number;
+    targetVx: number;
+    targetVy: number;
     radius: number;
     flash: number;
     score: number;
     hits: number;
     deaths: number;
     shots: number;
+    hp: number;
+    maxHp: number;
+    smokeBelow50SinceMs?: number;
+    smokeBelow25SinceMs?: number;
     alive: boolean;
     respawnInMs: number;
     weapon: string;
     shotgunAmmo: number;
     minigunAmmo: number;
     doubleBarrelAmmo: number;
+    mineAmmo: number;
+    missileAmmo: number;
     weaponReloadMs: number;
     shieldActiveMs: number;
     shieldVisibleMs: number;
@@ -4766,6 +6232,8 @@ function createOnlineTankTroubleEngine(options: {
     shieldRadius: number;
     input: TankTroubleMatchInputState;
     serverTimeMs: number;
+    snapshotReceivedAtMs: number;
+    spawnSeq: number;
   };
 
   type OnlineBullet = {
@@ -4790,15 +6258,28 @@ function createOnlineTankTroubleEngine(options: {
     predicted?: boolean;
     hasBounced?: boolean;
     ownerShieldReleased?: boolean;
+    ignoreOwnerShield?: boolean;
     projectileType?: string;
+    targetId?: string;
+    targetColor?: string;
+    flameColor?: string;
+    targetFlameColor?: string;
+    locked?: boolean;
+    steerLockedUntilAge?: number;
+    wallHitSeq?: number;
+    wallHitX?: number;
+    wallHitY?: number;
+    towBounceSnapUntilMs?: number;
     pathSegments?: AimSegment[];
     distanceTravelled?: number;
     segments?: AimSegment[];
   };
 
   let currentTheme = options.theme;
+  const localOnly = Boolean(options.localOnly);
   let mapSeed = options.seed;
   let mapTag = options.mapTag;
+  let customOptions = normalizeCustomOptions(options.customOptions);
   let walls = buildTrainingWalls(mapSeed);
   let wallIndex = buildWallSpatialIndex(walls);
   let elapsedMs = 0;
@@ -4813,18 +6294,24 @@ function createOnlineTankTroubleEngine(options: {
     targetY: -9999,
     angle: 0,
     targetAngle: 0,
+    targetVx: 0,
+    targetVy: 0,
     radius: PLAYER_RADIUS,
     flash: 0,
     score: 0,
     hits: 0,
     deaths: 0,
     shots: 0,
+    hp: MAX_TANK_HP,
+    maxHp: MAX_TANK_HP,
     alive: false,
     respawnInMs: 0,
     weapon: "default",
     shotgunAmmo: 0,
     minigunAmmo: 0,
     doubleBarrelAmmo: 0,
+    mineAmmo: 0,
+    missileAmmo: 0,
     weaponReloadMs: 0,
     shieldActiveMs: 0,
     shieldVisibleMs: 0,
@@ -4839,15 +6326,20 @@ function createOnlineTankTroubleEngine(options: {
       fire_held: false,
     },
     serverTimeMs: 0,
+    snapshotReceivedAtMs: 0,
+    spawnSeq: 0,
   };
   let bullets: OnlineBullet[] = [];
   let targets: TrainingTarget[] = [];
+  let mines: LandMine[] = [];
   let bulletFades: BulletFade[] = [];
   let bulletSmokeEffects: BulletSmokeEffect[] = [];
   let wallRipples: WallRipple[] = [];
+  let shieldPulseEffects: ShieldPulseEffect[] = [];
   let tankExplosions: TankExplosionEffect[] = [];
   let powerups: TankPowerup[] = [];
   let powerupEffects: TankPowerupPickupEffect[] = [];
+  let healPlusEffects: HealPlusEffect[] = [];
   let shellCasings: ShellCasing[] = [];
   let seenPowerupEffectIds = new Set<number>();
   let seenServerExplosionIds = new Set<number>();
@@ -4864,11 +6356,287 @@ function createOnlineTankTroubleEngine(options: {
   let localFireSeq = 0;
   let localFireAckSeq = 0;
   let localFireQueued = false;
+  let towControllerLockState: { x: number; y: number; angle: number; spawnSeq: number } | null = null;
   let localMinigunSpinup = 0;
   let localMinigunIdle = 0;
   let localMinigunShotAccum = 0;
   let nextPredictedBulletId = -1;
+  let nextPredictedMineId = -1;
   let nextShellCasingId = 1;
+  let nextLocalPowerupId = 1;
+  let nextLocalPowerupAtMs = localOnly ? 0 : Number.POSITIVE_INFINITY;
+
+  const localPowerupTemplates: Array<Pick<TankPowerup, "kind" | "color" | "symbol" | "effect" | "scoreDelta">> = [
+    { kind: "cash", color: "#9ca3af", symbol: "$$", effect: "score", scoreDelta: 100 },
+    { kind: "shotgun", color: "#9ca3af", symbol: "SH", effect: "shotgun", scoreDelta: 0 },
+    { kind: "laser", color: "#9ca3af", symbol: "LZ", effect: "laser", scoreDelta: 0 },
+    { kind: "minigun", color: "#9ca3af", symbol: "MG", effect: "minigun", scoreDelta: 0 },
+    { kind: "double_barrel", color: "#9ca3af", symbol: "DB", effect: "double_barrel", scoreDelta: 0 },
+    { kind: "shield", color: "#9ca3af", symbol: "SD", effect: "shield", scoreDelta: 0 },
+    { kind: "land_mine", color: "#9ca3af", symbol: "AT", effect: "land_mine", scoreDelta: 0 },
+    { kind: "heal", color: "#9ca3af", symbol: "+", effect: "heal", scoreDelta: 0 },
+    { kind: "guided_missile", color: "#9ca3af", symbol: "GM", effect: "guided_missile", scoreDelta: 0 },
+    { kind: "tow_missile", color: "#9ca3af", symbol: "TOW", effect: "tow_missile", scoreDelta: 0 },
+  ];
+
+  function spawnLocalOnlyPlayer(spawnMode: "random" | "same" = "random") {
+    const rng = createSeededRandom((mapSeed ^ stringHash(options.playerId) ^ localPlayer.spawnSeq ^ localPlayer.deaths ^ Math.floor(elapsedMs)) >>> 0);
+    const useSamePlace =
+      spawnMode === "same" &&
+      Number.isFinite(localPlayer.x) &&
+      Number.isFinite(localPlayer.y) &&
+      localPlayer.x > ARENA_X - 64 &&
+      localPlayer.y > ARENA_Y - 64 &&
+      !walls.some((wall) => circleIntersectsRect({ x: localPlayer.x, y: localPlayer.y, radius: PLAYER_RADIUS + 0.75 }, wall));
+    const spawn = useSamePlace
+      ? { x: localPlayer.x, y: localPlayer.y, radius: PLAYER_RADIUS }
+      : pickSpawnPoint(rng, walls, [], PLAYER_RADIUS, {
+          minX: ARENA_X + 52,
+          maxX: ARENA_X + ARENA_WIDTH - 52,
+          minY: ARENA_Y + 52,
+          maxY: ARENA_Y + ARENA_HEIGHT - 52,
+        });
+    const spawnAngle = useSamePlace ? localPlayer.angle : rng() * Math.PI * 2;
+    localPlayer.x = spawn.x;
+    localPlayer.y = spawn.y;
+    localPlayer.targetX = spawn.x;
+    localPlayer.targetY = spawn.y;
+    localPlayer.angle = spawnAngle;
+    localPlayer.targetAngle = localPlayer.angle;
+    localPlayer.alive = true;
+    localPlayer.respawnInMs = 0;
+    localPlayer.hp = MAX_TANK_HP;
+    localPlayer.maxHp = MAX_TANK_HP;
+    localPlayer.flash = Math.max(localPlayer.flash, 0.18);
+    localPlayer.spawnSeq += 1;
+    resetTankWeaponState(localPlayer);
+    localShootCooldown = 0;
+    localMinigunSpinup = 0;
+    localMinigunIdle = 0;
+    localMinigunShotAccum = 0;
+    clearTowControllerLock();
+    updateTankHealthThresholds(localPlayer, elapsedMs);
+  }
+
+  function tankForHealEffect(effect: Pick<TankPowerupPickupEffect, "playerId">) {
+    if (effect.playerId === options.playerId) {
+      return localPlayer.alive ? localPlayer : null;
+    }
+    const player = players.get(effect.playerId);
+    return player && player.alive ? player : null;
+  }
+
+  function availableLocalPowerupTemplates() {
+    const injured = localPlayer.hp < localPlayer.maxHp;
+    return localPowerupTemplates.filter((template) => {
+      if (template.kind !== "heal") {
+        return true;
+      }
+      return customOptions.health_system && (customOptions.persistent_buffs || injured);
+    });
+  }
+
+  function spawnLocalPowerup(kindTemplate?: Pick<TankPowerup, "kind" | "color" | "symbol" | "effect" | "scoreDelta">) {
+    const templates = availableLocalPowerupTemplates();
+    if (templates.length <= 0) {
+      return;
+    }
+    const rng = createSeededRandom((mapSeed ^ nextLocalPowerupId ^ Math.floor(elapsedMs)) >>> 0);
+    const template = kindTemplate ?? templates[Math.floor(rng() * templates.length) % templates.length];
+    if (template.kind === "heal" && !customOptions.health_system) {
+      return;
+    }
+    const occupied: Circle[] = [
+      { x: localPlayer.x, y: localPlayer.y, radius: localPlayer.radius + 52 },
+      ...powerups.map((powerup) => ({ x: powerup.x, y: powerup.y, radius: powerup.radius + 26 })),
+      ...targets.map((target) => ({ x: target.x, y: target.y, radius: target.radius + 22 })),
+    ];
+    const spawn = pickSpawnPoint(rng, walls, occupied, TARGET_RADIUS, {
+      minX: ARENA_X + 70,
+      maxX: ARENA_X + ARENA_WIDTH - 70,
+      minY: ARENA_Y + 62,
+      maxY: ARENA_Y + ARENA_HEIGHT - 62,
+    });
+    powerups.push({
+      id: nextLocalPowerupId,
+      kind: template.kind,
+      color: template.color,
+      symbol: template.symbol,
+      effect: template.effect,
+      scoreDelta: template.scoreDelta,
+      x: spawn.x,
+      y: spawn.y,
+      homeX: spawn.x,
+      homeY: spawn.y,
+      radius: TARGET_RADIUS,
+      phase: rng() * Math.PI * 2,
+      disabled: false,
+      respawnAtMs: 0,
+    });
+    nextLocalPowerupId += 1;
+  }
+
+  function ensureLocalPowerups() {
+    if (!localOnly) {
+      return;
+    }
+    if (customOptions.persistent_buffs) {
+      powerups = powerups.map((powerup) =>
+        powerup.disabled && Number(powerup.respawnAtMs || 0) <= elapsedMs
+          ? {
+              ...powerup,
+              disabled: false,
+              respawnAtMs: 0,
+              x: Number(powerup.homeX ?? powerup.x),
+              y: Number(powerup.homeY ?? powerup.y),
+            }
+          : powerup,
+      );
+      if (!customOptions.health_system) {
+        powerups = powerups.filter((powerup) => powerup.kind !== "heal");
+      }
+      const existingKinds = new Set(powerups.map((powerup) => powerup.kind));
+      for (const template of availableLocalPowerupTemplates()) {
+        if (!existingKinds.has(template.kind)) {
+          spawnLocalPowerup(template);
+          existingKinds.add(template.kind);
+        }
+      }
+      return;
+    }
+    if (powerups.length <= 0 && !Number.isFinite(nextLocalPowerupAtMs)) {
+      nextLocalPowerupAtMs = elapsedMs + 5000;
+    }
+    if (powerups.length <= 0 && elapsedMs >= nextLocalPowerupAtMs) {
+      spawnLocalPowerup();
+      nextLocalPowerupAtMs = Number.POSITIVE_INFINITY;
+    }
+  }
+
+  function clearLocalPlayerWeaponAmmo() {
+    localPlayer.shotgunAmmo = 0;
+    localPlayer.minigunAmmo = 0;
+    localPlayer.doubleBarrelAmmo = 0;
+    localPlayer.mineAmmo = 0;
+    localPlayer.missileAmmo = 0;
+    localMinigunSpinup = 0;
+    localMinigunIdle = 0;
+    localMinigunShotAccum = 0;
+  }
+
+  function applyLocalPowerupEffect(effect: TankPowerupPickupEffect) {
+    if (effect.effect === "score") {
+      localScore += Math.max(0, effect.scoreDelta || 0);
+      return;
+    }
+    if (effect.effect === "heal") {
+      const beforeHp = localPlayer.hp;
+      localPlayer.hp = Math.min(localPlayer.maxHp, localPlayer.hp + HEAL_AMOUNT);
+      if (localPlayer.hp > beforeHp) {
+        updateTankHealthThresholds(localPlayer, elapsedMs);
+      }
+      healPlusEffects.push(...createHealPlusEffects(effect, localPlayer));
+      return;
+    }
+    if (effect.effect === "shield") {
+      localPlayer.shieldActiveMs = SHIELD_ACTIVE_MS;
+      localPlayer.shieldVisibleMs = SHIELD_VISIBLE_MS;
+      localPlayer.shieldElapsedMs = 0;
+      localPlayer.shieldRadius = SHIELD_RADIUS;
+      return;
+    }
+    if (effect.effect === "shotgun") {
+      localPlayer.weapon = "shotgun";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.shotgunAmmo = SHOTGUN_AMMO;
+      return;
+    }
+    if (effect.effect === "laser") {
+      localPlayer.weapon = "laser";
+      clearLocalPlayerWeaponAmmo();
+      return;
+    }
+    if (effect.effect === "minigun") {
+      localPlayer.weapon = "minigun";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.minigunAmmo = MINIGUN_AMMO;
+      return;
+    }
+    if (effect.effect === "double_barrel") {
+      localPlayer.weapon = "double_barrel";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.doubleBarrelAmmo = DOUBLE_BARREL_AMMO;
+      return;
+    }
+    if (effect.effect === "land_mine") {
+      localPlayer.weapon = "land_mine";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.mineAmmo = MINE_AMMO;
+      return;
+    }
+    if (effect.effect === "guided_missile") {
+      localPlayer.weapon = "guided_missile";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.missileAmmo = GUIDED_MISSILE_AMMO;
+      return;
+    }
+    if (effect.effect === "tow_missile") {
+      localPlayer.weapon = "tow_missile";
+      clearLocalPlayerWeaponAmmo();
+      localPlayer.missileAmmo = TOW_MISSILE_AMMO;
+    }
+  }
+
+  function collectLocalPowerups() {
+    if (!localOnly || !localPlayer.alive) {
+      return;
+    }
+    const remaining: TankPowerup[] = [];
+    for (const powerup of powerups) {
+      if (powerup.disabled) {
+        remaining.push(powerup);
+        continue;
+      }
+      if (distance(localPlayer.x, localPlayer.y, powerup.x, powerup.y) > localPlayer.radius + powerup.radius) {
+        remaining.push(powerup);
+        continue;
+      }
+      const effect: TankPowerupPickupEffect = {
+        id: nextRippleId,
+        powerupId: powerup.id,
+        playerId: options.playerId,
+        kind: powerup.kind,
+        color: powerup.color,
+        symbol: powerup.symbol,
+        effect: powerup.effect,
+        scoreDelta: powerup.scoreDelta,
+        x: powerup.x,
+        y: powerup.y,
+        radius: powerup.radius,
+        life: 0.78,
+        maxLife: 0.78,
+      };
+      nextRippleId += 1;
+      powerupEffects.push(effect);
+      applyLocalPowerupEffect(effect);
+      if (customOptions.persistent_buffs) {
+        remaining.push({
+          ...powerup,
+          disabled: true,
+          respawnAtMs: elapsedMs + 2000,
+          x: Number(powerup.homeX ?? powerup.x),
+          y: Number(powerup.homeY ?? powerup.y),
+        });
+      } else {
+        nextLocalPowerupAtMs = elapsedMs + 5000;
+      }
+    }
+    powerups = remaining;
+  }
+
+  if (localOnly) {
+    spawnLocalOnlyPlayer();
+  }
 
   function getActiveShieldColliders(excludeOwnerId = "", includeExcluded = false) {
     return [...players.values(), localPlayer]
@@ -4887,7 +6655,35 @@ function createOnlineTankTroubleEngine(options: {
       }));
   }
 
+  function projectileStartsInsideOwnerShield(
+    owner: Pick<OnlinePlayer, "alive" | "x" | "y" | "shieldVisibleMs" | "shieldRadius">,
+    spawn: { x: number; y: number },
+    radius: number,
+  ) {
+    if (!owner.alive || Math.max(0, Number(owner.shieldVisibleMs || 0)) <= 0) {
+      return false;
+    }
+    const shieldCoreRadius = Math.max(PLAYER_RADIUS + 10, Number(owner.shieldRadius || SHIELD_RADIUS));
+    return distance(spawn.x, spawn.y, owner.x, owner.y) <= shieldCoreRadius + Math.max(radius, LASER_RADIUS) + 2;
+  }
+
+  function shieldCollidersForProjectileStart(
+    owner: Pick<OnlinePlayer, "id" | "alive" | "x" | "y" | "shieldVisibleMs" | "shieldRadius">,
+    spawn: { x: number; y: number },
+    radius: number,
+  ) {
+    const shields = getActiveShieldColliders();
+    if (!projectileStartsInsideOwnerShield(owner, spawn, radius)) {
+      return shields;
+    }
+    return shields.filter((shield) => shield.id !== owner.id);
+  }
+
   function bulletHasLeftOwnerShield(bullet: OnlineBullet) {
+    if (bullet.ignoreOwnerShield) {
+      bullet.ownerShieldReleased = true;
+      return false;
+    }
     if (bullet.ownerShieldReleased) {
       return true;
     }
@@ -4901,20 +6697,38 @@ function createOnlineTankTroubleEngine(options: {
       bullet.ownerShieldReleased = true;
       return true;
     }
-    return false;
+    return true;
   }
 
-  function pushShieldRipple(x: number, y: number, color: string) {
-    wallRipples.push({
+  function pushShieldPulse(
+    x: number,
+    y: number,
+    color: string,
+    radius = SHIELD_RADIUS,
+    centerX = x,
+    centerY = y,
+    source: "impact" | "blast" = "impact",
+    life?: number,
+    maxLife?: number,
+  ) {
+    const resolvedMaxLife = Math.max(0.08, maxLife ?? (source === "blast" ? 0.46 : 0.36));
+    shieldPulseEffects.push({
       id: nextRippleId,
-      wall: { x: x - 48, y: y - 48, w: 96, h: 96 },
-      x,
-      y,
+      x: centerX,
+      y: centerY,
+      impactX: x,
+      impactY: y,
+      radius: Math.max(PLAYER_RADIUS + 10, radius),
       color,
-      life: 0.3,
-      maxLife: 0.3,
+      life: clamp(life ?? resolvedMaxLife, 0.01, resolvedMaxLife),
+      maxLife: resolvedMaxLife,
+      source,
     });
     nextRippleId += 1;
+    const maxPulses = bullets.length > HEAVY_PROJECTILE_THRESHOLD ? 24 : 48;
+    if (shieldPulseEffects.length > maxPulses) {
+      shieldPulseEffects = shieldPulseEffects.slice(-maxPulses);
+    }
   }
 
   function removeLaserHitBullet(ownerId: string, bulletId: number) {
@@ -4958,12 +6772,37 @@ function createOnlineTankTroubleEngine(options: {
       | "age"
       | "color"
       | "projectileType"
+      | "targetColor"
       | "pathSegments"
       | "distanceTravelled"
       | "segments"
     >,
   ) {
-    const fadeLife = bullet.projectileType === "laser" ? 0.12 : 0.18;
+    if (bullet.projectileType === "tow_missile") {
+      const existingTowFade = bulletFades.find(
+        (fade) =>
+          fade.projectileType === "tow_missile" &&
+          ((bullet.serverId !== undefined && fade.serverId === bullet.serverId) ||
+            (fade.id === bullet.id && fade.ownerId === bullet.ownerId)),
+      );
+      if (existingTowFade) {
+        existingTowFade.x = bullet.x;
+        existingTowFade.y = bullet.y;
+        existingTowFade.vx = bullet.vx * 0.18;
+        existingTowFade.vy = bullet.vy * 0.18;
+        existingTowFade.life = Math.max(existingTowFade.life, TOW_MISSILE_FADE_LIFE * 0.72);
+        existingTowFade.maxLife = Math.max(existingTowFade.maxLife, TOW_MISSILE_FADE_LIFE);
+        return;
+      }
+    }
+    const fadeLife =
+      bullet.projectileType === "laser"
+        ? 0.12
+        : bullet.projectileType === "tow_missile"
+          ? TOW_MISSILE_FADE_LIFE
+          : isSteeredMissileType(bullet.projectileType)
+            ? 0.44
+            : 0.18;
     bulletFades.push({
       id: bullet.id,
       serverId: bullet.serverId,
@@ -4975,6 +6814,7 @@ function createOnlineTankTroubleEngine(options: {
       vy: bullet.vy * 0.18,
       color: bullet.color,
       projectileType: bullet.projectileType,
+      targetColor: bullet.targetColor,
       pathSegments: bullet.pathSegments,
       distanceTravelled: bullet.distanceTravelled,
       segments: bullet.segments,
@@ -5037,6 +6877,63 @@ function createOnlineTankTroubleEngine(options: {
     }
   }
 
+  function findWallForImpact(x: number, y: number, radius: number) {
+    const nearbyWalls = queryNearbyWalls(wallIndex, x, y, Math.max(24, radius + 8));
+    let bestWall: Rect | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const wall of nearbyWalls.length ? nearbyWalls : walls) {
+      const clampedX = clamp(x, wall.x, wall.x + wall.w);
+      const clampedY = clamp(y, wall.y, wall.y + wall.h);
+      const hitDistance = distance(x, y, clampedX, clampedY);
+      if (hitDistance < bestDistance) {
+        bestDistance = hitDistance;
+        bestWall = wall;
+      }
+    }
+    return bestWall;
+  }
+
+  function maybePushServerWallRipple(entry: TankTroubleMatchBulletState, previousSeq: number) {
+    if ((entry.projectile_type || "bullet") !== "tow_missile") {
+      return;
+    }
+    const wallHitSeq = Math.max(0, Math.floor(Number(entry.wall_hit_seq || 0)));
+    if (wallHitSeq <= previousSeq) {
+      return;
+    }
+    const wallHitX = Number(entry.wall_hit_x ?? entry.x);
+    const wallHitY = Number(entry.wall_hit_y ?? entry.y);
+    if (!Number.isFinite(wallHitX) || !Number.isFinite(wallHitY)) {
+      return;
+    }
+    const wall = findWallForImpact(wallHitX, wallHitY, Number(entry.radius || TOW_MISSILE_RADIUS));
+    if (!wall) {
+      return;
+    }
+    pushWallRipple(wall, wallHitX, wallHitY, getPlayerPalette(entry.color, currentTheme).bright);
+  }
+
+  function syncTowBounceFromServer(entry: TankTroubleMatchBulletState, bullet: OnlineBullet, previousSeq: number) {
+    if ((entry.projectile_type || "bullet") !== "tow_missile") {
+      return false;
+    }
+    const wallHitSeq = Math.max(0, Math.floor(Number(entry.wall_hit_seq || 0)));
+    if (wallHitSeq <= previousSeq) {
+      return false;
+    }
+    maybePushServerWallRipple(entry, previousSeq);
+    bullet.x = entry.x;
+    bullet.y = entry.y;
+    bullet.targetX = entry.x;
+    bullet.targetY = entry.y;
+    bullet.vx = entry.vx;
+    bullet.vy = entry.vy;
+    bullet.targetVx = entry.vx;
+    bullet.targetVy = entry.vy;
+    bullet.towBounceSnapUntilMs = elapsedMs + TOW_MISSILE_BOUNCE_SNAP_MS;
+    return true;
+  }
+
   function pushOnlineTankExplosion(tank: Pick<OnlinePlayer, "x" | "y" | "radius" | "color">) {
     if (tank.x < ARENA_X - 128 || tank.y < ARENA_Y - 128) {
       return;
@@ -5046,6 +6943,94 @@ function createOnlineTankTroubleEngine(options: {
     tankExplosions.push(
       createTankExplosion(explosionId, tank, tank.color, (mapSeed ^ explosionId ^ Math.floor(elapsedMs)) >>> 0),
     );
+  }
+
+  function pushOnlineExplosionAt(
+    x: number,
+    y: number,
+    radius: number,
+    color: string,
+    seedSalt = 0,
+  ) {
+    if (x < ARENA_X - 128 || y < ARENA_Y - 128) {
+      return;
+    }
+    const explosionId = nextExplosionId;
+    nextExplosionId += 1;
+    tankExplosions.push(
+      createTankExplosion(
+        explosionId,
+        { x, y, radius: Math.max(1, radius) },
+        color || options.playerColor,
+        (mapSeed ^ explosionId ^ Math.floor(elapsedMs) ^ seedSalt) >>> 0,
+      ),
+    );
+  }
+
+  function pushLocalHitEffect(x: number, y: number, radius: number, color: string, weapon = "bullet") {
+    if (x < ARENA_X - 128 || y < ARENA_Y - 128) {
+      return;
+    }
+    const explosionId = nextExplosionId;
+    nextExplosionId += 1;
+    tankExplosions.push(
+      createTankExplosion(
+        explosionId,
+        { x, y, radius: Math.max(8, radius) },
+        color || localPlayer.color || options.playerColor,
+        (mapSeed ^ explosionId ^ Math.floor(elapsedMs)) >>> 0,
+        `hit:${weapon}`,
+      ),
+    );
+  }
+
+  function destroyLocalPlayer(weapon = "bullet") {
+    if (!localPlayer.alive) {
+      return;
+    }
+    pushOnlineTankExplosion(localPlayer);
+    localDeaths += 1;
+    localPlayer.deaths = localDeaths;
+    localScore = Math.max(0, localScore - 120);
+    localPlayer.score = localScore;
+    localPlayer.hp = 0;
+    localPlayer.alive = false;
+    localPlayer.respawnInMs = PLAYER_RESPAWN_MS;
+    localPlayer.flash = 0.18;
+    resetTankWeaponState(localPlayer);
+    clearTowControllerLock();
+    localFireQueued = false;
+    localFireLatched = false;
+    localShootCooldown = 0;
+    localMinigunSpinup = 0;
+    localMinigunIdle = 0;
+    localMinigunShotAccum = 0;
+    updateTankHealthThresholds(localPlayer, elapsedMs);
+  }
+
+  function applyLocalPlayerDamage(
+    damage: number,
+    weapon = "bullet",
+    hitX = localPlayer.x,
+    hitY = localPlayer.y,
+    hitRadius = localPlayer.radius,
+  ) {
+    if (!localOnly || !localPlayer.alive) {
+      return false;
+    }
+    if (!customOptions.health_system) {
+      destroyLocalPlayer(weapon);
+      return true;
+    }
+    localPlayer.hp = clamp(localPlayer.hp - Math.max(0, damage), 0, localPlayer.maxHp);
+    localPlayer.flash = Math.max(localPlayer.flash, 0.14);
+    updateTankHealthThresholds(localPlayer, elapsedMs);
+    if (localPlayer.hp <= 0) {
+      destroyLocalPlayer(weapon);
+      return true;
+    }
+    pushLocalHitEffect(hitX, hitY, Math.max(8, hitRadius * 0.62), localPlayer.color || options.playerColor, weapon);
+    return false;
   }
 
   function ejectShellCasingAt(
@@ -5140,8 +7125,18 @@ function createOnlineTankTroubleEngine(options: {
 
     const wasAlive = localPlayer.alive;
     const respawned = !wasAlive && state.alive;
+    const serverDeathAdvanced = Number(state.deaths || 0) > Number(localPlayer.deaths || 0);
+    const serverSpawnSeq = Math.max(0, Number(state.spawn_seq || 0));
+    const serverSpawnAdvanced = serverSpawnSeq > Math.max(0, Number(localPlayer.spawnSeq || 0));
     const died = wasAlive && !state.alive;
     const previousWeapon = localPlayer.weapon;
+    if (respawned || serverDeathAdvanced || died) {
+      localFireQueued = false;
+      localFireLatched = false;
+      clearTowControllerLock();
+      bullets = bullets.filter((bullet) => bullet.ownerId !== options.playerId || bullet.serverId !== undefined);
+      mines = mines.filter((mine) => !mine.local);
+    }
     if (died) {
       pushOnlineTankExplosion(localPlayer);
     }
@@ -5156,6 +7151,8 @@ function createOnlineTankTroubleEngine(options: {
     localPlayer.shotgunAmmo = Math.max(0, Number(state.shotgun_ammo || 0));
     localPlayer.minigunAmmo = Math.max(0, Number(state.minigun_ammo || 0));
     localPlayer.doubleBarrelAmmo = Math.max(0, Number(state.double_barrel_ammo || 0));
+    localPlayer.mineAmmo = Math.max(0, Number(state.mine_ammo || 0));
+    localPlayer.missileAmmo = Math.max(0, Number(state.missile_ammo || 0));
     localPlayer.weaponReloadMs = Math.max(0, Number(state.weapon_reload_ms || 0));
     localPlayer.shieldActiveMs = Math.max(0, Number(state.shield_active_ms || 0));
     localPlayer.shieldVisibleMs = Math.max(0, Number(state.shield_visible_ms || 0));
@@ -5166,6 +7163,9 @@ function createOnlineTankTroubleEngine(options: {
     localPlayer.targetAngle = state.angle;
     localPlayer.radius = state.radius;
     localPlayer.flash = Math.max(localPlayer.flash, state.flash);
+    localPlayer.hp = clamp(Number(state.hp ?? MAX_TANK_HP), 0, Number(state.max_hp ?? MAX_TANK_HP));
+    localPlayer.maxHp = Math.max(1, Number(state.max_hp ?? MAX_TANK_HP));
+    updateTankHealthThresholds(localPlayer, elapsedMs);
     localPlayer.score = state.score;
     localPlayer.hits = state.hits;
     localPlayer.deaths = state.deaths;
@@ -5177,6 +7177,7 @@ function createOnlineTankTroubleEngine(options: {
     localPlayer.alive = state.alive;
     localPlayer.respawnInMs = state.respawn_in_ms;
     localPlayer.serverTimeMs = state.server_time_ms || localPlayer.serverTimeMs;
+    localPlayer.spawnSeq = serverSpawnSeq;
 
     if (died) {
       resetTankWeaponState(localPlayer);
@@ -5186,10 +7187,16 @@ function createOnlineTankTroubleEngine(options: {
       localMinigunShotAccum = 0;
     }
 
-    if (forcePosition || respawned || died || localPlayer.x < -9000) {
+    if (isLocalTowControllerActive()) {
+      ensureTowControllerLock();
+      return;
+    }
+
+    if (forcePosition || respawned || died || serverDeathAdvanced || serverSpawnAdvanced || localPlayer.x < -9000) {
       localPlayer.x = state.x;
       localPlayer.y = state.y;
       localPlayer.angle = state.angle;
+      clearTowControllerLock();
       return;
     }
 
@@ -5197,11 +7204,73 @@ function createOnlineTankTroubleEngine(options: {
       localPlayer.x = state.x;
       localPlayer.y = state.y;
       localPlayer.angle = state.angle;
+      clearTowControllerLock();
       return;
     }
 
     // Normal online movement is local-authoritative; server position/angle only
     // re-seeds the tank on joins, deaths, respawns, or map changes.
+  }
+
+  function syncMinesFromState(serverMines: TankTroubleMineState[] | undefined) {
+    const serverEntries = Array.isArray(serverMines) ? serverMines : [];
+    const previousById = new Map(mines.filter((mine) => mine.id > 0).map((mine) => [mine.id, mine]));
+    const liveServerIds = new Set(serverEntries.map((entry) => Number(entry.id || 0)).filter((id) => id > 0));
+    const predicted = mines.filter((mine) => mine.id < 0);
+    const nextMines: LandMine[] = [];
+    const matchedPredicted = new Set<number>();
+
+    for (const entry of serverEntries) {
+      const serverId = Number(entry.id || 0);
+      const existing = previousById.get(serverId);
+      let visibleAlpha = existing?.visibleAlpha ?? defaultMineAlphaForAge(Number(entry.age || 0));
+      if (!existing) {
+        const predictedMine = predicted.find(
+          (mine) =>
+            !matchedPredicted.has(mine.id) &&
+            mine.ownerId === String(entry.owner_id || "") &&
+            distance(mine.x, mine.y, Number(entry.x || 0), Number(entry.y || 0)) <= PLAYER_RADIUS * 1.4,
+        );
+        if (predictedMine) {
+          matchedPredicted.add(predictedMine.id);
+          visibleAlpha = predictedMine.visibleAlpha ?? visibleAlpha;
+        }
+      }
+      nextMines.push({
+        ...normalizeMineState(entry, visibleAlpha),
+        local: false,
+      });
+    }
+
+    const nowMs = Date.now();
+    for (const mine of predicted) {
+      if (matchedPredicted.has(mine.id)) {
+        continue;
+      }
+      const fireSeq = Math.max(0, Number(mine.fireSeq || 0));
+      const ageMs = nowMs - Number(mine.createdAtMs || nowMs);
+      if (fireSeq > 0 && fireSeq <= localFireAckSeq && ageMs > 1200) {
+        continue;
+      }
+      if (ageMs > 3600) {
+        continue;
+      }
+      nextMines.push(mine);
+    }
+
+    for (const mine of previousById.values()) {
+      if (!liveServerIds.has(mine.id) && mine.triggered) {
+        pushOnlineExplosionAt(
+          mine.x,
+          mine.y,
+          Math.max(PLAYER_RADIUS, mine.blastRadius / 4.95),
+          mine.color || options.playerColor,
+          mine.id,
+        );
+      }
+    }
+
+    mines = nextMines;
   }
 
   function tryMoveLocal(player: OnlinePlayer, nextX: number, nextY: number) {
@@ -5248,15 +7317,87 @@ function createOnlineTankTroubleEngine(options: {
     if (!player.alive) {
       return;
     }
+    if (player.weapon === "tow_missile_active") {
+      return;
+    }
 
     const turnIntent = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0);
     const moveIntent = (inputState.forward ? 1 : 0) - (inputState.backward ? 1 : 0);
     player.angle += turnIntent * PLAYER_TURN_SPEED * dt;
+    const speedMultiplier = customOptions.health_system && player.hp < 25 ? 0.8 : 1;
     resolveLocalPlayer(
       player,
-      Math.cos(player.angle) * moveIntent * PLAYER_SPEED * dt,
-      Math.sin(player.angle) * moveIntent * PLAYER_SPEED * dt,
+      Math.cos(player.angle) * moveIntent * PLAYER_SPEED * speedMultiplier * dt,
+      Math.sin(player.angle) * moveIntent * PLAYER_SPEED * speedMultiplier * dt,
     );
+  }
+
+  function findGuidedMissileTarget(missile: OnlineBullet) {
+    let best: OnlinePlayer | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const candidate of [localPlayer, ...players.values()]) {
+      if (!candidate.alive || candidate.x < -9000) {
+        continue;
+      }
+      const candidateDistance = distance(missile.x, missile.y, candidate.x, candidate.y);
+      if (candidateDistance < bestDistance) {
+        best = candidate;
+        bestDistance = candidateDistance;
+      }
+    }
+    return best;
+  }
+
+  function steerGuidedMissile(missile: OnlineBullet, dt: number) {
+    if ((missile.age || 0) < GUIDED_MISSILE_LOCK_DELAY) {
+      missile.locked = false;
+      missile.targetId = "";
+      missile.targetColor = "";
+      missile.targetFlameColor = "#f8fafc";
+      return;
+    }
+    const target = findGuidedMissileTarget(missile);
+    if (!target) {
+      missile.locked = false;
+      missile.targetId = "";
+      missile.targetColor = "";
+      missile.targetFlameColor = "#f8fafc";
+      return;
+    }
+    missile.locked = true;
+    missile.targetId = target.id;
+    missile.targetColor = target.color;
+    missile.targetFlameColor = resolveGameColor(target.color, currentTheme);
+    const speed = Math.hypot(missile.vx, missile.vy) || GUIDED_MISSILE_SPEED;
+    const currentAngle = Math.atan2(missile.vy, missile.vx);
+    const targetAngle = Math.atan2(target.y - missile.y, target.x - missile.x);
+    const ramp = smoothStep(clamp(((missile.age || 0) - GUIDED_MISSILE_LOCK_DELAY) / GUIDED_MISSILE_TURN_RAMP_SECONDS, 0, 1));
+    const maxTurn = GUIDED_MISSILE_TURN_RATE * (0.28 + ramp * 0.72) * dt;
+    const nextAngle =
+      currentAngle +
+      clamp(shortestAngleDelta(currentAngle, targetAngle), -maxTurn, maxTurn);
+    missile.vx = Math.cos(nextAngle) * speed;
+    missile.vy = Math.sin(nextAngle) * speed;
+    missile.targetVx = missile.vx;
+    missile.targetVy = missile.vy;
+  }
+
+  function steerTowMissile(
+    missile: OnlineBullet,
+    inputState: TankTroubleMatchInputState,
+    dt: number,
+    options: { updateTargetVelocity?: boolean } = {},
+  ) {
+    const turnIntent = (inputState.right ? 1 : 0) - (inputState.left ? 1 : 0);
+    const speed = Math.hypot(missile.vx, missile.vy) || TOW_MISSILE_SPEED;
+    const currentAngle = Math.atan2(missile.vy, missile.vx);
+    const nextAngle = currentAngle + turnIntent * TOW_MISSILE_TURN_RATE * dt;
+    missile.vx = Math.cos(nextAngle) * speed;
+    missile.vy = Math.sin(nextAngle) * speed;
+    if (options.updateTargetVelocity ?? true) {
+      missile.targetVx = missile.vx;
+      missile.targetVy = missile.vy;
+    }
   }
 
   function firePredictedLocalBullet() {
@@ -5266,24 +7407,164 @@ function createOnlineTankTroubleEngine(options: {
     const isShotgun = localPlayer.weapon === "shotgun" && localPlayer.shotgunAmmo > 0;
     const isLaser = localPlayer.weapon === "laser";
     const isDoubleBarrel = localPlayer.weapon === "double_barrel" && localPlayer.doubleBarrelAmmo > 0;
+    const isMineLayer = localPlayer.weapon === "land_mine" && localPlayer.mineAmmo > 0;
+    const isGuidedMissile = localPlayer.weapon === "guided_missile" && localPlayer.missileAmmo > 0;
+    const isTowMissile = localPlayer.weapon === "tow_missile" && localPlayer.missileAmmo > 0;
     if (localPlayer.weapon === "minigun") {
       return false;
     }
+    if (localPlayer.weapon === "land_mine" && !isMineLayer) {
+      localPlayer.weapon = "default";
+    }
+    if (localPlayer.weapon === "guided_missile" && !isGuidedMissile) {
+      localPlayer.weapon = "default";
+    }
+    if (localPlayer.weapon === "tow_missile" && !isTowMissile) {
+      localPlayer.weapon = "default";
+    }
+    if (localPlayer.weapon === "tow_missile_active") {
+      return false;
+    }
+
+    const nextFireSeq = localFireSeq + 1;
+    if (isMineLayer) {
+      const nowMs = Date.now();
+      mines.push({
+        id: nextPredictedMineId,
+        ownerId: options.playerId,
+        color: localPlayer.color || options.playerColor,
+        x: localPlayer.x,
+        y: localPlayer.y,
+        radius: MINE_RADIUS,
+        triggerRadius: MINE_TRIGGER_RADIUS,
+        blastRadius: MINE_BLAST_RADIUS,
+        age: 0,
+        armed: false,
+        triggered: false,
+        triggerStartedAtMs: 0,
+        createdAtMs: nowMs,
+        serverTimeMs: nowMs,
+        visibleAlpha: 1,
+        local: true,
+        fireSeq: nextFireSeq,
+      });
+      nextPredictedMineId -= 1;
+      localPlayer.mineAmmo = Math.max(0, localPlayer.mineAmmo - 1);
+      if (localPlayer.mineAmmo <= 0) {
+        localPlayer.weapon = "default";
+      }
+      localShootCooldown = MINE_COOLDOWN;
+      localPlayer.weaponReloadMs = Math.round(MINE_COOLDOWN * 1000);
+      localShots = Math.max(localShots, localPlayer.shots) + 1;
+      localPlayer.shots = localShots;
+      localFireSeq = nextFireSeq;
+      return true;
+    }
+
+    if (isGuidedMissile) {
+      const spawn = safeFireSpawnPoint(localPlayer, walls, GUIDED_MISSILE_RADIUS);
+      const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, GUIDED_MISSILE_RADIUS);
+      bullets.push({
+        id: nextPredictedBulletId,
+        ownerId: options.playerId,
+        color: localPlayer.color || options.playerColor,
+        x: spawn.x,
+        y: spawn.y,
+        targetX: spawn.x,
+        targetY: spawn.y,
+        radius: GUIDED_MISSILE_RADIUS,
+        vx: Math.cos(localPlayer.angle) * GUIDED_MISSILE_SPEED,
+        vy: Math.sin(localPlayer.angle) * GUIDED_MISSILE_SPEED,
+        targetVx: Math.cos(localPlayer.angle) * GUIDED_MISSILE_SPEED,
+        targetVy: Math.sin(localPlayer.angle) * GUIDED_MISSILE_SPEED,
+        life: GUIDED_MISSILE_LIFE,
+        age: 0,
+        bouncesLeft: BULLET_BOUNCES,
+        serverTimeMs: 0,
+        fireSeq: nextFireSeq,
+        predicted: true,
+        ownerShieldReleased: false,
+        ignoreOwnerShield,
+        projectileType: "guided_missile",
+        targetId: "",
+        targetColor: "",
+        flameColor: "#f8fafc",
+        targetFlameColor: "#f8fafc",
+        locked: false,
+      });
+      nextPredictedBulletId -= 1;
+      localPlayer.missileAmmo = Math.max(0, localPlayer.missileAmmo - 1);
+      if (localPlayer.missileAmmo <= 0) {
+        localPlayer.weapon = "default";
+      }
+      localShootCooldown = GUIDED_MISSILE_COOLDOWN;
+      localPlayer.weaponReloadMs = Math.round(GUIDED_MISSILE_COOLDOWN * 1000);
+      localPlayer.flash = Math.max(localPlayer.flash, 0.13);
+      localShots = Math.max(localShots, localPlayer.shots) + 1;
+      localPlayer.shots = localShots;
+      localFireSeq = nextFireSeq;
+      return true;
+    }
+
+    if (isTowMissile) {
+      const spawn = safeFireSpawnPoint(localPlayer, walls, TOW_MISSILE_RADIUS);
+      const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, TOW_MISSILE_RADIUS);
+      bullets.push({
+        id: nextPredictedBulletId,
+        ownerId: options.playerId,
+        color: localPlayer.color || options.playerColor,
+        x: spawn.x,
+        y: spawn.y,
+        targetX: spawn.x,
+        targetY: spawn.y,
+        radius: TOW_MISSILE_RADIUS,
+        vx: Math.cos(localPlayer.angle) * TOW_MISSILE_SPEED,
+        vy: Math.sin(localPlayer.angle) * TOW_MISSILE_SPEED,
+        targetVx: Math.cos(localPlayer.angle) * TOW_MISSILE_SPEED,
+        targetVy: Math.sin(localPlayer.angle) * TOW_MISSILE_SPEED,
+        life: TOW_MISSILE_LIFE,
+        age: 0,
+        bouncesLeft: BULLET_BOUNCES,
+        serverTimeMs: 0,
+        fireSeq: nextFireSeq,
+        predicted: true,
+        ownerShieldReleased: false,
+        ignoreOwnerShield,
+        projectileType: "tow_missile",
+        targetId: "",
+        targetColor: "",
+        flameColor: "#f8fafc",
+        targetFlameColor: "#f8fafc",
+        locked: false,
+      });
+      nextPredictedBulletId -= 1;
+      localPlayer.missileAmmo = 0;
+      localPlayer.weapon = "tow_missile_active";
+      localShootCooldown = TOW_MISSILE_COOLDOWN;
+      localPlayer.weaponReloadMs = Math.round(TOW_MISSILE_COOLDOWN * 1000);
+      localPlayer.flash = Math.max(localPlayer.flash, 0.08);
+      localShots = Math.max(localShots, localPlayer.shots) + 1;
+      localPlayer.shots = localShots;
+      localFireSeq = nextFireSeq;
+      return true;
+    }
+
     const activeLocalBullets = bullets.filter(
       (bullet) =>
         bullet.ownerId === options.playerId &&
         bullet.projectileType !== "shotgun" &&
         bullet.projectileType !== "laser" &&
         bullet.projectileType !== "minigun" &&
-        bullet.projectileType !== "double_barrel",
+        bullet.projectileType !== "double_barrel" &&
+        !isSteeredMissileType(bullet.projectileType),
     ).length;
     if (!isShotgun && !isLaser && !isDoubleBarrel && activeLocalBullets >= MAX_BULLETS) {
       return false;
     }
 
-    const nextFireSeq = localFireSeq + 1;
     if (isLaser) {
       const spawn = safeFireSpawnPoint(localPlayer, walls, LASER_RADIUS);
+      const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, LASER_RADIUS);
       const pathSegments = buildReflectedRaySegments(
         spawn.x,
         spawn.y,
@@ -5291,7 +7572,7 @@ function createOnlineTankTroubleEngine(options: {
         LASER_SPEED * LASER_LIFE + LASER_LENGTH,
         walls,
         12,
-        getActiveShieldColliders(),
+        shieldCollidersForProjectileStart(localPlayer, spawn, LASER_RADIUS),
       );
       const segments = slicePathSegments(pathSegments, 0, LASER_LENGTH);
       const headSegment = segments.length ? segments[segments.length - 1] : undefined;
@@ -5315,6 +7596,7 @@ function createOnlineTankTroubleEngine(options: {
         fireSeq: nextFireSeq,
         predicted: true,
         ownerShieldReleased: false,
+        ignoreOwnerShield,
         projectileType: "laser",
         pathSegments,
         distanceTravelled: 0,
@@ -5331,6 +7613,7 @@ function createOnlineTankTroubleEngine(options: {
         const pelletSpeed = SHOTGUN_MIN_SPEED + rng() * (SHOTGUN_MAX_SPEED - SHOTGUN_MIN_SPEED);
         const lateralOffset = (rng() - 0.5) * SHOTGUN_BARREL_WIDTH;
         const pelletSpawn = safeFireSpawnPoint(localPlayer, walls, SHOTGUN_PELLET_RADIUS, lateralOffset);
+        const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, pelletSpawn, SHOTGUN_PELLET_RADIUS);
         bullets.push({
           id: nextPredictedBulletId,
           ownerId: options.playerId,
@@ -5351,6 +7634,7 @@ function createOnlineTankTroubleEngine(options: {
           fireSeq: nextFireSeq,
           predicted: true,
           ownerShieldReleased: false,
+          ignoreOwnerShield,
           projectileType: "shotgun",
         });
         nextPredictedBulletId -= 1;
@@ -5366,6 +7650,7 @@ function createOnlineTankTroubleEngine(options: {
       const ammoBeforeShot = Math.max(0, localPlayer.doubleBarrelAmmo);
       const lateralOffset = doubleBarrelLateralOffset(ammoBeforeShot);
       const spawn = safeFireSpawnPoint(localPlayer, walls, BULLET_RADIUS, lateralOffset);
+      const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, BULLET_RADIUS);
       bullets.push({
         id: nextPredictedBulletId,
         ownerId: options.playerId,
@@ -5386,6 +7671,7 @@ function createOnlineTankTroubleEngine(options: {
         fireSeq: nextFireSeq,
         predicted: true,
         ownerShieldReleased: false,
+        ignoreOwnerShield,
         projectileType: "double_barrel",
       });
       nextPredictedBulletId -= 1;
@@ -5397,6 +7683,7 @@ function createOnlineTankTroubleEngine(options: {
       localPlayer.weaponReloadMs = DOUBLE_BARREL_RECOIL_MS;
     } else {
       const spawn = safeFireSpawnPoint(localPlayer, walls, BULLET_RADIUS);
+      const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, BULLET_RADIUS);
       bullets.push({
         id: nextPredictedBulletId,
         ownerId: options.playerId,
@@ -5417,6 +7704,7 @@ function createOnlineTankTroubleEngine(options: {
         fireSeq: nextFireSeq,
         predicted: true,
         ownerShieldReleased: false,
+        ignoreOwnerShield,
         projectileType: "bullet",
       });
       nextPredictedBulletId -= 1;
@@ -5436,6 +7724,7 @@ function createOnlineTankTroubleEngine(options: {
 
     const lateralOffset = minigunLateralOffset(localPlayer.minigunAmmo);
     const spawn = safeFireSpawnPoint(localPlayer, walls, MINIGUN_BULLET_RADIUS, lateralOffset);
+    const ignoreOwnerShield = projectileStartsInsideOwnerShield(localPlayer, spawn, MINIGUN_BULLET_RADIUS);
     bullets.push({
       id: nextPredictedBulletId,
       ownerId: options.playerId,
@@ -5455,6 +7744,7 @@ function createOnlineTankTroubleEngine(options: {
       serverTimeMs: 0,
       predicted: true,
       ownerShieldReleased: false,
+      ignoreOwnerShield,
       projectileType: "minigun",
     });
     nextPredictedBulletId -= 1;
@@ -5473,8 +7763,183 @@ function createOnlineTankTroubleEngine(options: {
   }
 
   function handleLocalBulletTargetHit(bullet: OnlineBullet) {
-    void bullet;
-    return false;
+    if (!localOnly) {
+      return false;
+    }
+    if (localPlayer.alive) {
+      const projectileType = bullet.projectileType || "bullet";
+      const isOwnerBullet = bullet.ownerId === options.playerId;
+      const canHitOwner =
+        !isOwnerBullet ||
+        projectileType === "laser" ||
+        ((projectileType === "guided_missile" || projectileType === "tow_missile") && bullet.age >= SELF_HIT_ARM_DELAY) ||
+        (projectileType !== "guided_missile" && projectileType !== "tow_missile" && Boolean(bullet.hasBounced));
+      const hitRadius =
+        projectileType === "guided_missile" || projectileType === "tow_missile"
+          ? Math.max(bullet.radius, GUIDED_MISSILE_HIT_RADIUS)
+          : bullet.radius;
+      const hitLocalTank = canHitOwner && (
+        projectileType === "laser"
+          ? (bullet.segments || bullet.pathSegments || []).some((segment) =>
+              Boolean(
+                segmentCircleCollision(
+                  segment.x1,
+                  segment.y1,
+                  segment.x2,
+                  segment.y2,
+                  localPlayer.x,
+                  localPlayer.y,
+                  localPlayer.radius + hitRadius,
+                ),
+              ),
+            )
+          : distance(localPlayer.x, localPlayer.y, bullet.x, bullet.y) <= localPlayer.radius + hitRadius
+      );
+      if (hitLocalTank) {
+        applyLocalPlayerDamage(
+          projectileDamage(projectileType),
+          projectileType,
+          projectileType === "laser" ? localPlayer.x : bullet.x,
+          projectileType === "laser" ? localPlayer.y : bullet.y,
+          bullet.radius,
+        );
+        pushBulletFadeFromState(bullet);
+        return true;
+      }
+    }
+    const hitIndex = targets.findIndex(
+      (target) => distance(target.x, target.y, bullet.x, bullet.y) <= target.radius + bullet.radius,
+    );
+    if (hitIndex < 0) {
+      return false;
+    }
+    const [target] = targets.splice(hitIndex, 1);
+    localHits += 1;
+    localScore += 25;
+    pushBulletFadeFromState(bullet);
+    tankExplosions.push(
+      createTankExplosion(
+        nextExplosionId,
+        { x: target.x, y: target.y, radius: target.radius },
+        localPlayer.color,
+        (mapSeed ^ nextExplosionId ^ target.id) >>> 0,
+      ),
+    );
+    nextExplosionId += 1;
+    return true;
+  }
+
+  function resolveLocalMineDetonations() {
+    if (!localOnly || !mines.length) {
+      return;
+    }
+    const nextMines: LandMine[] = [];
+    for (const mine of mines) {
+      if (!mine.triggered) {
+        nextMines.push(mine);
+        continue;
+      }
+      const triggerStartedAtMs = Number(mine.triggerStartedAtMs || 0);
+      if (triggerStartedAtMs <= 0 || Date.now() - triggerStartedAtMs < MINE_DETONATION_DELAY_MS) {
+        nextMines.push(mine);
+        continue;
+      }
+      pushOnlineExplosionAt(
+        mine.x,
+        mine.y,
+        Math.max(PLAYER_RADIUS, mine.blastRadius / 4.95),
+        mine.color || options.playerColor,
+        mine.id,
+      );
+      if (
+        localPlayer.alive &&
+        distance(mine.x, mine.y, localPlayer.x, localPlayer.y) <= mine.blastRadius + localPlayer.radius
+      ) {
+        applyLocalPlayerDamage(
+          LAND_MINE_DAMAGE,
+          "land_mine",
+          mine.x,
+          mine.y,
+          Math.max(PLAYER_RADIUS, mine.blastRadius / 4.95),
+        );
+      }
+    }
+    mines = nextMines;
+  }
+
+  function shouldUseServerAuthoritativeTow(bullet: OnlineBullet) {
+    return isTowMissileType(bullet.projectileType) && bullet.serverId !== undefined;
+  }
+
+  function hasLocalTowMissileInFlight() {
+    return bullets.some((bullet) => bullet.ownerId === options.playerId && isTowMissileType(bullet.projectileType));
+  }
+
+  function isLocalTowControllerActive() {
+    return localPlayer.weapon === "tow_missile_active" || hasLocalTowMissileInFlight();
+  }
+
+  function ensureTowControllerLock() {
+    if (!towControllerLockState || towControllerLockState.spawnSeq !== localPlayer.spawnSeq) {
+      towControllerLockState = {
+        x: localPlayer.x,
+        y: localPlayer.y,
+        angle: localPlayer.angle,
+        spawnSeq: localPlayer.spawnSeq,
+      };
+    }
+    localPlayer.x = towControllerLockState.x;
+    localPlayer.y = towControllerLockState.y;
+    localPlayer.angle = towControllerLockState.angle;
+    localPlayer.targetX = towControllerLockState.x;
+    localPlayer.targetY = towControllerLockState.y;
+    localPlayer.targetAngle = towControllerLockState.angle;
+  }
+
+  function clearTowControllerLock() {
+    towControllerLockState = null;
+  }
+
+  function bulletSnapDistance(projectileType?: string) {
+    if (isTowMissileType(projectileType)) {
+      return 280;
+    }
+    return isSteeredMissileType(projectileType) ? 120 : 420;
+  }
+
+  function shouldApplyImmediateBulletCorrection(projectileType?: string) {
+    return isSteeredMissileType(projectileType) && !isTowMissileType(projectileType);
+  }
+
+  function smoothBulletTowardServerTarget(bullet: OnlineBullet, dt: number) {
+    const drift = distance(bullet.x, bullet.y, bullet.targetX, bullet.targetY);
+    if (isTowMissileType(bullet.projectileType) && (bullet.towBounceSnapUntilMs || 0) > elapsedMs) {
+      bullet.vx = bullet.targetVx;
+      bullet.vy = bullet.targetVy;
+      if (drift > 56) {
+        bullet.x = bullet.targetX;
+        bullet.y = bullet.targetY;
+      } else {
+        const bounceBlend = dampFactor(18, dt);
+        bullet.x += (bullet.targetX - bullet.x) * bounceBlend;
+        bullet.y += (bullet.targetY - bullet.y) * bounceBlend;
+      }
+      return;
+    }
+    const velocityBlend = dampFactor(7, dt);
+    const isGuidedDisplay = isSteeredMissileType(bullet.projectileType);
+    const positionBlend = isGuidedDisplay
+      ? dampFactor(drift > 80 ? 13 : 5.2, dt)
+      : dampFactor(drift > 220 ? 7 : 1.8, dt);
+    bullet.vx += (bullet.targetVx - bullet.vx) * velocityBlend;
+    bullet.vy += (bullet.targetVy - bullet.vy) * velocityBlend;
+    if (drift > (isGuidedDisplay ? 180 : 360)) {
+      bullet.x = bullet.targetX;
+      bullet.y = bullet.targetY;
+    } else {
+      bullet.x += (bullet.targetX - bullet.x) * positionBlend;
+      bullet.y += (bullet.targetY - bullet.y) * positionBlend;
+    }
   }
 
   function advanceOnlineBullet(bullet: OnlineBullet, dt: number): OnlineBullet | null {
@@ -5517,13 +7982,45 @@ function createOnlineTankTroubleEngine(options: {
       life: bullet.life - dt,
       age: bullet.age + dt,
     };
+    if (nextBullet.projectileType === "guided_missile") {
+      steerGuidedMissile(nextBullet, dt);
+    } else if (
+      nextBullet.projectileType === "tow_missile" &&
+      nextBullet.ownerId === options.playerId &&
+      (nextBullet.serverId === undefined || (nextBullet.towBounceSnapUntilMs || 0) <= elapsedMs)
+    ) {
+      steerTowMissile(nextBullet, localPlayer.input, dt, {
+        updateTargetVelocity: nextBullet.serverId === undefined,
+      });
+    }
+
+    if (shouldUseServerAuthoritativeTow(nextBullet)) {
+      if (
+        nextBullet.life <= 0 ||
+        nextBullet.x < ARENA_X - 64 ||
+        nextBullet.x > ARENA_X + ARENA_WIDTH + 64 ||
+        nextBullet.y < ARENA_Y - 64 ||
+        nextBullet.y > ARENA_Y + ARENA_HEIGHT + 64
+      ) {
+        pushBulletFadeFromState(nextBullet);
+        return null;
+      }
+      return nextBullet;
+    }
 
     const allowOwnerShield = bulletHasLeftOwnerShield(nextBullet);
     for (const shield of getActiveShieldColliders(bullet.ownerId, true)) {
+      if (shield.id === bullet.ownerId && nextBullet.ignoreOwnerShield) {
+        continue;
+      }
       if (shield.id === bullet.ownerId && !allowOwnerShield) {
         continue;
       }
-      const shieldRadius = Math.max(PLAYER_RADIUS + 10, Number(shield.shieldRadius || SHIELD_RADIUS)) + nextBullet.radius;
+      const shieldCoreRadius = Math.max(PLAYER_RADIUS + 10, Number(shield.shieldRadius || SHIELD_RADIUS));
+      const shieldRadius = shieldCoreRadius + nextBullet.radius;
+      if (distance(previousX, previousY, shield.x, shield.y) < shieldCoreRadius - 0.5) {
+        continue;
+      }
       const collision = segmentCircleCollision(previousX, previousY, nextBullet.x, nextBullet.y, shield.x, shield.y, shieldRadius);
       if (!collision) {
         continue;
@@ -5538,7 +8035,15 @@ function createOnlineTankTroubleEngine(options: {
       nextBullet.x = shield.x + normalX * (shieldRadius + 2.5);
       nextBullet.y = shield.y + normalY * (shieldRadius + 2.5);
       nextBullet.ownerShieldReleased = true;
-      pushShieldRipple(collision.x, collision.y, getPlayerPalette(shield.color, currentTheme).bright);
+      pushShieldPulse(
+        collision.x,
+        collision.y,
+        getPlayerPalette(shield.color, currentTheme).bright,
+        Math.max(PLAYER_RADIUS + 10, Number(shield.shieldRadius || SHIELD_RADIUS)),
+        shield.x,
+        shield.y,
+        "impact",
+      );
       break;
     }
 
@@ -5580,16 +8085,42 @@ function createOnlineTankTroubleEngine(options: {
       if (flipY) {
         nextBullet.vy *= -1;
       }
+      const wallHitX = clamp(nextBullet.x, wall.x, wall.x + wall.w);
+      const wallHitY = clamp(nextBullet.y, wall.y, wall.y + wall.h);
+      if (nextBullet.projectileType === "tow_missile") {
+        nextBullet.wallHitSeq = Math.max(0, Math.floor(Number(nextBullet.wallHitSeq || 0))) + 1;
+        nextBullet.wallHitX = wallHitX;
+        nextBullet.wallHitY = wallHitY;
+      }
       pushWallRipple(
         wall,
-        clamp(nextBullet.x, wall.x, wall.x + wall.w),
-        clamp(nextBullet.y, wall.y, wall.y + wall.h),
+        wallHitX,
+        wallHitY,
         getPlayerPalette(nextBullet.color, currentTheme).bright,
       );
       nextBullet.bouncesLeft -= 1;
       nextBullet.hasBounced = true;
-      nextBullet.x = previousX + nextBullet.vx * dt * 0.4;
-      nextBullet.y = previousY + nextBullet.vy * dt * 0.4;
+      if (nextBullet.projectileType === "tow_missile") {
+        const exitPadding = 0.75;
+        nextBullet.x = flipX
+          ? nextBullet.vx >= 0
+            ? expanded.x + expanded.w + exitPadding
+            : expanded.x - exitPadding
+          : previousX + nextBullet.vx * dt * 0.4;
+        nextBullet.y = flipY
+          ? nextBullet.vy >= 0
+            ? expanded.y + expanded.h + exitPadding
+            : expanded.y - exitPadding
+          : previousY + nextBullet.vy * dt * 0.4;
+        nextBullet.targetX = nextBullet.x;
+        nextBullet.targetY = nextBullet.y;
+        nextBullet.targetVx = nextBullet.vx;
+        nextBullet.targetVy = nextBullet.vy;
+        nextBullet.towBounceSnapUntilMs = elapsedMs + TOW_MISSILE_BOUNCE_SNAP_MS;
+      } else {
+        nextBullet.x = previousX + nextBullet.vx * dt * 0.4;
+        nextBullet.y = previousY + nextBullet.vy * dt * 0.4;
+      }
       break;
     }
 
@@ -5670,7 +8201,7 @@ function createOnlineTankTroubleEngine(options: {
           LASER_AIM_LENGTH,
           walls,
           12,
-          getActiveShieldColliders(),
+          shieldCollidersForProjectileStart(player, spawn, LASER_RADIUS),
         ),
         player.color,
         currentTheme,
@@ -5681,6 +8212,7 @@ function createOnlineTankTroubleEngine(options: {
 
   function applyMatchState(state: TankTroubleMatchState) {
     const mapChanged = state.map_seed !== mapSeed || state.map_id !== mapTag;
+    customOptions = normalizeCustomOptions(state.custom_options);
       if (mapChanged) {
       mapSeed = state.map_seed;
       mapTag = state.map_id;
@@ -5694,6 +8226,8 @@ function createOnlineTankTroubleEngine(options: {
       tankExplosions = [];
       powerups = [];
       powerupEffects = [];
+      healPlusEffects = [];
+      mines = [];
       shellCasings = [];
       seenPowerupEffectIds = new Set();
       seenServerExplosionIds = new Set();
@@ -5708,6 +8242,7 @@ function createOnlineTankTroubleEngine(options: {
       localMinigunIdle = 0;
       localMinigunShotAccum = 0;
       nextPredictedBulletId = -1;
+      nextPredictedMineId = -1;
     }
 
     applyLocalPlayerState(state.local_state, mapChanged);
@@ -5735,8 +8270,12 @@ function createOnlineTankTroubleEngine(options: {
           targetY: entry.y,
           angle: entry.angle,
           targetAngle: entry.angle,
+          targetVx: 0,
+          targetVy: 0,
           radius: entry.radius,
           flash: entry.flash,
+          hp: clamp(Number(entry.hp ?? MAX_TANK_HP), 0, Number(entry.max_hp ?? MAX_TANK_HP)),
+          maxHp: Math.max(1, Number(entry.max_hp ?? MAX_TANK_HP)),
           score: entry.score,
           hits: entry.hits,
           deaths: entry.deaths,
@@ -5747,6 +8286,8 @@ function createOnlineTankTroubleEngine(options: {
           shotgunAmmo: Math.max(0, Number(entry.shotgun_ammo || 0)),
           minigunAmmo: Math.max(0, Number(entry.minigun_ammo || 0)),
           doubleBarrelAmmo: Math.max(0, Number(entry.double_barrel_ammo || 0)),
+          mineAmmo: Math.max(0, Number(entry.mine_ammo || 0)),
+          missileAmmo: Math.max(0, Number(entry.missile_ammo || 0)),
           weaponReloadMs: Math.max(0, Number(entry.weapon_reload_ms || 0)),
           shieldActiveMs: Math.max(0, Number(entry.shield_active_ms || 0)),
           shieldVisibleMs: Math.max(0, Number(entry.shield_visible_ms || 0)),
@@ -5754,17 +8295,35 @@ function createOnlineTankTroubleEngine(options: {
           shieldRadius: Math.max(PLAYER_RADIUS + 10, Number(entry.shield_radius || SHIELD_RADIUS)),
           input: entryInput,
           serverTimeMs: entry.server_time_ms || 0,
+          snapshotReceivedAtMs: elapsedMs,
+          spawnSeq: Math.max(0, Number(entry.spawn_seq || 0)),
         });
+        updateTankHealthThresholds(players.get(entry.player_id)!, elapsedMs);
         return;
       }
 
+      const previousTargetX = existing.targetX;
+      const previousTargetY = existing.targetY;
+      const previousServerTimeMs = existing.serverTimeMs;
+      const nextServerTimeMs = entry.server_time_ms || existing.serverTimeMs;
+      const snapshotDeltaSec = Math.max(0, Math.min(0.25, (nextServerTimeMs - previousServerTimeMs) / 1000));
       existing.countryCode = entry.country_code;
       existing.color = entry.color;
       existing.targetX = entry.x;
       existing.targetY = entry.y;
       existing.targetAngle = entry.angle;
+      if (snapshotDeltaSec > 0.001 && entry.alive && existing.alive) {
+        existing.targetVx = clamp((entry.x - previousTargetX) / snapshotDeltaSec, -PLAYER_SPEED * 1.45, PLAYER_SPEED * 1.45);
+        existing.targetVy = clamp((entry.y - previousTargetY) / snapshotDeltaSec, -PLAYER_SPEED * 1.45, PLAYER_SPEED * 1.45);
+      } else {
+        existing.targetVx = 0;
+        existing.targetVy = 0;
+      }
       existing.radius = entry.radius;
       existing.flash = Math.max(existing.flash, entry.flash);
+      existing.hp = clamp(Number(entry.hp ?? MAX_TANK_HP), 0, Number(entry.max_hp ?? MAX_TANK_HP));
+      existing.maxHp = Math.max(1, Number(entry.max_hp ?? MAX_TANK_HP));
+      updateTankHealthThresholds(existing, elapsedMs);
       existing.score = entry.score;
       existing.hits = entry.hits;
       existing.deaths = entry.deaths;
@@ -5773,6 +8332,8 @@ function createOnlineTankTroubleEngine(options: {
       existing.shotgunAmmo = Math.max(0, Number(entry.shotgun_ammo || 0));
       existing.minigunAmmo = Math.max(0, Number(entry.minigun_ammo || 0));
       existing.doubleBarrelAmmo = Math.max(0, Number(entry.double_barrel_ammo || 0));
+      existing.mineAmmo = Math.max(0, Number(entry.mine_ammo || 0));
+      existing.missileAmmo = Math.max(0, Number(entry.missile_ammo || 0));
       existing.weaponReloadMs = Math.max(0, Number(entry.weapon_reload_ms || 0));
       existing.shieldActiveMs = Math.max(0, Number(entry.shield_active_ms || 0));
       existing.shieldVisibleMs = Math.max(0, Number(entry.shield_visible_ms || 0));
@@ -5784,11 +8345,15 @@ function createOnlineTankTroubleEngine(options: {
       existing.alive = entry.alive;
       existing.respawnInMs = entry.respawn_in_ms;
       existing.input = entryInput;
-      existing.serverTimeMs = entry.server_time_ms || existing.serverTimeMs;
+      existing.serverTimeMs = nextServerTimeMs;
+      existing.snapshotReceivedAtMs = elapsedMs;
+      existing.spawnSeq = Math.max(0, Number(entry.spawn_seq || existing.spawnSeq || 0));
       if (!entry.alive) {
         existing.x = entry.x;
         existing.y = entry.y;
         existing.angle = entry.angle;
+        existing.targetVx = 0;
+        existing.targetVy = 0;
       }
     });
 
@@ -5820,6 +8385,12 @@ function createOnlineTankTroubleEngine(options: {
       if (projectileType === "minigun") {
         return MINIGUN_BULLET_LIFE;
       }
+      if (projectileType === "guided_missile") {
+        return GUIDED_MISSILE_LIFE;
+      }
+      if (projectileType === "tow_missile") {
+        return TOW_MISSILE_LIFE;
+      }
       return BULLET_LIFE;
     };
     const entryAge = (entry: TankTroubleMatchBulletState) =>
@@ -5830,6 +8401,7 @@ function createOnlineTankTroubleEngine(options: {
       (bullet) => bullet.ownerId === options.playerId && bullet.serverId === undefined,
     );
     const unmatchedLocalBulletsByType = new Map<string, OnlineBullet[]>();
+    const unmatchedLocalBulletsByFireSeq = new Map<number, OnlineBullet[]>();
     for (const bullet of bullets) {
       if (bullet.ownerId !== options.playerId) {
         continue;
@@ -5845,11 +8417,22 @@ function createOnlineTankTroubleEngine(options: {
       } else {
         unmatchedLocalBulletsByType.set(projectileType, [bullet]);
       }
+      const fireSeq = Math.max(0, Math.floor(Number(bullet.fireSeq || 0)));
+      if (fireSeq > 0) {
+        const fireSeqBucket = unmatchedLocalBulletsByFireSeq.get(fireSeq);
+        if (fireSeqBucket) {
+          fireSeqBucket.push(bullet);
+        } else {
+          unmatchedLocalBulletsByFireSeq.set(fireSeq, [bullet]);
+        }
+      }
     }
 
     serverLocalBullets.forEach((entry) => {
       const confirmed = localBulletsByServerId.get(entry.id);
       if (confirmed) {
+        const previousWallHitSeq = Math.max(0, Math.floor(Number(confirmed.wallHitSeq || 0)));
+        const snappedTowBounce = syncTowBounceFromServer(entry, confirmed, previousWallHitSeq);
         confirmed.color = entry.color;
         confirmed.radius = entry.radius;
         confirmed.projectileType = entry.projectile_type || confirmed.projectileType || "bullet";
@@ -5857,6 +8440,16 @@ function createOnlineTankTroubleEngine(options: {
         confirmed.targetY = entry.y;
         confirmed.targetVx = entry.vx;
         confirmed.targetVy = entry.vy;
+        confirmed.targetId = entry.target_id || confirmed.targetId || "";
+        confirmed.targetColor = entry.target_color || confirmed.targetColor || "";
+        confirmed.locked = Boolean(entry.locked ?? confirmed.locked ?? false);
+        confirmed.steerLockedUntilAge = Number(entry.steer_locked_until_age ?? confirmed.steerLockedUntilAge ?? 0);
+        confirmed.wallHitSeq = Math.max(previousWallHitSeq, Math.floor(Number(entry.wall_hit_seq || 0)));
+        confirmed.wallHitX = Number(entry.wall_hit_x ?? confirmed.wallHitX ?? entry.x);
+        confirmed.wallHitY = Number(entry.wall_hit_y ?? confirmed.wallHitY ?? entry.y);
+        confirmed.targetFlameColor = entry.flame_color || (confirmed.locked
+          ? resolveGameColor(entry.target_color || confirmed.targetColor, currentTheme)
+          : "#f8fafc");
         confirmed.pathSegments = normalizePathSegments(entry.path_segments);
         confirmed.distanceTravelled = Math.max(0, Number(entry.distance_travelled || 0));
         confirmed.segments = normalizeSegments(entry.segments);
@@ -5866,20 +8459,51 @@ function createOnlineTankTroubleEngine(options: {
         confirmed.hasBounced = Boolean(entry.has_bounced ?? confirmed.hasBounced ?? false);
         confirmed.serverTimeMs = entry.server_time_ms || confirmed.serverTimeMs;
         confirmed.predicted = false;
+        if (
+          !snappedTowBounce &&
+          (confirmed.projectileType || "bullet") !== "laser" &&
+          distance(confirmed.x, confirmed.y, entry.x, entry.y) > bulletSnapDistance(confirmed.projectileType)
+        ) {
+          confirmed.x = entry.x;
+          confirmed.y = entry.y;
+        }
+        if (shouldApplyImmediateBulletCorrection(confirmed.projectileType)) {
+          const correction = dampFactor(10, 1 / 30);
+          confirmed.x += (entry.x - confirmed.x) * correction;
+          confirmed.y += (entry.y - confirmed.y) * correction;
+        }
         return;
       }
 
+      const entryFireSeq = Math.max(0, Math.floor(Number(entry.fire_seq || 0)));
       const sameTypePredictions = unmatchedLocalBulletsByType.get(entry.projectile_type || "bullet") || [];
-      const predictedIndex = sameTypePredictions.findIndex(
-        (bullet) => distance(bullet.x, bullet.y, entry.x, entry.y) <= Math.max(96, BULLET_SPEED * 0.35),
-      );
-      const predicted = predictedIndex >= 0 ? sameTypePredictions[predictedIndex] : undefined;
+      const sameFireSeqPredictions = entryFireSeq > 0 ? unmatchedLocalBulletsByFireSeq.get(entryFireSeq) || [] : [];
+      let predicted =
+        sameFireSeqPredictions.find((bullet) => (bullet.projectileType || "bullet") === (entry.projectile_type || "bullet")) ||
+        undefined;
+      if (!predicted) {
+        const predictedIndex = sameTypePredictions.findIndex(
+          (bullet) =>
+            Math.max(0, Math.floor(Number(bullet.fireSeq || 0))) <= 0 &&
+            distance(bullet.x, bullet.y, entry.x, entry.y) <= Math.max(96, BULLET_SPEED * 0.35),
+        );
+        predicted = predictedIndex >= 0 ? sameTypePredictions[predictedIndex] : undefined;
+      }
       if (predicted) {
         const unmatchedIndex = unmatchedLocalBullets.indexOf(predicted);
         if (unmatchedIndex >= 0) {
           unmatchedLocalBullets.splice(unmatchedIndex, 1);
         }
-        sameTypePredictions.splice(predictedIndex, 1);
+        const fireSeqBucket = unmatchedLocalBulletsByFireSeq.get(Math.max(0, Math.floor(Number(predicted.fireSeq || 0))));
+        const fireSeqIndex = fireSeqBucket?.indexOf(predicted) ?? -1;
+        if (fireSeqBucket && fireSeqIndex >= 0) {
+          fireSeqBucket.splice(fireSeqIndex, 1);
+        }
+        const typeBucket = unmatchedLocalBulletsByType.get(predicted.projectileType || "bullet");
+        const typeIndex = typeBucket?.indexOf(predicted) ?? -1;
+        if (typeBucket && typeIndex >= 0) {
+          typeBucket.splice(typeIndex, 1);
+        }
       }
       if (!predicted) {
         bullets.push({
@@ -5905,14 +8529,27 @@ function createOnlineTankTroubleEngine(options: {
           bouncesLeft: entry.bounces_left ?? BULLET_BOUNCES,
           hasBounced: Boolean(entry.has_bounced ?? false),
           serverTimeMs: entry.server_time_ms || 0,
+          fireSeq: Number(entry.fire_seq || 0) || undefined,
+          targetId: entry.target_id || "",
+          targetColor: entry.target_color || "",
+          flameColor: entry.flame_color || "#f8fafc",
+          targetFlameColor: entry.flame_color || (entry.locked ? resolveGameColor(entry.target_color || "", currentTheme) : "#f8fafc"),
+          locked: Boolean(entry.locked ?? false),
+          steerLockedUntilAge: Number(entry.steer_locked_until_age ?? 0),
+          wallHitSeq: Math.max(0, Math.floor(Number(entry.wall_hit_seq || 0))),
+          wallHitX: Number(entry.wall_hit_x ?? entry.x),
+          wallHitY: Number(entry.wall_hit_y ?? entry.y),
           predicted: false,
           ownerShieldReleased: Boolean(entry.owner_shield_released ?? true),
+          ignoreOwnerShield: Boolean(entry.ignore_owner_shield ?? false),
         });
         nextPredictedBulletId -= 1;
         return;
       }
 
       predicted.serverId = entry.id;
+      const previousWallHitSeq = Math.max(0, Math.floor(Number(predicted.wallHitSeq || 0)));
+      const snappedTowBounce = syncTowBounceFromServer(entry, predicted, previousWallHitSeq);
       predicted.color = entry.color;
       predicted.radius = entry.radius;
       predicted.projectileType = entry.projectile_type || predicted.projectileType || "bullet";
@@ -5920,9 +8557,18 @@ function createOnlineTankTroubleEngine(options: {
       predicted.targetY = entry.y;
       predicted.targetVx = entry.vx;
       predicted.targetVy = entry.vy;
+      predicted.targetId = entry.target_id || predicted.targetId || "";
+      predicted.targetColor = entry.target_color || predicted.targetColor || "";
+      predicted.locked = Boolean(entry.locked ?? predicted.locked ?? false);
+      predicted.steerLockedUntilAge = Number(entry.steer_locked_until_age ?? predicted.steerLockedUntilAge ?? 0);
+      predicted.wallHitSeq = Math.max(previousWallHitSeq, Math.floor(Number(entry.wall_hit_seq || 0)));
+      predicted.wallHitX = Number(entry.wall_hit_x ?? predicted.wallHitX ?? entry.x);
+      predicted.wallHitY = Number(entry.wall_hit_y ?? predicted.wallHitY ?? entry.y);
+      predicted.targetFlameColor = entry.flame_color || (predicted.locked ? resolveGameColor(entry.target_color || predicted.targetColor || "", currentTheme) : "#f8fafc");
       predicted.pathSegments = normalizePathSegments(entry.path_segments);
       predicted.distanceTravelled = Math.max(0, Number(entry.distance_travelled || 0));
       predicted.segments = normalizeSegments(entry.segments);
+      predicted.fireSeq = Number(entry.fire_seq || predicted.fireSeq || 0) || undefined;
       predicted.life = Math.min(predicted.life, entry.life);
       predicted.age = Math.max(predicted.age, entryAge(entry));
       predicted.bouncesLeft = Math.min(predicted.bouncesLeft, entry.bounces_left ?? predicted.bouncesLeft);
@@ -5930,7 +8576,18 @@ function createOnlineTankTroubleEngine(options: {
         predicted.serverTimeMs = entry.server_time_ms || predicted.serverTimeMs;
         predicted.predicted = false;
         predicted.ownerShieldReleased = Boolean(entry.owner_shield_released ?? predicted.ownerShieldReleased ?? true);
-        if ((predicted.projectileType || "bullet") !== "laser" && distance(predicted.x, predicted.y, entry.x, entry.y) > 420) {
+        predicted.ignoreOwnerShield = Boolean(entry.ignore_owner_shield ?? predicted.ignoreOwnerShield ?? false);
+        if (shouldApplyImmediateBulletCorrection(predicted.projectileType)) {
+          const correction = dampFactor(10, 1 / 30);
+          predicted.x += (entry.x - predicted.x) * correction;
+          predicted.y += (entry.y - predicted.y) * correction;
+        }
+        const guidedSnapDistance = bulletSnapDistance(predicted.projectileType);
+        if (
+          !snappedTowBounce &&
+          (predicted.projectileType || "bullet") !== "laser" &&
+          distance(predicted.x, predicted.y, entry.x, entry.y) > guidedSnapDistance
+        ) {
           predicted.x = entry.x;
           predicted.y = entry.y;
         }
@@ -5989,6 +8646,15 @@ function createOnlineTankTroubleEngine(options: {
             vy: entry.vy,
             targetVx: entry.vx,
             targetVy: entry.vy,
+            targetId: entry.target_id || "",
+            targetColor: entry.target_color || "",
+            flameColor: entry.flame_color || "#f8fafc",
+            targetFlameColor: entry.flame_color || (entry.locked ? resolveGameColor(entry.target_color || "", currentTheme) : "#f8fafc"),
+            locked: Boolean(entry.locked ?? false),
+            steerLockedUntilAge: Number(entry.steer_locked_until_age ?? 0),
+            wallHitSeq: Math.max(0, Math.floor(Number(entry.wall_hit_seq || 0))),
+            wallHitX: Number(entry.wall_hit_x ?? entry.x),
+            wallHitY: Number(entry.wall_hit_y ?? entry.y),
             pathSegments: normalizePathSegments(entry.path_segments),
             distanceTravelled: Math.max(0, Number(entry.distance_travelled || 0)),
             segments: normalizeSegments(entry.segments),
@@ -5999,6 +8665,7 @@ function createOnlineTankTroubleEngine(options: {
             serverTimeMs: entry.server_time_ms || 0,
             predicted: false,
             ownerShieldReleased: Boolean(entry.owner_shield_released ?? true),
+            ignoreOwnerShield: Boolean(entry.ignore_owner_shield ?? false),
           });
           if ((entry.projectile_type || "bullet") === "shotgun") {
             newRemoteShotgunPelletsByOwner.set(
@@ -6019,6 +8686,8 @@ function createOnlineTankTroubleEngine(options: {
           return;
         }
 
+        const previousWallHitSeq = Math.max(0, Math.floor(Number(existing.wallHitSeq || 0)));
+        const snappedTowBounce = syncTowBounceFromServer(entry, existing, previousWallHitSeq);
         existing.color = entry.color;
         existing.projectileType = entry.projectile_type || existing.projectileType || "bullet";
         existing.targetX = entry.x;
@@ -6026,6 +8695,14 @@ function createOnlineTankTroubleEngine(options: {
         existing.radius = entry.radius;
         existing.targetVx = entry.vx;
         existing.targetVy = entry.vy;
+        existing.targetId = entry.target_id || existing.targetId || "";
+        existing.targetColor = entry.target_color || existing.targetColor || "";
+        existing.locked = Boolean(entry.locked ?? existing.locked ?? false);
+        existing.steerLockedUntilAge = Number(entry.steer_locked_until_age ?? existing.steerLockedUntilAge ?? 0);
+        existing.wallHitSeq = Math.max(previousWallHitSeq, Math.floor(Number(entry.wall_hit_seq || 0)));
+        existing.wallHitX = Number(entry.wall_hit_x ?? existing.wallHitX ?? entry.x);
+        existing.wallHitY = Number(entry.wall_hit_y ?? existing.wallHitY ?? entry.y);
+        existing.targetFlameColor = entry.flame_color || (existing.locked ? resolveGameColor(entry.target_color || existing.targetColor || "", currentTheme) : "#f8fafc");
         existing.pathSegments = normalizePathSegments(entry.path_segments);
         existing.distanceTravelled = Math.max(0, Number(entry.distance_travelled || 0));
         existing.segments = normalizeSegments(entry.segments);
@@ -6036,7 +8713,13 @@ function createOnlineTankTroubleEngine(options: {
         existing.serverTimeMs = entry.server_time_ms || existing.serverTimeMs;
         existing.predicted = false;
         existing.ownerShieldReleased = Boolean(entry.owner_shield_released ?? existing.ownerShieldReleased ?? true);
-        if ((existing.projectileType || "bullet") !== "laser" && distance(existing.x, existing.y, entry.x, entry.y) > 420) {
+        existing.ignoreOwnerShield = Boolean(entry.ignore_owner_shield ?? existing.ignoreOwnerShield ?? false);
+        const guidedSnapDistance = bulletSnapDistance(existing.projectileType);
+        if (
+          !snappedTowBounce &&
+          (existing.projectileType || "bullet") !== "laser" &&
+          distance(existing.x, existing.y, entry.x, entry.y) > guidedSnapDistance
+        ) {
           existing.x = entry.x;
           existing.y = entry.y;
         }
@@ -6072,7 +8755,9 @@ function createOnlineTankTroubleEngine(options: {
     }
 
     targets = [];
-    powerups = (state.powerups || []).map(normalizePowerupState);
+    syncMinesFromState(state.mines);
+    const serverPowerups = (state.powerups || []).map(normalizePowerupState);
+    powerups = serverPowerups;
     const nowMs = Date.now();
     for (const effectState of state.powerup_effects || []) {
       const effectId = Number(effectState.id || 0);
@@ -6081,28 +8766,44 @@ function createOnlineTankTroubleEngine(options: {
       }
       seenPowerupEffectIds.add(effectId);
       powerupEffects.push(normalizePowerupEffectState(effectState, nowMs));
+      const normalizedEffect = powerupEffects[powerupEffects.length - 1];
+      if (String(effectState.effect || "") === "heal") {
+        const tank = tankForHealEffect(normalizedEffect);
+        if (tank) {
+          healPlusEffects.push(...createHealPlusEffects(normalizedEffect, tank));
+          if (normalizedEffect.playerId === options.playerId) {
+            updateTankHealthThresholds(localPlayer, elapsedMs);
+          }
+        }
+      }
       if (String(effectState.effect || "") === "shotgun" && String(effectState.player_id || "") === options.playerId) {
         localPlayer.weapon = "shotgun";
         localPlayer.shotgunAmmo = Math.max(localPlayer.shotgunAmmo, SHOTGUN_AMMO);
-      localPlayer.minigunAmmo = 0;
-      localPlayer.doubleBarrelAmmo = 0;
-      localMinigunSpinup = 0;
-      localMinigunIdle = 0;
-      localMinigunShotAccum = 0;
-    }
-    if (String(effectState.effect || "") === "laser" && String(effectState.player_id || "") === options.playerId) {
-      localPlayer.weapon = "laser";
-      localPlayer.shotgunAmmo = 0;
-      localPlayer.minigunAmmo = 0;
-      localPlayer.doubleBarrelAmmo = 0;
-      localMinigunSpinup = 0;
-      localMinigunIdle = 0;
-      localMinigunShotAccum = 0;
-    }
+        localPlayer.minigunAmmo = 0;
+        localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = 0;
+        localMinigunSpinup = 0;
+        localMinigunIdle = 0;
+        localMinigunShotAccum = 0;
+      }
+      if (String(effectState.effect || "") === "laser" && String(effectState.player_id || "") === options.playerId) {
+        localPlayer.weapon = "laser";
+        localPlayer.shotgunAmmo = 0;
+        localPlayer.minigunAmmo = 0;
+        localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = 0;
+        localMinigunSpinup = 0;
+        localMinigunIdle = 0;
+        localMinigunShotAccum = 0;
+      }
       if (String(effectState.effect || "") === "minigun" && String(effectState.player_id || "") === options.playerId) {
         localPlayer.weapon = "minigun";
         localPlayer.shotgunAmmo = 0;
         localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = 0;
         localPlayer.minigunAmmo = Math.max(localPlayer.minigunAmmo, MINIGUN_AMMO);
         localMinigunSpinup = 0;
         localMinigunIdle = 0;
@@ -6112,7 +8813,42 @@ function createOnlineTankTroubleEngine(options: {
         localPlayer.weapon = "double_barrel";
         localPlayer.shotgunAmmo = 0;
         localPlayer.minigunAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = 0;
         localPlayer.doubleBarrelAmmo = Math.max(localPlayer.doubleBarrelAmmo, DOUBLE_BARREL_AMMO);
+        localMinigunSpinup = 0;
+        localMinigunIdle = 0;
+        localMinigunShotAccum = 0;
+      }
+      if (String(effectState.effect || "") === "land_mine" && String(effectState.player_id || "") === options.playerId) {
+        localPlayer.weapon = "land_mine";
+        localPlayer.shotgunAmmo = 0;
+        localPlayer.minigunAmmo = 0;
+        localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = Math.max(localPlayer.mineAmmo, MINE_AMMO);
+        localPlayer.missileAmmo = 0;
+        localMinigunSpinup = 0;
+        localMinigunIdle = 0;
+        localMinigunShotAccum = 0;
+      }
+      if (String(effectState.effect || "") === "guided_missile" && String(effectState.player_id || "") === options.playerId) {
+        localPlayer.weapon = "guided_missile";
+        localPlayer.shotgunAmmo = 0;
+        localPlayer.minigunAmmo = 0;
+        localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = Math.max(localPlayer.missileAmmo, GUIDED_MISSILE_AMMO);
+        localMinigunSpinup = 0;
+        localMinigunIdle = 0;
+        localMinigunShotAccum = 0;
+      }
+      if (String(effectState.effect || "") === "tow_missile" && String(effectState.player_id || "") === options.playerId) {
+        localPlayer.weapon = "tow_missile";
+        localPlayer.shotgunAmmo = 0;
+        localPlayer.minigunAmmo = 0;
+        localPlayer.doubleBarrelAmmo = 0;
+        localPlayer.mineAmmo = 0;
+        localPlayer.missileAmmo = Math.max(localPlayer.missileAmmo, TOW_MISSILE_AMMO);
         localMinigunSpinup = 0;
         localMinigunIdle = 0;
         localMinigunShotAccum = 0;
@@ -6127,6 +8863,24 @@ function createOnlineTankTroubleEngine(options: {
         continue;
       }
       seenServerExplosionIds.add(explosionId);
+      if (String(explosionState.weapon || "") === "shield_pulse") {
+        const maxLife = Math.max(0.08, Number(explosionState.maxLife || 0.46));
+        const createdAtMs = Number(explosionState.created_at_ms || nowMs);
+        const serverNowMs = Number(localPlayer.serverTimeMs || nowMs);
+        const ageSec = Math.max(0, (serverNowMs - createdAtMs) / 1000);
+        pushShieldPulse(
+          Number(explosionState.x || 0),
+          Number(explosionState.y || 0),
+          String(explosionState.color || "green"),
+          Math.max(PLAYER_RADIUS + 10, Number(explosionState.radius || SHIELD_RADIUS)),
+          Number(explosionState.x || 0),
+          Number(explosionState.y || 0),
+          "blast",
+          Math.max(0.01, maxLife - ageSec),
+          maxLife,
+        );
+        continue;
+      }
       if (String(explosionState.weapon || "") === "laser") {
         const ownerId = String(explosionState.suicide ? explosionState.victim_id || "" : explosionState.killer_id || "");
         removeLaserHitBullet(ownerId, Number(explosionState.bullet_id || 0));
@@ -6150,6 +8904,9 @@ function createOnlineTankTroubleEngine(options: {
     setTheme(nextTheme) {
       currentTheme = nextTheme;
     },
+    setCustomOptions(nextOptions) {
+      customOptions = normalizeCustomOptions(nextOptions);
+    },
     setBotEnabled() {
       return;
     },
@@ -6167,12 +8924,18 @@ function createOnlineTankTroubleEngine(options: {
       wallRipples = wallRipples
         .map((ripple) => ({ ...ripple, life: ripple.life - dt }))
         .filter((ripple) => ripple.life > 0);
+      shieldPulseEffects = shieldPulseEffects
+        .map((effect) => ({ ...effect, life: effect.life - dt }))
+        .filter((effect) => effect.life > 0);
       bulletFades = advanceBulletFadesWithSmoke(bulletFades, dt, pushBulletSmoke);
       bulletSmokeEffects = advanceBulletSmokeEffects(bulletSmokeEffects, dt);
       tankExplosions = advanceTankExplosions(tankExplosions, dt);
       targets = targets.map((target) => ({ ...target, phase: target.phase + dt * 2.2 }));
-      powerups = powerups.map((powerup) => ({ ...powerup, phase: powerup.phase + dt * 1.8 }));
+      powerups = powerups
+        .filter((powerup) => !powerup.disabled || customOptions.persistent_buffs)
+        .map((powerup) => ({ ...powerup, phase: powerup.phase + dt * 1.8 }));
       powerupEffects = advancePowerupPickupEffects(powerupEffects, dt);
+      healPlusEffects = advanceHealPlusEffects(healPlusEffects, dt);
       killFeedEntries = advanceKillFeedEntries(killFeedEntries, dt);
       shellCasings = shellCasings
         .map((shell) => ({
@@ -6186,19 +8949,39 @@ function createOnlineTankTroubleEngine(options: {
         }))
         .filter((shell) => shell.life > 0);
 
+      if (localOnly) {
+        localPlayer.shieldActiveMs = Math.max(0, localPlayer.shieldActiveMs - dt * 1000);
+        localPlayer.shieldVisibleMs = Math.max(0, localPlayer.shieldVisibleMs - dt * 1000);
+        if (localPlayer.shieldVisibleMs > 0) {
+          localPlayer.shieldElapsedMs += dt * 1000;
+        }
+        ensureLocalPowerups();
+      }
       localPlayer.flash = Math.max(0, localPlayer.flash - dt);
       localShootCooldown = Math.max(0, localShootCooldown - dt);
       localPlayer.weaponReloadMs = Math.max(0, localPlayer.weaponReloadMs - dt * 1000);
       localPlayer.respawnInMs = Math.max(0, localPlayer.respawnInMs - dt * 1000);
+      if (localOnly && !localPlayer.alive && localPlayer.respawnInMs <= 0) {
+        spawnLocalOnlyPlayer(customOptions.same_place_respawn ? "same" : "random");
+      }
       if (localPlayer.alive) {
+        const towControllerActive = isLocalTowControllerActive();
+        if (towControllerActive) {
+          ensureTowControllerLock();
+        } else {
+          clearTowControllerLock();
+        }
         const turnIntent = (input.right ? 1 : 0) - (input.left ? 1 : 0);
         const moveIntent = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
-        localPlayer.angle += turnIntent * PLAYER_TURN_SPEED * dt;
-        resolveLocalPlayer(
-          localPlayer,
-          Math.cos(localPlayer.angle) * moveIntent * PLAYER_SPEED * dt,
-          Math.sin(localPlayer.angle) * moveIntent * PLAYER_SPEED * dt,
-        );
+        if (!towControllerActive) {
+          localPlayer.angle += turnIntent * PLAYER_TURN_SPEED * dt;
+          const speedMultiplier = customOptions.health_system && localPlayer.hp < 25 ? 0.8 : 1;
+          resolveLocalPlayer(
+            localPlayer,
+            Math.cos(localPlayer.angle) * moveIntent * PLAYER_SPEED * speedMultiplier * dt,
+            Math.sin(localPlayer.angle) * moveIntent * PLAYER_SPEED * speedMultiplier * dt,
+          );
+        }
         const shouldFire = localFireQueued || (input.fire && !localFireLatched);
         localFireQueued = false;
         if (localPlayer.weapon === "minigun") {
@@ -6230,18 +9013,26 @@ function createOnlineTankTroubleEngine(options: {
       }
       localFireLatched = input.fire;
       localPlayer.input = {
-        forward: input.forward,
-        backward: input.backward,
+        forward: isLocalTowControllerActive() ? false : input.forward,
+        backward: isLocalTowControllerActive() ? false : input.backward,
         left: input.left,
         right: input.right,
         fire_seq: localFireSeq,
-        fire_held: input.fire,
-      };
+        fire_held: isLocalTowControllerActive() ? false : input.fire,
+      }
+      if (localOnly) {
+        collectLocalPowerups();
+      }
 
       players.forEach((player) => {
         player.flash = Math.max(0, player.flash - dt);
         player.weaponReloadMs = Math.max(0, player.weaponReloadMs - dt * 1000);
         player.respawnInMs = Math.max(0, player.respawnInMs - dt * 1000);
+        player.shieldActiveMs = Math.max(0, player.shieldActiveMs - dt * 1000);
+        player.shieldVisibleMs = Math.max(0, player.shieldVisibleMs - dt * 1000);
+        if (player.shieldVisibleMs > 0) {
+          player.shieldElapsedMs += dt * 1000;
+        }
         if (!player.alive) {
           const respawnBlend = dampFactor(22, dt);
           player.x += (player.targetX - player.x) * respawnBlend;
@@ -6250,19 +9041,28 @@ function createOnlineTankTroubleEngine(options: {
           return;
         }
 
-        advanceOnlinePlayer(player, player.input, dt);
-        const drift = distance(player.x, player.y, player.targetX, player.targetY);
-        if (drift > 260) {
+        const predictedLeadSec = clamp(
+          (elapsedMs - Number(player.snapshotReceivedAtMs || elapsedMs)) / 1000,
+          0,
+          0.12,
+        );
+        const predictedX = player.targetX + player.targetVx * predictedLeadSec;
+        const predictedY = player.targetY + player.targetVy * predictedLeadSec;
+        const drift = distance(player.x, player.y, predictedX, predictedY);
+        if (drift > 260 || player.spawnSeq <= 0) {
           player.x = player.targetX;
           player.y = player.targetY;
         } else {
-          const correctionStrength = dampFactor(drift > 120 ? 7 : 3.5, dt);
-          player.x += (player.targetX - player.x) * correctionStrength;
-          player.y += (player.targetY - player.y) * correctionStrength;
+          const correctionStrength = dampFactor(drift > 120 ? 14 : 8.5, dt);
+          player.x += (predictedX - player.x) * correctionStrength;
+          player.y += (predictedY - player.y) * correctionStrength;
         }
-        player.angle += shortestAngleDelta(player.angle, player.targetAngle) * dampFactor(7, dt);
+        player.angle += shortestAngleDelta(player.angle, player.targetAngle) * dampFactor(12, dt);
       });
-      separatePlayers();
+      mines = advanceMinesVisuals(mines, [localPlayer, ...players.values()], dt);
+      if (localOnly) {
+        resolveLocalMineDetonations();
+      }
 
       const nextBullets: OnlineBullet[] = [];
       for (const bullet of bullets) {
@@ -6270,27 +9070,31 @@ function createOnlineTankTroubleEngine(options: {
         if (!updatedBullet) {
           continue;
         }
+        if (updatedBullet.projectileType === "guided_missile") {
+          const targetFlameColor = updatedBullet.targetFlameColor || "#f8fafc";
+          updatedBullet.flameColor = mixHexColors(updatedBullet.flameColor || "#f8fafc", targetFlameColor, dampFactor(5.8, dt));
+        }
         if (updatedBullet.ownerId === options.playerId) {
+          if (shouldUseServerAuthoritativeTow(updatedBullet)) {
+            smoothBulletTowardServerTarget(updatedBullet, dt);
+          }
           if (!handleLocalBulletTargetHit(updatedBullet)) {
             nextBullets.push(updatedBullet);
           }
           continue;
         }
-        const drift = distance(updatedBullet.x, updatedBullet.y, updatedBullet.targetX, updatedBullet.targetY);
-        const velocityBlend = dampFactor(7, dt);
-        const positionBlend = dampFactor(drift > 220 ? 7 : 1.8, dt);
-        updatedBullet.vx += (updatedBullet.targetVx - updatedBullet.vx) * velocityBlend;
-        updatedBullet.vy += (updatedBullet.targetVy - updatedBullet.vy) * velocityBlend;
-        if (drift > 360) {
-          updatedBullet.x = updatedBullet.targetX;
-          updatedBullet.y = updatedBullet.targetY;
-        } else {
-          updatedBullet.x += (updatedBullet.targetX - updatedBullet.x) * positionBlend;
-          updatedBullet.y += (updatedBullet.targetY - updatedBullet.y) * positionBlend;
-        }
+        smoothBulletTowardServerTarget(updatedBullet, dt);
         nextBullets.push(updatedBullet);
       }
       bullets = nextBullets;
+      if (
+        isLocalTowControllerActive() &&
+        !bullets.some((bullet) => bullet.ownerId === options.playerId && bullet.projectileType === "tow_missile")
+      ) {
+        localPlayer.weapon = "default";
+        localPlayer.missileAmmo = 0;
+        clearTowControllerLock();
+      }
     },
     render(ctx) {
       const darkMode = currentTheme === "dark";
@@ -6486,8 +9290,9 @@ function createOnlineTankTroubleEngine(options: {
         ctx.restore();
       }
 
-      drawPowerups(ctx, powerups, currentTheme, elapsedMs);
+      drawPowerups(ctx, powerups.filter((powerup) => !powerup.disabled), currentTheme, elapsedMs);
       drawOnlineLaserAims(ctx);
+      drawMines(ctx, mines, currentTheme, elapsedMs);
 
       targets.forEach((target) => {
         const pulse = 1 + Math.sin(target.phase) * 0.08;
@@ -6516,6 +9321,14 @@ function createOnlineTankTroubleEngine(options: {
           drawLaserProjectile(ctx, bullet, bullet.color, currentTheme, walls);
           return;
         }
+        if (bullet.projectileType === "guided_missile") {
+          drawGuidedMissileProjectile(ctx, bullet, bullet.color, currentTheme, elapsedMs);
+          return;
+        }
+        if (bullet.projectileType === "tow_missile") {
+          drawTowMissileProjectile(ctx, bullet, bullet.color, currentTheme, elapsedMs);
+          return;
+        }
         drawBulletSprite(ctx, bullet, bullet.color, currentTheme);
       });
 
@@ -6523,6 +9336,14 @@ function createOnlineTankTroubleEngine(options: {
         const progress = fade.life / fade.maxLife;
         if (fade.projectileType === "laser") {
           drawLaserProjectile(ctx, fade, fade.color || options.playerColor, currentTheme, walls);
+          return;
+        }
+        if (fade.projectileType === "guided_missile") {
+          drawGuidedMissileExpiryEffect(ctx, fade, fade.color || options.playerColor, currentTheme, elapsedMs);
+          return;
+        }
+        if (fade.projectileType === "tow_missile") {
+          drawTowMissileExpiryEffect(ctx, fade, fade.color || options.playerColor, currentTheme, elapsedMs);
           return;
         }
         drawBulletSprite(ctx, fade, fade.color || options.playerColor, currentTheme, progress, (1 - progress) * 1.6);
@@ -6538,33 +9359,49 @@ function createOnlineTankTroubleEngine(options: {
         .filter((player) => player.alive)
         .forEach((player) => {
           drawOnlineTankSprite(ctx, player);
+          if (customOptions.health_system) {
+            drawDamageSmoke(ctx, player, currentTheme, elapsedMs);
+          }
+          if (customOptions.health_system) {
+            drawTankHealthBadge(ctx, player, currentTheme, elapsedMs);
+          } else {
+            ctx.save();
+            ctx.font = "700 12px 'Segoe UI'";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = darkMode ? "rgba(219, 234, 254, 0.92)" : "rgba(15, 23, 42, 0.68)";
+            ctx.fillText(
+              truncatePlayerIdLabel(player.id),
+              player.x,
+              player.y - player.radius - 22,
+            );
+            ctx.restore();
+          }
+        });
+
+      if (localPlayer.alive) {
+        drawOnlineTankSprite(ctx, localPlayer);
+        if (customOptions.health_system) {
+          drawDamageSmoke(ctx, localPlayer, currentTheme, elapsedMs);
+        }
+        if (customOptions.health_system) {
+          drawTankHealthBadge(ctx, localPlayer, currentTheme, elapsedMs);
+        } else {
           ctx.save();
           ctx.font = "700 12px 'Segoe UI'";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = darkMode ? "rgba(219, 234, 254, 0.92)" : "rgba(15, 23, 42, 0.68)";
           ctx.fillText(
-            truncatePlayerIdLabel(player.id),
-            player.x,
-            player.y - player.radius - 22,
+            truncatePlayerIdLabel(localPlayer.id),
+            localPlayer.x,
+            localPlayer.y - localPlayer.radius - 22,
           );
           ctx.restore();
-        });
-
-      if (localPlayer.alive) {
-        drawOnlineTankSprite(ctx, localPlayer);
-        ctx.save();
-        ctx.font = "700 12px 'Segoe UI'";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = darkMode ? "rgba(219, 234, 254, 0.92)" : "rgba(15, 23, 42, 0.68)";
-        ctx.fillText(
-          truncatePlayerIdLabel(localPlayer.id),
-          localPlayer.x,
-          localPlayer.y - localPlayer.radius - 22,
-        );
-        ctx.restore();
+        }
       }
+      drawHealPlusEffects(ctx, healPlusEffects, currentTheme);
+      drawShieldPulseEffects(ctx, shieldPulseEffects, currentTheme);
     },
     snapshot() {
       return {
@@ -6580,14 +9417,19 @@ function createOnlineTankTroubleEngine(options: {
       };
     },
     buildMatchSyncState() {
-      if (localPlayer.x < -9000 || localPlayer.y < -9000) {
+      if (localPlayer.x < -9000 || localPlayer.y < -9000 || !localPlayer.alive || localPlayer.respawnInMs > 0) {
         return undefined;
+      }
+      if (isLocalTowControllerActive()) {
+        ensureTowControllerLock();
       }
       return {
         x: localPlayer.x,
         y: localPlayer.y,
         angle: localPlayer.angle,
         radius: localPlayer.radius,
+        deaths: localPlayer.deaths,
+        spawn_seq: localPlayer.spawnSeq,
       };
     },
     applyMatchState,
@@ -6605,10 +9447,14 @@ function createOnlineTankTroubleEngine(options: {
         angle: localPlayer.angle,
         radius: localPlayer.radius,
         flash: localPlayer.flash,
+        hp: localPlayer.hp,
+        max_hp: localPlayer.maxHp,
         weapon: localPlayer.weapon,
         shotgun_ammo: localPlayer.shotgunAmmo,
         minigun_ammo: localPlayer.minigunAmmo,
         double_barrel_ammo: localPlayer.doubleBarrelAmmo,
+        mine_ammo: localPlayer.mineAmmo,
+        missile_ammo: localPlayer.missileAmmo,
         weapon_reload_ms: Math.max(0, Math.round(localPlayer.weaponReloadMs)),
         shots: localShots,
           score: localScore,
@@ -6627,11 +9473,21 @@ function createOnlineTankTroubleEngine(options: {
             vy: bullet.vy,
             bounces_left: bullet.bouncesLeft,
             has_bounced: Boolean(bullet.hasBounced),
+            owner_shield_released: Boolean(bullet.ownerShieldReleased),
+            ignore_owner_shield: Boolean(bullet.ignoreOwnerShield),
+            target_id: bullet.targetId,
+            target_color: bullet.targetColor,
+            flame_color: bullet.flameColor,
+            locked: Boolean(bullet.locked),
+            wall_hit_seq: Math.max(0, Math.floor(Number(bullet.wallHitSeq || 0))),
+            wall_hit_x: bullet.wallHitX,
+            wall_hit_y: bullet.wallHitY,
             path_segments: bullet.pathSegments,
             distance_travelled: bullet.distanceTravelled,
             segments: bullet.segments,
           })),
         targets: [],
+        mines: mines.map((mine) => serializeMineState(mine)),
         tankExplosions: tankExplosions.map(serializeTankExplosion),
       };
     },
@@ -6653,10 +9509,12 @@ function createOnlineTankTroubleEngine(options: {
   };
 }
 
-export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePanelProps) {
+export function TankTroublePanel({ theme, localCountryCode = "", canRunSetup = true }: TankTroublePanelProps) {
   const [selectedGame, setSelectedGame] = useState<GameKey | null>("tank-trouble");
   const [selectedColor, setSelectedColor] = useState<PlayerColorKey>("green");
   const [draftPlayerId, setDraftPlayerId] = useState(loadStoredPlayerId);
+  const [customModeOpen, setCustomModeOpen] = useState(false);
+  const [customOptions, setCustomOptions] = useState<TankTroubleCustomOptions>(defaultCustomOptions);
   const [session, setSession] = useState<GameSession | null>(null);
   const [snapshot, setSnapshot] = useState<TankTroubleSnapshot>(createEmptySnapshot);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(loadStoredLeaderboard);
@@ -6763,13 +9621,15 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       return;
     }
 
-    if (session.mode === "online") {
+    if (session.mode === "online" || session.mode === "custom" || session.mode === "local") {
       engineRef.current = createOnlineTankTroubleEngine({
         playerId: session.playerId,
         seed: session.seed,
         mapTag: session.mapId,
         theme,
         playerColor: session.playerColor,
+        customOptions: normalizeCustomOptions(session.customOptions),
+        localOnly: session.mode === "local",
       });
     } else {
       engineRef.current = createTankTroubleEngine({
@@ -6789,12 +9649,22 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
   }, [theme]);
 
   useEffect(() => {
+    engineRef.current?.setCustomOptions?.(normalizeCustomOptions(session?.customOptions));
+  }, [session?.customOptions]);
+
+  useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
   useEffect(() => {
     roomStateRef.current = roomState;
   }, [roomState]);
+
+  useEffect(() => {
+    if (!session && roomState?.match_mode === "custom" && roomState.custom_options) {
+      setCustomOptions(normalizeCustomOptions(roomState.custom_options));
+    }
+  }, [roomState, session]);
 
   useEffect(() => {
     return () => {
@@ -6806,7 +9676,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       }
       matchSocketRef.current?.close();
       const activeSession = sessionRef.current;
-      if (activeSession?.mode === "online") {
+      if (activeSession?.mode === "online" || activeSession?.mode === "custom") {
         void leaveTankTroubleMatch({
           room: activeSession.room,
           player_id: activeSession.playerId,
@@ -6898,7 +9768,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       setVoteHovered(false);
       return;
     }
-    if (session.mode === "online") {
+    if (session.mode === "online" || session.mode === "custom" || session.mode === "local") {
       return;
     }
 
@@ -6967,7 +9837,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
   }, [session?.mode]);
 
   useEffect(() => {
-    if (!session || session.mode !== "online") {
+    if (!session || (session.mode !== "online" && session.mode !== "custom")) {
       latencySyncKickRef.current = null;
       matchSocketRef.current?.close();
       matchSocketRef.current = null;
@@ -7041,6 +9911,10 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
               player_id: session.playerId,
               country_code: localCountryCode,
               preferred_color: sessionRef.current?.playerColor ?? session.playerColor,
+              match_mode: sessionRef.current?.mode === "custom" ? "custom" : "default",
+              custom_options: sessionRef.current?.mode === "custom"
+                ? normalizeCustomOptions(sessionRef.current?.customOptions)
+                : defaultCustomOptions(),
               input_seq: nextInputSeq,
               map_seed: sessionRef.current?.seed ?? session.seed,
               latency_ms: normalizeLatencyMs(matchLatencyMsRef.current),
@@ -7129,18 +10003,24 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
                   return current;
                 }
                 const nextColor = normalizePlayerColorKey(message.state.local_player_color || current.playerColor);
+                const nextMode: GameSessionMode = message.state.match_mode === "custom" ? "custom" : "online";
+                const nextCustomOptions = normalizeCustomOptions(message.state.custom_options);
                 if (
                   current.seed === message.state.map_seed &&
                   current.mapId === message.state.map_id &&
-                  current.playerColor === nextColor
+                  current.playerColor === nextColor &&
+                  current.mode === nextMode &&
+                  JSON.stringify(normalizeCustomOptions(current.customOptions)) === JSON.stringify(nextCustomOptions)
                 ) {
                   return current;
                 }
                 return {
                   ...current,
+                  mode: nextMode,
                   seed: message.state.map_seed,
                   mapId: message.state.map_id,
                   playerColor: nextColor,
+                  customOptions: nextCustomOptions,
                 };
               });
               return;
@@ -7333,7 +10213,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
     if (!session) {
       return;
     }
-    if (session.mode === "online") {
+    if (session.mode === "online" || session.mode === "custom") {
       return;
     }
 
@@ -7355,7 +10235,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
   }, [localCountryCode, session, snapshot.hits, snapshot.score]);
 
   useEffect(() => {
-    if (session?.mode !== "online" || !roomState) {
+    if (!session || (session.mode !== "online" && session.mode !== "custom") || !roomState) {
       return;
     }
     setLeaderboard(buildLeaderboardEntries(roomState.active_players));
@@ -7372,7 +10252,13 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       return;
     }
 
-    const syncCanvasResolution = () => {
+    let nextCanvasResolutionCheckAt = 0;
+    const syncCanvasResolution = (frameTime = performance.now(), force = false) => {
+      if (!force && canvas.width > 0 && canvas.height > 0 && frameTime < nextCanvasResolutionCheckAt) {
+        ctx.setTransform(canvas.width / WORLD_WIDTH, 0, 0, canvas.height / WORLD_HEIGHT, 0, 0);
+        return;
+      }
+      nextCanvasResolutionCheckAt = frameTime + 250;
       const rect = canvas.getBoundingClientRect();
       const devicePixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
       const nextWidth = Math.max(1, Math.round(rect.width * devicePixelRatio));
@@ -7386,6 +10272,15 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       ctx.setTransform(canvas.width / WORLD_WIDTH, 0, 0, canvas.height / WORLD_HEIGHT, 0, 0);
     };
 
+    const handleCanvasResize = () => {
+      nextCanvasResolutionCheckAt = 0;
+      syncCanvasResolution(performance.now(), true);
+    };
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(handleCanvasResize);
+    resizeObserver?.observe(canvas);
+    window.addEventListener("resize", handleCanvasResize);
+    handleCanvasResize();
+
     const updateKeyState = (code: string, pressed: boolean) => {
       const action = findControlActionByCode(controlBindingsRef.current, code);
       if (!action) {
@@ -7393,11 +10288,11 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       }
 
       if (action === "fire") {
-        if (inputRef.current.fire === pressed && !pressed) {
+        if (inputRef.current.fire === pressed) {
           return true;
         }
         if (pressed && !inputRef.current.fire) {
-          if (sessionRef.current?.mode === "online") {
+          if (sessionRef.current?.mode === "online" || sessionRef.current?.mode === "custom") {
             if (!engineRef.current?.isRapidFireWeapon?.()) {
               engineRef.current?.queueFireInput();
             }
@@ -7461,12 +10356,12 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
 
       const delta = Math.min(0.034, Math.max(0.001, (frameTime - lastFrameRef.current) / 1000));
       lastFrameRef.current = frameTime;
-      syncCanvasResolution();
+      syncCanvasResolution(frameTime);
       activeEngine.update(delta, inputRef.current);
       activeEngine.render(ctx);
 
       snapshotBudget += delta;
-      const snapshotInterval = session.mode === "online" ? 0.25 : 0.08;
+      const snapshotInterval = session.mode === "online" || session.mode === "custom" ? 0.25 : 0.08;
       if (snapshotBudget >= snapshotInterval) {
         snapshotBudget = 0;
         setSnapshot(activeEngine.snapshot());
@@ -7484,6 +10379,8 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("resize", handleCanvasResize);
+      resizeObserver?.disconnect();
       if (animationFrameRef.current) {
         window.cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -7506,7 +10403,13 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
   const availableColorSet = new Set((!session ? roomState?.available_colors : PLAYER_COLOR_OPTIONS.map((entry) => entry.key)) ?? []);
   const selectedColorAvailable = availableColorSet.has(selectedColor);
   const roomIsFull = Boolean(!session && roomState?.room_full);
-  const scoreboardSource = session?.mode === "online" && roomState ? buildLeaderboardEntries(roomState.active_players) : leaderboard;
+  const roomOccupied = Boolean(!session && roomState && roomState.active_player_count > 0);
+  const roomInCustomMode = roomState?.match_mode === "custom" && roomOccupied;
+  const roomInDefaultMode = roomState?.match_mode !== "custom" && roomOccupied;
+  const customControlsLocked = Boolean(roomInCustomMode && roomState?.mode_locked);
+  const customServerControlsLocked = customControlsLocked;
+  const customStartLabel = roomInCustomMode ? "加入游戏" : "开始游戏";
+  const scoreboardSource = session && (session.mode === "online" || session.mode === "custom") && roomState ? buildLeaderboardEntries(roomState.active_players) : leaderboard;
   const scoreboardRows = Array.from({ length: SCOREBOARD_LIMIT }, (_, index) => scoreboardSource[index] ?? null);
   const stageAspectRatio = `${WORLD_WIDTH} / ${WORLD_HEIGHT}`;
   const mapVoteLabel = roomState?.countdown_active
@@ -7532,11 +10435,13 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
     .join(" ");
   const sessionErrorMessage = latencyError || roomError;
   const launchHint = !playerId
-    ? "请输入玩家 ID 后即可开始游戏或测试延迟。"
+    ? "请输入玩家 ID 后即可开始游戏。"
     : !selectedColorAvailable
       ? "所选颜色已被占用，请换一个颜色。"
       : "";
   const startDisabled = roomBusy || roomIsFull;
+  const defaultStartDisabled = startDisabled || roomInCustomMode;
+  const customStartDisabled = roomBusy || roomIsFull || roomInDefaultMode;
   const tankTroubleSetupBusy = tankTroubleSetupPhase === "checking" || tankTroubleSetupPhase === "running";
   const tankTroubleSetupFeedbackVisible = tankTroubleSetupPhase === "ready" || tankTroubleSetupPhase === "error";
   const tankTroubleSetupFeedbackClassName = [
@@ -7546,7 +10451,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
   ]
     .filter(Boolean)
     .join(" ");
-  const startLabel = roomIsFull ? "游戏已满" : "开始游戏";
+  const startLabel = roomIsFull ? "游戏已满" : "默认模式";
 
   function cancelScoreboardClose() {
     if (closeScoreboardTimerRef.current) {
@@ -7588,7 +10493,15 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       setRoomError("当前房间已满，请稍后重试。");
       return;
     }
-    if (mode === "online" && !selectedColorAvailable) {
+    if (mode === "online" && roomInCustomMode) {
+      setRoomError("当前房间正在自定义模式中，请通过自定义模式加入。");
+      return;
+    }
+    if (mode === "custom" && roomInDefaultMode) {
+      setRoomError("当前房间正在默认联机模式中，暂不能开启自定义模式。");
+      return;
+    }
+    if ((mode === "online" || mode === "custom") && !selectedColorAvailable) {
       setBlockedColor(selectedColor);
       window.setTimeout(() => {
         setBlockedColor((current) => (current === selectedColor ? null : current));
@@ -7610,12 +10523,55 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
     setRoomError("");
     setLatencyError("");
     try {
-      if (mode === "online") {
+      let freshRoomState = roomStateRef.current ?? roomState;
+      if (mode === "online" || mode === "custom") {
+        try {
+          freshRoomState = await getTankTroubleRoomStatus({
+            room: TANK_TROUBLE_ROOM,
+          });
+          roomStateRef.current = freshRoomState;
+          setRoomState(freshRoomState);
+        } catch {
+          freshRoomState = roomStateRef.current ?? roomState;
+        }
+        const freshRoomOccupied = Boolean(freshRoomState && freshRoomState.active_player_count > 0);
+        if (mode === "online" && freshRoomOccupied && freshRoomState?.match_mode === "custom") {
+          setRoomError("褰撳墠鎴块棿姝ｅ湪鑷畾涔夋ā寮忎腑锛岃閫氳繃鑷畾涔夋ā寮忓姞鍏ャ€?");
+          return;
+        }
+        if (mode === "custom" && freshRoomOccupied && freshRoomState?.match_mode !== "custom") {
+          setRoomError("褰撳墠鎴块棿姝ｅ湪榛樿鑱旀満妯″紡涓紝鏆備笉鑳藉紑鍚嚜瀹氫箟妯″紡銆?");
+          return;
+        }
+      }
+      const joinPlayerId =
+        mode === "online" || mode === "custom"
+          ? resolveJoinPlayerId(playerId, freshRoomState)
+          : playerId;
+      if (mode === "local") {
+        const localSeed = (roomState?.map_seed ?? (Date.now() ^ stringHash(playerId))) >>> 0;
+        storePlayerId(playerId);
+        setRoomState(null);
+        setSession({
+          playerId,
+          seed: localSeed,
+          mapId: `LOCAL-${localSeed.toString(16).slice(-4).toUpperCase()}`,
+          room: "local",
+          playerColor: selectedColor,
+          mode: "local",
+          customOptions: localTestCustomOptions(),
+        });
+        setCustomModeOpen(false);
+        return;
+      }
+      if (mode === "online" || mode === "custom") {
         const nextMatchState = await syncTankTroubleMatch({
           room: TANK_TROUBLE_ROOM,
-          player_id: playerId,
+          player_id: joinPlayerId,
           country_code: localCountryCode,
           preferred_color: selectedColor,
+          match_mode: mode === "custom" ? "custom" : "default",
+          custom_options: mode === "custom" ? normalizeCustomOptions(customOptions) : defaultCustomOptions(),
           input_seq: 0,
           map_seed: 0,
           input: createEmptyMatchInput(),
@@ -7626,7 +10582,8 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
         roomStateRef.current = nextRoomState;
         lastOnlineUiRefreshRef.current = Date.now();
         setRoomState(nextRoomState);
-        setSession(buildSessionFromMatchState(playerId, nextMatchState));
+        setSession(buildSessionFromMatchState(joinPlayerId, nextMatchState));
+        setCustomModeOpen(false);
         return;
       }
 
@@ -7641,35 +10598,6 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
       setSession(buildSessionFromRoomState(playerId, nextRoomState, selectedColor, mode));
     } catch (error) {
       setRoomError(error instanceof Error ? error.message : "地图同步失败");
-    } finally {
-      setRoomBusy(false);
-    }
-  }
-
-  async function openSpectatorMap() {
-    if (!hasSelectedGame || roomBusy) {
-      return;
-    }
-
-    const pendingWindow = window.open("", "_blank");
-    if (pendingWindow) {
-      pendingWindow.opener = null;
-    }
-    setLaunchMode("spectator");
-    setRoomBusy(true);
-    setRoomError("");
-    setLatencyError("");
-    try {
-      const page = await getTankTroubleSpectatorPageUrl(TANK_TROUBLE_ROOM);
-      const spectatorUrl = withDarkSpectatorTheme(page.url);
-      if (pendingWindow) {
-        pendingWindow.location.href = spectatorUrl;
-      } else {
-        window.open(spectatorUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (error) {
-      pendingWindow?.close();
-      setRoomError(error instanceof Error ? error.message : "监控地图打开失败");
     } finally {
       setRoomBusy(false);
     }
@@ -7691,9 +10619,9 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
     try {
       await checkTankTroubleSetup();
       setTankTroubleSetupPhase("running");
-      await runTankTroubleSetup();
+      const setupResult = await runTankTroubleSetup();
       setTankTroubleSetupPhase("ready");
-      setTankTroubleSetupMessage("服务器已同步到当前版本");
+      setTankTroubleSetupMessage(setupResult.message || "服务器已同步到当前版本");
       tankTroubleSetupFeedbackTimerRef.current = window.setTimeout(() => {
         setTankTroubleSetupPhase("idle");
         setTankTroubleSetupMessage("");
@@ -7714,7 +10642,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
     }
 
     if (currentSession) {
-      if (currentSession.mode === "online") {
+      if (currentSession.mode === "online" || currentSession.mode === "custom") {
         matchSocketRef.current?.close();
         matchSocketRef.current = null;
         void leaveTankTroubleMatch({
@@ -7722,7 +10650,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
           player_id: currentSession.playerId,
           country_code: localCountryCode,
         }).catch(() => undefined);
-      } else {
+      } else if (currentSession.mode !== "local") {
         void leaveTankTroubleRoom({
           room: currentSession.room,
           player_id: currentSession.playerId,
@@ -7875,30 +10803,32 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
                     <Button
                       block
                       loading={roomBusy && launchMode === "online"}
-                      disabled={startDisabled}
+                      disabled={defaultStartDisabled}
                       onClick={() => void startSession("online")}
                     >
                       {startLabel}
                     </Button>
+                    <div className="game-custom-mode-stack">
+                      <Button
+                        block
+                        variant="secondary"
+                        loading={roomBusy && launchMode === "custom"}
+                        disabled={roomBusy}
+                        onClick={() => setCustomModeOpen((current) => !current)}
+                      >
+                        自定义模式
+                      </Button>
+                    </div>
                     <Button
                       block
                       variant="secondary"
-                      loading={roomBusy && launchMode === "latency"}
-                      disabled={roomBusy}
-                      onClick={() => void startSession("latency")}
-                    >
-                      测试延迟
-                    </Button>
-                    <Button
-                      block
-                      variant="secondary"
-                      loading={roomBusy && launchMode === "spectator"}
+                      loading={roomBusy && launchMode === "local"}
                       disabled={!hasSelectedGame || roomBusy}
-                      onClick={() => void openSpectatorMap()}
+                      onClick={() => void startSession("local")}
                     >
-                      监控地图
+                      本地测试
                     </Button>
-                    <div className="game-setup-stack">
+                    {canRunSetup ? <div className="game-setup-stack">
                       <Button
                         block
                         variant="secondary"
@@ -7911,8 +10841,47 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
                       <div className={tankTroubleSetupFeedbackClassName}>
                         {tankTroubleSetupMessage}
                       </div>
-                    </div>
+                    </div> : null}
                   </div>
+
+                  {customModeOpen ? (
+                    <div className="game-custom-mode-menu">
+                      {CUSTOM_OPTION_ITEMS.map((item) => (
+                        <div className="game-custom-option-row" key={item.key}>
+                          <span>{item.label}</span>
+                          <ToggleSwitch
+                            checked={customOptions[item.key]}
+                            size="md"
+                            ariaLabel={item.label}
+                            disabled={customServerControlsLocked}
+                            onClick={() => {
+                              if (customServerControlsLocked) {
+                                return;
+                              }
+                              setCustomOptions((current) => ({
+                                ...current,
+                                [item.key]: !current[item.key],
+                              }));
+                            }}
+                          />
+                        </div>
+                      ))}
+                      {roomInCustomMode && customControlsLocked ? (
+                        <div className="game-custom-mode-note">当前服务器自定义模式已锁定，可直接加入。</div>
+                      ) : null}
+                      {roomInDefaultMode ? (
+                        <div className="game-custom-mode-note warning">当前服务器正在默认联机模式中。</div>
+                      ) : null}
+                      <Button
+                        block
+                        loading={roomBusy && launchMode === "custom"}
+                        disabled={customStartDisabled}
+                        onClick={() => void startSession("custom")}
+                      >
+                        {customStartLabel}
+                      </Button>
+                    </div>
+                  ) : null}
 
                   {roomState ? (
                     <div className="game-identity-note">
@@ -7985,7 +10954,7 @@ export function TankTroublePanel({ theme, localCountryCode = "" }: TankTroublePa
                   </div>
                 </div>
 
-                <Button block loading={roomBusy} disabled={!playerId} onClick={() => void startSession("online")}>
+                <Button block loading={roomBusy} disabled={!playerId || roomInCustomMode} onClick={() => void startSession("online")}>
                   进入训练场
                 </Button>
 

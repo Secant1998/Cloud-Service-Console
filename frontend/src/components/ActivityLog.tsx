@@ -1,16 +1,33 @@
+import { useEffect, useRef } from "react";
 import type { LogEntry } from "../types/cloud";
 
 type ActivityLogProps = {
+  title: string;
+  subtitle?: string;
+  emptyLabel?: string;
   logs: LogEntry[];
 };
 
-export function ActivityLog({ logs }: ActivityLogProps) {
+export function ActivityLog({ title, subtitle, emptyLabel = "还没有日志", logs }: ActivityLogProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+    body.scrollTop = body.scrollHeight;
+  }, [logs]);
+
   return (
     <div className="panel activity-log">
-      <div className="section-title">活动日志</div>
-      <div className="activity-log-body">
+      <div className="activity-log-header">
+        <div className="section-title">{title}</div>
+        {subtitle ? <div className="section-subtitle">{subtitle}</div> : null}
+      </div>
+      <div ref={bodyRef} className="activity-log-body log-console" data-selectable-log="true">
         {logs.length === 0 ? (
-          <div className="activity-log-empty">还没有日志</div>
+          <div className="activity-log-empty">{emptyLabel}</div>
         ) : (
           logs.map((log, index) => (
             <div className="log-line" key={`${log.timestamp}-${index}`}>

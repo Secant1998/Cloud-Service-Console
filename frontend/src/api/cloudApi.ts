@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   ControlMonitorConfig,
+  ControlMonitorKeyState,
   ControlMonitorOffer,
   ControlSessionDescription,
   DashboardStatus,
@@ -11,6 +12,8 @@ import type {
   LocalSetupRunRequest,
   LocalSetupResult,
   LocalSetupStatus,
+  LocalStreamConfig,
+  LocalStreamStatus,
   LogsResponse,
   NetworkSnapshot,
   PortChecksResponse,
@@ -28,29 +31,105 @@ import type {
   TankTroubleRoomState,
   TankTroubleSetupResult,
   TankTroubleSetupStatus,
+  TrafficMonitorSnapshot,
+  VideoPushModeStatus,
+  VideoPushStatus,
 } from "../types/cloud";
 
 const FALLBACK_API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8765";
+const ACCESS_TOKEN_STORAGE_KEY = "cloud-service-console.access-token";
 let apiBasePromise: Promise<string> | null = null;
+let onlineClientId: string | null = null;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function isTauriRuntime() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return "__TAURI_IPC__" in window;
+}
+
 async function getApiBase(): Promise<string> {
   if (!apiBasePromise) {
     apiBasePromise = (async () => {
-      try {
-        const { invoke } = await import("@tauri-apps/api/tauri");
-        const base = await invoke<string>("get_backend_base_url");
-        return base || FALLBACK_API_BASE;
-      } catch {
-        return FALLBACK_API_BASE;
+      if (isTauriRuntime()) {
+        try {
+          const { invoke } = await import("@tauri-apps/api/tauri");
+          const base = await invoke<string>("get_backend_base_url");
+          return base || FALLBACK_API_BASE;
+        } catch {
+          return FALLBACK_API_BASE;
+        }
       }
+      if (typeof window !== "undefined" && (window.location.protocol === "http:" || window.location.protocol === "https:")) {
+        return window.location.origin;
+      }
+      return FALLBACK_API_BASE;
     })();
   }
 
   return apiBasePromise;
+}
+
+export function getStoredAccessToken() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return window.sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || "";
+}
+
+export function readAccessTokenFromUrl() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("access_token")?.trim() || "";
+  if (!token) {
+    return getStoredAccessToken();
+  }
+  window.sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  url.searchParams.delete("access_token");
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  return token;
+}
+
+function authHeaders() {
+  const token = getStoredAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function createOnlineClientId() {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getOnlineClientId() {
+  if (typeof window === "undefined") {
+    return "server-render";
+  }
+  if (onlineClientId) {
+    return onlineClientId;
+  }
+  onlineClientId = createOnlineClientId();
+  return onlineClientId;
+}
+
+function buildRequestHeaders(headers?: HeadersInit) {
+  const nextHeaders = new Headers(headers);
+  if (!nextHeaders.has("Content-Type")) {
+    nextHeaders.set("Content-Type", "application/json");
+  }
+  const token = getStoredAccessToken();
+  if (token && !nextHeaders.has("Authorization")) {
+    nextHeaders.set("Authorization", `Bearer ${token}`);
+  }
+  return nextHeaders;
 }
 
 function toWebSocketUrl(apiBase: string, path: string) {
@@ -80,8 +159,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const apiBase = await getApiBase();
   const response = await fetchWithRetry(`${apiBase}${path}`, {
     headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
+      ...Object.fromEntries(buildRequestHeaders(options?.headers).entries()),
     },
     ...options,
   });
@@ -107,8 +185,7 @@ async function requestResponse(path: string, options?: RequestInit): Promise<Res
   const apiBase = await getApiBase();
   const response = await fetchWithRetry(`${apiBase}${path}`, {
     headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
+      ...Object.fromEntries(buildRequestHeaders(options?.headers).entries()),
     },
     ...options,
   });
@@ -132,6 +209,37 @@ async function requestResponse(path: string, options?: RequestInit): Promise<Res
 
 export function getHealth() {
   return request<ApiResponse>("/api/health");
+}
+
+export type AccessInfo = {
+  webMode: boolean;
+  role: "desktop" | "admin" | "user";
+  admin: boolean;
+};
+
+export type OnlinePresence = {
+  onlineCount: number;
+  updatedAt: string;
+  role?: AccessInfo["role"] | "user";
+};
+
+export function getAccessInfo() {
+  return request<AccessInfo>("/api/access");
+}
+
+export function heartbeatOnlinePresence() {
+  return request<OnlinePresence>("/api/online/heartbeat", {
+    method: "POST",
+    body: JSON.stringify({ clientId: getOnlineClientId() }),
+  });
+}
+
+export function leaveOnlinePresence() {
+  return request<OnlinePresence>("/api/online/leave", {
+    method: "POST",
+    keepalive: true,
+    body: JSON.stringify({ clientId: getOnlineClientId() }),
+  });
 }
 
 export function getSettings() {
@@ -164,6 +272,41 @@ export function getStatus() {
 
 export function getLiveStatus() {
   return request<DashboardStatus>("/api/status/live");
+}
+
+export function getVideoPushStatus() {
+  return request<VideoPushStatus>("/api/video/status");
+}
+
+export function getTrafficMonitorSnapshot() {
+  return request<TrafficMonitorSnapshot>("/api/traffic-monitor");
+}
+
+export function postTencentVideoStatus(action: "start" | "heartbeat" | "stop", payload: Record<string, unknown>) {
+  return request<{ ok?: boolean; tencent?: VideoPushModeStatus }>(`/api/video/tencent/${action}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function postTencentVideoStatusBeacon(action: "stop", payload: Record<string, unknown>) {
+  void getApiBase().then((apiBase) => {
+    const headers = buildRequestHeaders();
+    const token = getStoredAccessToken();
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    try {
+      fetch(`${apiBase}/api/video/tencent/${action}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
+    } catch {
+      // Page teardown should never block navigation.
+    }
+  });
 }
 
 export function refreshStatus() {
@@ -240,26 +383,67 @@ export function runLocalSetup(payload: LocalSetupRunRequest) {
   });
 }
 
+export function getLocalStreamStatus() {
+  return request<LocalStreamStatus>("/api/local-stream/status");
+}
+
+export function saveLocalStreamConfig(payload: LocalStreamConfig) {
+  return request<LocalStreamStatus>("/api/local-stream/config", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function setupLocalStream() {
+  return request<LocalStreamStatus>("/api/local-stream/setup", {
+    method: "POST",
+  });
+}
+
+export function startLocalStream(payload: LocalStreamConfig) {
+  return request<LocalStreamStatus>("/api/local-stream/start", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function stopLocalStream() {
+  return request<LocalStreamStatus>("/api/local-stream/stop", {
+    method: "POST",
+  });
+}
+
 export function getControlMonitorConfig() {
   return request<ControlMonitorConfig>("/api/control-monitor/config");
 }
 
-export async function pollControlMonitorOffer(session: string) {
-  const response = await requestResponse(`/api/control-monitor/offer?session=${encodeURIComponent(session)}`);
+export async function pollControlMonitorOffer(session: string, robotClientId: string) {
+  const response = await requestResponse(
+    `/api/control-monitor/offer?session=${encodeURIComponent(session)}&robot_client_id=${encodeURIComponent(robotClientId)}`,
+  );
   if (response.status === 204) {
     return null;
   }
   return (await response.json()) as ControlMonitorOffer;
 }
 
-export function postControlMonitorAnswer(session: string, offerId: string, payload: ControlSessionDescription) {
+export function postControlMonitorAnswer(
+  session: string,
+  offerId: string,
+  robotClientId: string,
+  payload: ControlSessionDescription,
+) {
   return request<ApiResponse>(
-    `/api/control-monitor/answer?session=${encodeURIComponent(session)}&offer_id=${encodeURIComponent(offerId)}`,
+    `/api/control-monitor/answer?session=${encodeURIComponent(session)}&offer_id=${encodeURIComponent(offerId)}&robot_client_id=${encodeURIComponent(robotClientId)}`,
     {
       method: "POST",
       body: JSON.stringify(payload),
     },
   );
+}
+
+export function getControlMonitorKeyState(session: string) {
+  return request<ControlMonitorKeyState>(`/api/control-monitor/key-state?session=${encodeURIComponent(session)}`);
 }
 
 export function syncTankTroubleRoom(payload: TankTroubleRoomRequest) {
@@ -292,7 +476,9 @@ export function syncTankTroubleMatch(payload: TankTroubleMatchRequest) {
 
 export async function openTankTroubleMatchSocket() {
   const apiBase = await getApiBase();
-  return new WebSocket(toWebSocketUrl(apiBase, "/api/games/tank-trouble/match/ws"));
+  const token = getStoredAccessToken();
+  const suffix = token ? `?access_token=${encodeURIComponent(token)}` : "";
+  return new WebSocket(toWebSocketUrl(apiBase, `/api/games/tank-trouble/match/ws${suffix}`));
 }
 
 export function leaveTankTroubleMatch(payload: TankTroubleRoomRequest) {
@@ -311,7 +497,9 @@ export function syncTankTroubleLatency(payload: TankTroubleLatencyRequest) {
 
 export async function openTankTroubleLatencySocket() {
   const apiBase = await getApiBase();
-  return new WebSocket(toWebSocketUrl(apiBase, "/api/games/tank-trouble/latency/ws"));
+  const token = getStoredAccessToken();
+  const suffix = token ? `?access_token=${encodeURIComponent(token)}` : "";
+  return new WebSocket(toWebSocketUrl(apiBase, `/api/games/tank-trouble/latency/ws${suffix}`));
 }
 
 export function leaveTankTroubleLatency(payload: TankTroubleRoomRequest) {

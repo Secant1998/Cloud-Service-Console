@@ -349,9 +349,15 @@ const POLL_INTERVAL_MS = 45;
       let lastRenderAt = performance.now();
       const smoothedTanks = new Map();
       const smoothedBullets = new Map();
+      const smoothedMines = new Map();
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
+      }
+
+      function smoothStep(value) {
+        const safeValue = clamp(value, 0, 1);
+        return safeValue * safeValue * (3 - 2 * safeValue);
       }
 
       function lerp(from, to, t) {
@@ -432,7 +438,10 @@ const POLL_INTERVAL_MS = 45;
         let baseColor = "#22c55e";
         let brightColor = theme === "dark" ? "#86efac" : "#16a34a";
 
-        if (normalized === "red") {
+        if (normalized.startsWith("#")) {
+          baseColor = normalized;
+          brightColor = normalized;
+        } else if (normalized === "red") {
           baseColor = "#ef4444";
           brightColor = theme === "dark" ? "#fca5a5" : "#dc2626";
         } else if (normalized === "blue") {
@@ -451,6 +460,35 @@ const POLL_INTERVAL_MS = 45;
           flash: hexToRgba(brightColor, theme === "dark" ? 0.9 : 0.76),
           ripple: hexToRgba(brightColor, theme === "dark" ? 0.72 : 0.58),
         };
+      }
+
+      function resolveGameColor(value, theme, fallback = "#f8fafc") {
+        const normalized = String(value || "").trim();
+        if (!normalized) {
+          return fallback;
+        }
+        if (normalized.startsWith("#")) {
+          return normalized;
+        }
+        return getPlayerPalette(normalized, theme).bright;
+      }
+
+      function mixHexColors(from, to, amount) {
+        const read = (value) => {
+          const normalized = String(value || "#ffffff").replace("#", "");
+          const expanded = normalized.length === 3 ? normalized.replace(/(.)/g, "$1$1") : normalized;
+          const padded = expanded.padEnd(6, "f");
+          return {
+            r: Number.parseInt(padded.slice(0, 2), 16) || 0,
+            g: Number.parseInt(padded.slice(2, 4), 16) || 0,
+            b: Number.parseInt(padded.slice(4, 6), 16) || 0,
+          };
+        };
+        const source = read(from);
+        const target = read(to);
+        const t = clamp(amount, 0, 1);
+        const channel = (start, end) => Math.round(start + (end - start) * t).toString(16).padStart(2, "0");
+        return `#${channel(source.r, target.r)}${channel(source.g, target.g)}${channel(source.b, target.b)}`;
       }
 
       function getWorldPalette(theme) {
@@ -500,6 +538,50 @@ const POLL_INTERVAL_MS = 45;
           const x = Number(explosion.x || 0);
           const y = Number(explosion.y || 0);
           const radius = Math.max(1, Number(explosion.radius || 20));
+          if (String(explosion.weapon || "") === "shield_pulse") {
+            context.save();
+            context.translate(x, y);
+            context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+            context.shadowColor = palette.glow;
+            context.shadowBlur = 16 * alpha;
+            const ringRadius = radius * (0.9 + progress * 0.24);
+            const gradient = context.createRadialGradient(0, 0, radius * 0.42, 0, 0, radius * (1.08 + progress * 0.18));
+            gradient.addColorStop(0, hexToRgba(palette.bright, 0));
+            gradient.addColorStop(0.78, hexToRgba(palette.base, (darkMode ? 0.1 : 0.07) * alpha));
+            gradient.addColorStop(1, hexToRgba(palette.bright, (darkMode ? 0.22 : 0.16) * alpha));
+            context.fillStyle = gradient;
+            context.beginPath();
+            context.arc(0, 0, radius * (1.04 + progress * 0.16), 0, Math.PI * 2);
+            context.fill();
+            context.lineCap = "round";
+            context.lineWidth = 2.8 - progress * 1.1;
+            context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.7 : 0.52) * alpha);
+            context.beginPath();
+            context.arc(0, 0, ringRadius, -Math.PI * 0.56, Math.PI * 0.56);
+            context.stroke();
+            context.setLineDash([6, 9]);
+            context.lineDashOffset = -progress * 24;
+            context.lineWidth = 1.1;
+            context.strokeStyle = hexToRgba(darkMode ? "#e0f2fe" : palette.base, (darkMode ? 0.34 : 0.22) * alpha);
+            context.beginPath();
+            context.arc(0, 0, radius * (0.72 + progress * 0.12), 0, Math.PI * 2);
+            context.stroke();
+            context.restore();
+            continue;
+          }
+          if (String(explosion.weapon || "").startsWith("hit:")) {
+            context.save();
+            context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+            context.shadowColor = palette.glow;
+            context.shadowBlur = 10 * alpha;
+            context.beginPath();
+            context.arc(x, y, radius * (0.58 + progress * 1.25), 0, Math.PI * 2);
+            context.lineWidth = 2.4 - progress * 1.1;
+            context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.72 : 0.56) * alpha);
+            context.stroke();
+            context.restore();
+            continue;
+          }
           const shockRadius = radius * (1.15 + progress * 3.8);
 
           context.save();
@@ -595,6 +677,9 @@ const POLL_INTERVAL_MS = 45;
                 weapon: normalizeText(tank?.weapon) || "default",
                 shotgun_ammo: Number(tank?.shotgun_ammo || 0),
                 minigun_ammo: Number(tank?.minigun_ammo || 0),
+                double_barrel_ammo: Number(tank?.double_barrel_ammo || 0),
+                mine_ammo: Number(tank?.mine_ammo || 0),
+                missile_ammo: Number(tank?.missile_ammo || 0),
                 weapon_reload_ms: Number(tank?.weapon_reload_ms || 0),
                 x: Number(tank?.x || 0),
                 y: Number(tank?.y || 0),
@@ -613,6 +698,11 @@ const POLL_INTERVAL_MS = 45;
                 radius: Number(bullet?.radius || 0),
                 vx: Number(bullet?.vx || 0),
                 vy: Number(bullet?.vy || 0),
+                target_id: normalizeText(bullet?.target_id),
+                target_color: normalizeText(bullet?.target_color),
+                flame_color: normalizeText(bullet?.flame_color) || "#f8fafc",
+                target_flame_color: bullet?.locked ? resolveGameColor(normalizeText(bullet?.target_color), normalizeTheme(scene.theme)) : "#f8fafc",
+                locked: Boolean(bullet?.locked),
                 path_segments: sanitizeSegments(bullet?.path_segments),
                 distance_travelled: Number(bullet?.distance_travelled || 0),
                 segments: sanitizeSegments(bullet?.segments),
@@ -627,6 +717,24 @@ const POLL_INTERVAL_MS = 45;
                 phase: Number(target?.phase || 0),
               }))
             : [],
+          mines: Array.isArray(scene.mines)
+            ? scene.mines.map((mine) => ({
+                id: Number(mine?.id || 0),
+                owner_id: normalizeText(mine?.owner_id),
+                color: normalizeText(mine?.color) || "green",
+                x: Number(mine?.x || 0),
+                y: Number(mine?.y || 0),
+                radius: Math.max(1, Number(mine?.radius || 13.33)),
+                trigger_radius: Math.max(1, Number(mine?.trigger_radius || 30)),
+                blast_radius: Math.max(1, Number(mine?.blast_radius || 99)),
+                age: Math.max(0, Number(mine?.age || 0)),
+                armed: Boolean(mine?.armed),
+                triggered: Boolean(mine?.triggered),
+                trigger_started_at_ms: Number(mine?.trigger_started_at_ms || 0),
+                created_at_ms: Number(mine?.created_at_ms || 0),
+                server_time_ms: Number(mine?.server_time_ms || 0),
+              }))
+            : [],
           tankExplosions: Array.isArray(scene.tankExplosions)
             ? scene.tankExplosions.map((explosion) => ({
                 id: Number(explosion?.id || 0),
@@ -634,6 +742,7 @@ const POLL_INTERVAL_MS = 45;
                 y: Number(explosion?.y || 0),
                 radius: Number(explosion?.radius || 20),
                 color: normalizeText(explosion?.color) || "green",
+                weapon: normalizeText(explosion?.weapon) || "bullet",
                 life: Number(explosion?.life || 0),
                 maxLife: Math.max(0.0001, Number(explosion?.maxLife || 0.78)),
               }))
@@ -658,6 +767,8 @@ const POLL_INTERVAL_MS = 45;
                 life: Number(fade?.life || 0),
                 maxLife: Math.max(0.0001, Number(fade?.maxLife || 0.0001)),
                 color: normalizeText(fade?.color) || "green",
+                projectileType: normalizeText(fade?.projectileType || fade?.projectile_type) || "bullet",
+                targetColor: normalizeText(fade?.targetColor || fade?.target_color) || "",
               }))
             : [],
         };
@@ -810,6 +921,9 @@ const POLL_INTERVAL_MS = 45;
           current.weapon = tank.weapon;
           current.shotgun_ammo = tank.shotgun_ammo;
           current.minigun_ammo = tank.minigun_ammo;
+          current.double_barrel_ammo = tank.double_barrel_ammo;
+          current.mine_ammo = tank.mine_ammo;
+          current.missile_ammo = tank.missile_ammo;
           current.weapon_reload_ms = tank.weapon_reload_ms;
         }
         for (const id of Array.from(smoothedTanks.keys())) {
@@ -842,6 +956,11 @@ const POLL_INTERVAL_MS = 45;
           current.segments = bullet.segments;
           current.vx = bullet.vx;
           current.vy = bullet.vy;
+          current.target_id = bullet.target_id;
+          current.target_color = bullet.target_color;
+          current.flame_color = bullet.flame_color;
+          current.target_flame_color = bullet.target_flame_color;
+          current.locked = bullet.locked;
           if (current.snapshotSeq !== frameSeq) {
             const correctionDistance = Math.hypot(current.x - bullet.x, current.y - bullet.y);
             const ease = correctionDistance > 36 ? 1 : clamp(dt * 28, 0.68, 0.96);
@@ -858,6 +977,459 @@ const POLL_INTERVAL_MS = 45;
             smoothedBullets.delete(id);
           }
         }
+
+        const mineIds = new Set();
+        for (const mine of scene.mines || []) {
+          const mineKey = String(mine.id);
+          mineIds.add(mineKey);
+          const current = smoothedMines.get(mineKey);
+          const baseAlpha = mine.age <= 3 ? 1 : clamp(1 - (mine.age - 3) / 2, 0, 1);
+          if (!current) {
+            smoothedMines.set(mineKey, {
+              ...mine,
+              visibleAlpha: baseAlpha,
+            });
+            continue;
+          }
+          current.x = lerp(current.x, mine.x, clamp(dt * 15, 0.25, 0.9));
+          current.y = lerp(current.y, mine.y, clamp(dt * 15, 0.25, 0.9));
+          current.radius = mine.radius;
+          current.trigger_radius = mine.trigger_radius;
+          current.blast_radius = mine.blast_radius;
+          current.age = mine.age;
+          current.armed = mine.armed;
+          current.triggered = mine.triggered;
+          current.color = mine.color;
+          current.owner_id = mine.owner_id;
+          const targetAlpha = mine.triggered ? 1 : baseAlpha;
+          current.visibleAlpha =
+            targetAlpha > current.visibleAlpha
+              ? Math.min(targetAlpha, current.visibleAlpha + dt * 6)
+              : Math.max(targetAlpha, current.visibleAlpha - dt / 2);
+        }
+        for (const id of Array.from(smoothedMines.keys())) {
+          if (!mineIds.has(id)) {
+            smoothedMines.delete(id);
+          }
+        }
+      }
+
+      function drawLandMine(context, mine, theme, elapsedMs, compact = false) {
+        const alpha = clamp(Number(mine.visibleAlpha ?? 1), 0, 1);
+        if (alpha <= 0.012) return;
+        const darkMode = theme === "dark";
+        const palette = getPlayerPalette(mine.color || "green", theme);
+        const radius = Math.max(1, Number(mine.radius || 13.33));
+        const triggerRadius = Math.max(radius, Number(mine.trigger_radius || 30));
+        const armed = Boolean(mine.armed);
+        const triggered = Boolean(mine.triggered);
+        const blinkFrequency = triggered ? 5 : armed ? 1 : 0;
+        const blink = blinkFrequency ? 0.28 + 0.72 * Math.max(0, Math.sin((elapsedMs / 1000) * Math.PI * 2 * blinkFrequency)) : 0.2;
+        const lampAlpha = clamp((triggered ? 0.82 : armed ? 0.62 : 0.24) * blink + (triggered ? 0.18 : 0.08), 0, 1);
+
+        context.save();
+        context.translate(Number(mine.x || 0), Number(mine.y || 0));
+        context.globalAlpha = alpha;
+        if (!compact && (armed || triggered || alpha > 0.45)) {
+          context.save();
+          context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+          context.beginPath();
+          context.arc(0, 0, triggerRadius, 0, Math.PI * 2);
+          context.strokeStyle = hexToRgba(palette.bright, (triggered ? 0.24 : 0.08) * alpha * (0.65 + blink * 0.35));
+          context.lineWidth = triggered ? 2.6 : 1.1;
+          context.setLineDash(triggered ? [7, 7] : [3, 9]);
+          context.lineDashOffset = -elapsedMs * (triggered ? 0.05 : 0.015);
+          context.stroke();
+          context.restore();
+        }
+
+        const bodyGradient = context.createRadialGradient(-radius * 0.36, -radius * 0.42, radius * 0.12, 0, 0, radius * 1.15);
+        bodyGradient.addColorStop(0, darkMode ? "#d1d5db" : "#f1f5f9");
+        bodyGradient.addColorStop(0.48, darkMode ? "#64748b" : "#94a3b8");
+        bodyGradient.addColorStop(1, darkMode ? "#1f2937" : "#475569");
+        context.shadowColor = triggered ? palette.glow : darkMode ? "rgba(148, 163, 184, 0.42)" : "rgba(15, 23, 42, 0.2)";
+        context.shadowBlur = triggered ? 18 : 8;
+        context.fillStyle = bodyGradient;
+        context.beginPath();
+        context.arc(0, 0, radius, 0, Math.PI * 2);
+        context.fill();
+        context.lineWidth = Math.max(1.1, radius * 0.12);
+        context.strokeStyle = darkMode ? "rgba(226, 232, 240, 0.44)" : "rgba(15, 23, 42, 0.2)";
+        context.stroke();
+
+        context.shadowBlur = 0;
+        context.strokeStyle = darkMode ? "rgba(15, 23, 42, 0.68)" : "rgba(30, 41, 59, 0.34)";
+        context.lineWidth = Math.max(1, radius * 0.075);
+        context.beginPath();
+        context.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+        context.stroke();
+        for (let index = 0; index < 8; index += 1) {
+          const angle = (index / 8) * Math.PI * 2 + Number(mine.id || 0) * 0.11;
+          context.beginPath();
+          context.moveTo(Math.cos(angle) * radius * 0.22, Math.sin(angle) * radius * 0.22);
+          context.lineTo(Math.cos(angle) * radius * 0.63, Math.sin(angle) * radius * 0.63);
+          context.stroke();
+        }
+
+        context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        context.shadowColor = palette.glow;
+        context.shadowBlur = 12 * lampAlpha;
+        context.fillStyle = hexToRgba(palette.bright, lampAlpha);
+        context.beginPath();
+        context.arc(0, -radius * 0.05, Math.max(2.2, radius * 0.21 + (triggered ? blink * 1.2 : 0)), 0, Math.PI * 2);
+        context.fill();
+        if (triggered) {
+          context.strokeStyle = hexToRgba(palette.bright, 0.18 + blink * 0.28);
+          context.lineWidth = 2.2;
+          context.beginPath();
+          context.arc(0, 0, radius * (1.3 + blink * 0.55), 0, Math.PI * 2);
+          context.stroke();
+        }
+        context.restore();
+      }
+
+      function drawGuidedMissileIcon(context, length, width, theme, accent = "#38bdf8") {
+        const darkMode = theme === "dark";
+        const halfLength = length / 2;
+        const halfWidth = width / 2;
+        const bodyGradient = context.createLinearGradient(-halfLength, 0, halfLength, 0);
+        bodyGradient.addColorStop(0, darkMode ? "#334155" : "#1f2937");
+        bodyGradient.addColorStop(0.42, darkMode ? "#94a3b8" : "#475569");
+        bodyGradient.addColorStop(1, darkMode ? "#e2e8f0" : "#64748b");
+
+        context.save();
+        context.shadowColor = hexToRgba(accent, darkMode ? 0.52 : 0.34);
+        context.shadowBlur = Math.max(6, width * 0.34);
+        context.fillStyle = darkMode ? "#64748b" : "#94a3b8";
+        for (const side of [-1, 1]) {
+          context.beginPath();
+          context.moveTo(-halfLength * 0.46, side * halfWidth * 0.72);
+          context.lineTo(-halfLength * 0.12, side * halfWidth * 1.42);
+          context.lineTo(halfLength * 0.04, side * halfWidth * 0.58);
+          context.closePath();
+          context.fill();
+          context.beginPath();
+          context.moveTo(-halfLength * 0.82, side * halfWidth * 0.58);
+          context.lineTo(-halfLength * 0.62, side * halfWidth * 1.18);
+          context.lineTo(-halfLength * 0.38, side * halfWidth * 0.52);
+          context.closePath();
+          context.fill();
+        }
+        drawRoundedRectPath(context, -halfLength * 0.8, -halfWidth * 0.42, length * 0.92, halfWidth * 0.84, halfWidth * 0.42);
+        context.fillStyle = bodyGradient;
+        context.fill();
+        context.lineWidth = Math.max(0.9, width * 0.07);
+        context.strokeStyle = darkMode ? "rgba(248, 250, 252, 0.42)" : "rgba(15, 23, 42, 0.34)";
+        context.stroke();
+
+        context.beginPath();
+        context.moveTo(halfLength * 0.08, -halfWidth * 0.42);
+        context.lineTo(halfLength * 0.86, 0);
+        context.lineTo(halfLength * 0.08, halfWidth * 0.42);
+        context.closePath();
+        context.fillStyle = darkMode ? "#cbd5e1" : "#334155";
+        context.fill();
+        context.stroke();
+
+        context.shadowBlur = Math.max(5, width * 0.24);
+        context.strokeStyle = hexToRgba(accent, darkMode ? 0.92 : 0.74);
+        context.lineWidth = Math.max(1.8, width * 0.12);
+        context.lineCap = "round";
+        context.beginPath();
+        context.moveTo(-halfLength * 0.52, 0);
+        context.lineTo(-halfLength * 0.14, 0);
+        context.moveTo(halfLength * 0.2, 0);
+        context.lineTo(halfLength * 0.38, 0);
+        context.stroke();
+        context.restore();
+      }
+
+      function drawTowMissileIcon(context, length, width, theme, accent = "#38bdf8") {
+        const darkMode = theme === "dark";
+        const halfLength = length / 2;
+        const halfWidth = width / 2;
+        const bodyGradient = context.createLinearGradient(-halfLength, 0, halfLength, 0);
+        bodyGradient.addColorStop(0, darkMode ? "#1f2937" : "#334155");
+        bodyGradient.addColorStop(0.48, darkMode ? "#94a3b8" : "#64748b");
+        bodyGradient.addColorStop(1, darkMode ? "#e5e7eb" : "#cbd5e1");
+        context.save();
+        context.shadowColor = hexToRgba(accent, darkMode ? 0.42 : 0.26);
+        context.shadowBlur = Math.max(4, width * 0.24);
+        context.fillStyle = darkMode ? "#64748b" : "#94a3b8";
+        for (const side of [-1, 1]) {
+          context.beginPath();
+          context.moveTo(-halfLength * 0.2, side * halfWidth * 0.48);
+          context.lineTo(halfLength * 0.06, side * halfWidth * 1.68);
+          context.lineTo(halfLength * 0.28, side * halfWidth * 0.46);
+          context.closePath();
+          context.fill();
+          context.beginPath();
+          context.moveTo(-halfLength * 0.68, side * halfWidth * 0.42);
+          context.lineTo(-halfLength * 0.5, side * halfWidth * 1.02);
+          context.lineTo(-halfLength * 0.32, side * halfWidth * 0.38);
+          context.closePath();
+          context.fill();
+        }
+        drawRoundedRectPath(context, -halfLength * 0.72, -halfWidth * 0.38, length * 1.16, halfWidth * 0.76, halfWidth * 0.36);
+        context.fillStyle = bodyGradient;
+        context.fill();
+        context.lineWidth = Math.max(0.85, width * 0.065);
+        context.strokeStyle = darkMode ? "rgba(248, 250, 252, 0.44)" : "rgba(15, 23, 42, 0.3)";
+        context.stroke();
+        context.beginPath();
+        context.moveTo(halfLength * 0.42, -halfWidth * 0.38);
+        context.lineTo(halfLength * 0.78, 0);
+        context.lineTo(halfLength * 0.42, halfWidth * 0.38);
+        context.closePath();
+        context.fillStyle = darkMode ? "#f8fafc" : "#1f2937";
+        context.fill();
+        context.stroke();
+        context.strokeStyle = hexToRgba(accent, darkMode ? 0.68 : 0.48);
+        context.lineWidth = Math.max(1, width * 0.08);
+        context.lineCap = "round";
+        for (const x of [-0.34, -0.04, 0.24]) {
+          context.beginPath();
+          context.moveTo(halfLength * x, -halfWidth * 0.24);
+          context.lineTo(halfLength * x, halfWidth * 0.24);
+          context.stroke();
+        }
+        context.restore();
+      }
+
+      function drawTankMissileLauncher(context, tankColor, theme, elapsedMs) {
+        const darkMode = theme === "dark";
+        const palette = getPlayerPalette(tankColor, theme);
+        const pulse = 0.5 + Math.sin(elapsedMs * 0.006) * 0.5;
+        context.save();
+        context.shadowColor = palette.glow;
+        context.shadowBlur = 5 + pulse * 3;
+        const tubeGradient = context.createLinearGradient(0, -20, 0, 15);
+        tubeGradient.addColorStop(0, darkMode ? "#dbeafe" : "#64748b");
+        tubeGradient.addColorStop(0.48, darkMode ? "#64748b" : "#475569");
+        tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#cbd5e1");
+        drawRoundedRectPath(context, -7.8, -20, 15.6, 35, 5.8);
+        context.fillStyle = tubeGradient;
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.42 : 0.32);
+        context.stroke();
+
+        context.save();
+        context.translate(0, -2.5);
+        context.rotate(-Math.PI / 2);
+        drawGuidedMissileIcon(context, 23, 8.6, theme, palette.bright);
+        context.restore();
+
+        context.beginPath();
+        context.arc(0, -20, 5.1, 0, Math.PI * 2);
+        context.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.5)";
+        context.fill();
+        context.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.62 : 0.42);
+        context.lineWidth = 1;
+        context.stroke();
+        context.restore();
+      }
+
+      function drawTankTowLauncher(context, tankColor, theme, elapsedMs) {
+        const darkMode = theme === "dark";
+        const palette = getPlayerPalette(tankColor, theme);
+        const pulse = 0.5 + Math.sin(elapsedMs * 0.0048) * 0.5;
+        context.save();
+        context.shadowColor = palette.glow;
+        context.shadowBlur = 4 + pulse * 2.2;
+        const mountGradient = context.createLinearGradient(-12, -6, 12, 10);
+        mountGradient.addColorStop(0, darkMode ? "#dbeafe" : "#f8fafc");
+        mountGradient.addColorStop(0.52, darkMode ? "#64748b" : "#94a3b8");
+        mountGradient.addColorStop(1, darkMode ? "#172033" : "#475569");
+        drawRoundedRectPath(context, -12, -8, 24, 16, 5.4);
+        context.fillStyle = mountGradient;
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.38 : 0.28);
+        context.stroke();
+        const tubeGradient = context.createLinearGradient(0, -22, 0, 14);
+        tubeGradient.addColorStop(0, darkMode ? "#eef2ff" : "#dbeafe");
+        tubeGradient.addColorStop(0.45, darkMode ? "#94a3b8" : "#64748b");
+        tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#334155");
+        drawRoundedRectPath(context, -6.4, -21, 12.8, 36, 4.2);
+        context.fillStyle = tubeGradient;
+        context.fill();
+        context.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.44 : 0.3);
+        context.stroke();
+        drawRoundedRectPath(context, 7.2, -14, 6.8, 13, 3.2);
+        context.fillStyle = darkMode ? "rgba(15, 23, 42, 0.88)" : "rgba(241, 245, 249, 0.86)";
+        context.fill();
+        context.strokeStyle = hexToRgba(palette.bright, darkMode ? 0.46 : 0.32);
+        context.stroke();
+        context.save();
+        context.translate(0, -3.2);
+        context.rotate(-Math.PI / 2);
+        drawTowMissileIcon(context, 22, 7.6, theme, palette.bright);
+        context.restore();
+        context.beginPath();
+        context.arc(0, -21, 4.3, 0, Math.PI * 2);
+        context.fillStyle = darkMode ? "rgba(2, 6, 23, 0.86)" : "rgba(15, 23, 42, 0.5)";
+        context.fill();
+        context.stroke();
+        context.restore();
+      }
+
+      function drawGuidedMissileProjectile(context, bullet, ownerColor, theme, elapsedMs) {
+        const angle = Math.atan2(Number(bullet.vy || 0), Number(bullet.vx || 0));
+        const palette = getPlayerPalette(ownerColor, theme);
+        const flameColor = bullet.flame_color || (bullet.locked && bullet.target_color ? resolveGameColor(bullet.target_color, theme) : "#f8fafc");
+        const flamePalette = getPlayerPalette(flameColor, theme);
+        const length = Math.max(14, Number(bullet.radius || 5) * 3.05);
+        const width = Math.max(7.2, Number(bullet.radius || 5) * 1.18);
+        const flamePulse = 0.68 + Math.sin(elapsedMs * 0.024 + Number(bullet.x || 0) * 0.03 + Number(bullet.y || 0) * 0.02) * 0.22;
+
+        context.save();
+        context.translate(Number(bullet.x || 0), Number(bullet.y || 0));
+        context.rotate(angle);
+        context.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+        context.shadowColor = flamePalette.glow;
+        context.shadowBlur = 11;
+        const flameLength = length * (0.42 + flamePulse * 0.16);
+        const flameGradient = context.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.34, 0);
+        flameGradient.addColorStop(0, hexToRgba(flamePalette.base, 0));
+        flameGradient.addColorStop(0.45, hexToRgba(flamePalette.base, 0.54));
+        flameGradient.addColorStop(1, hexToRgba(flamePalette.bright, 0.9));
+        context.fillStyle = flameGradient;
+        context.beginPath();
+        context.moveTo(-length * 0.38, -width * 0.3);
+        context.lineTo(-length * 0.5 - flameLength, 0);
+        context.lineTo(-length * 0.38, width * 0.3);
+        context.closePath();
+        context.fill();
+        context.globalCompositeOperation = "source-over";
+        drawGuidedMissileIcon(context, length, width, theme, palette.bright);
+        if (bullet.locked) {
+          context.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+          context.strokeStyle = hexToRgba(flamePalette.bright, theme === "dark" ? 0.72 : 0.48);
+          context.lineWidth = 1.2;
+          context.setLineDash([4, 4]);
+          context.beginPath();
+          context.arc(0, 0, width * 1.24 + flamePulse * 2.2, -Math.PI * 0.72, Math.PI * 0.72);
+          context.stroke();
+        }
+        context.restore();
+      }
+
+      function drawTowMissileProjectile(context, bullet, ownerColor, theme, elapsedMs) {
+        const angle = Math.atan2(Number(bullet.vy || 0), Number(bullet.vx || 0));
+        const palette = getPlayerPalette(ownerColor, theme);
+        const length = Math.max(11, Number(bullet.radius || 5) * 2.12);
+        const width = Math.max(6.8, Number(bullet.radius || 5) * 1.08);
+        const flamePulse = 0.62 + Math.sin(elapsedMs * 0.026 + Number(bullet.x || 0) * 0.02 + Number(bullet.y || 0) * 0.025) * 0.2;
+        context.save();
+        context.translate(Number(bullet.x || 0), Number(bullet.y || 0));
+        context.rotate(angle);
+        context.globalCompositeOperation = theme === "dark" ? "lighter" : "source-over";
+        context.shadowColor = "rgba(248, 250, 252, 0.72)";
+        context.shadowBlur = 10;
+        const flameLength = length * (0.36 + flamePulse * 0.14);
+        const flameGradient = context.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.32, 0);
+        flameGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+        flameGradient.addColorStop(0.45, "rgba(226, 232, 240, 0.46)");
+        flameGradient.addColorStop(1, "rgba(248, 250, 252, 0.92)");
+        context.fillStyle = flameGradient;
+        context.beginPath();
+        context.moveTo(-length * 0.38, -width * 0.26);
+        context.lineTo(-length * 0.5 - flameLength, 0);
+        context.lineTo(-length * 0.38, width * 0.26);
+        context.closePath();
+        context.fill();
+        context.globalCompositeOperation = "source-over";
+        drawTowMissileIcon(context, length, width, theme, palette.bright);
+        context.restore();
+      }
+
+      function drawGuidedMissileExpiryEffect(context, fade, theme, elapsedMs) {
+        const progress = clamp(1 - Number(fade.life || 0) / Math.max(0.001, Number(fade.maxLife || 0.001)), 0, 1);
+        const alpha = 1 - smoothStep(progress);
+        const palette = getPlayerPalette(fade.targetColor || fade.color || "green", theme);
+        const darkMode = theme === "dark";
+        const baseRadius = Number(fade.radius || 5);
+        const radius = Math.max(16, baseRadius * (2.35 + progress * 4.8));
+        const coreRadius = Math.max(5, baseRadius * (0.9 + progress * 1.5));
+        const ringJitter = Math.sin(elapsedMs * 0.034 + Number(fade.x || 0) * 0.02 + Number(fade.y || 0) * 0.015) * 1.5;
+        context.save();
+        context.translate(Number(fade.x || 0), Number(fade.y || 0));
+        context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        context.globalAlpha = alpha;
+        context.shadowColor = palette.glow;
+        context.shadowBlur = 16 * alpha;
+        const coreGradient = context.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+        coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.72 : 0.84));
+        coreGradient.addColorStop(0.44, hexToRgba(palette.bright, darkMode ? 0.5 : 0.42));
+        coreGradient.addColorStop(1, hexToRgba(palette.base, 0));
+        context.fillStyle = coreGradient;
+        context.beginPath();
+        context.arc(0, 0, coreRadius, 0, Math.PI * 2);
+        context.fill();
+        context.lineCap = "round";
+        for (let index = 0; index < 2; index += 1) {
+          context.setLineDash(index === 0 ? [7, 7] : [3, 10]);
+          context.lineDashOffset = -progress * (36 + index * 18);
+          context.lineWidth = 2.1 - index * 0.6;
+          context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.78 : 0.54) * alpha * (1 - index * 0.2));
+          context.beginPath();
+          context.arc(0, 0, radius * (0.72 + index * 0.23) + ringJitter, 0, Math.PI * 2);
+          context.stroke();
+        }
+        context.setLineDash([]);
+        for (let index = 0; index < 6; index += 1) {
+          const angle = (index / 6) * Math.PI * 2 + progress * 0.45;
+          const inner = baseRadius * (1.05 + progress * 1.2);
+          const outer = radius * (0.72 + (index % 2) * 0.12);
+          context.strokeStyle = hexToRgba(palette.bright, alpha * (darkMode ? 0.36 : 0.24));
+          context.lineWidth = 1.1;
+          context.beginPath();
+          context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+          context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+          context.stroke();
+        }
+        context.restore();
+      }
+
+      function drawTowMissileExpiryEffect(context, fade, theme, elapsedMs) {
+        const progress = clamp(1 - Number(fade.life || 0) / Math.max(0.001, Number(fade.maxLife || 0.001)), 0, 1);
+        const alpha = 1 - smoothStep(progress);
+        const palette = getPlayerPalette(fade.targetColor || fade.color || "green", theme);
+        const darkMode = theme === "dark";
+        const baseRadius = Number(fade.radius || 5);
+        const radius = Math.max(12, baseRadius * (1.85 + progress * 2.65));
+        const coreRadius = Math.max(5, baseRadius * (0.75 + progress * 0.9));
+        const ringPulse = Math.sin(elapsedMs * 0.028 + Number(fade.x || 0) * 0.017 + Number(fade.y || 0) * 0.013) * 0.8;
+        context.save();
+        context.translate(Number(fade.x || 0), Number(fade.y || 0));
+        context.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        context.globalAlpha = alpha;
+        context.shadowColor = palette.glow;
+        context.shadowBlur = 10 * alpha;
+        const coreGradient = context.createRadialGradient(0, 0, 0, 0, 0, radius);
+        coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.64 : 0.72));
+        coreGradient.addColorStop(0.28, hexToRgba(palette.bright, darkMode ? 0.42 : 0.34));
+        coreGradient.addColorStop(0.66, hexToRgba(palette.base, darkMode ? 0.14 : 0.1));
+        coreGradient.addColorStop(1, hexToRgba(palette.base, 0));
+        context.fillStyle = coreGradient;
+        context.beginPath();
+        context.arc(0, 0, radius, 0, Math.PI * 2);
+        context.fill();
+        context.lineCap = "round";
+        context.setLineDash([6, 8]);
+        context.lineDashOffset = -progress * 30;
+        context.lineWidth = 1.7;
+        context.strokeStyle = hexToRgba(palette.bright, (darkMode ? 0.66 : 0.46) * alpha);
+        context.beginPath();
+        context.arc(0, 0, radius * 0.78 + ringPulse, 0, Math.PI * 2);
+        context.stroke();
+        context.setLineDash([]);
+        context.fillStyle = hexToRgba("#f8fafc", (darkMode ? 0.38 : 0.26) * alpha);
+        context.beginPath();
+        context.arc(0, 0, coreRadius, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
       }
 
       function drawTank(context, tank, theme, elapsedMs) {
@@ -886,6 +1458,9 @@ const POLL_INTERVAL_MS = 45;
         const reloadKick = weapon === "shotgun" ? Math.sin(clamp(reloadMs / 1500, 0, 1) * Math.PI) : 0;
         const laserCharge = weapon === "laser" ? 0.55 + Math.sin(wallTime * 8) * 0.18 : 0;
         const minigunSpin = weapon === "minigun" ? wallTime * 26 : 0;
+        const doubleBarrelAmmo = Math.max(0, Number(tank.double_barrel_ammo || tank.doubleBarrelAmmo || 0));
+        const doubleBarrelRecoil = weapon === "double_barrel" ? Math.sin(clamp(reloadMs / 120, 0, 1) * Math.PI) : 0;
+        const doubleBarrelRecoilOffset = ((10 - doubleBarrelAmmo - 1) % 2 === 0 ? -1 : 1) * 7.2;
 
         context.save();
         context.translate(tank.x, tank.y);
@@ -893,10 +1468,10 @@ const POLL_INTERVAL_MS = 45;
 
         context.save();
         context.shadowColor = tankPalette.glow;
-        context.shadowBlur = 18;
-        context.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.18 : 0.12);
+        context.shadowBlur = 14;
+        context.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.13 : 0.09);
         context.beginPath();
-        context.arc(0, 0, radius + 9 + tankPulse * 2, 0, Math.PI * 2);
+        context.arc(0, 0, radius + 5.5 + tankPulse * 1.4, 0, Math.PI * 2);
         context.fill();
         context.restore();
 
@@ -914,25 +1489,38 @@ const POLL_INTERVAL_MS = 45;
         const barrelGradient = context.createLinearGradient(0, -31, 0, -3);
         barrelGradient.addColorStop(0, tankShellTop);
         barrelGradient.addColorStop(1, tankShellBottom);
-        const barrelWidth = weapon === "shotgun" ? 16.8 : weapon === "laser" ? 18 : weapon === "minigun" ? 19.5 : 10.4;
-        const barrelLength = weapon === "shotgun" ? 27 : weapon === "laser" ? 24 : weapon === "minigun" ? 33 : 35;
-        const barrelY = weapon === "shotgun" ? -31 + reloadKick * 3.5 : weapon === "laser" ? -31 : weapon === "minigun" ? -36 : -38;
-        drawRoundedRectPath(context, -barrelWidth / 2, barrelY, barrelWidth, barrelLength, weapon === "shotgun" ? 7.2 : weapon === "laser" ? 9 : weapon === "minigun" ? 8.5 : 5.1);
-        context.fillStyle = barrelGradient;
-        context.fill();
-        context.lineWidth = 1;
-        context.strokeStyle = tankFrameStroke;
-        context.stroke();
-        context.beginPath();
-        context.moveTo(0, -34);
-        context.lineTo(0, -8);
-        context.lineWidth = 1.1;
-        context.strokeStyle = tankCircuit;
-        context.stroke();
-        context.beginPath();
-        context.arc(0, barrelY + (weapon === "shotgun" ? 1.5 : weapon === "laser" ? 3 : weapon === "minigun" ? 2.4 : 1), weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2, 0, Math.PI * 2);
-        context.fillStyle = tankCoreGlow;
-        context.fill();
+        const barrelWidth = weapon === "shotgun" ? 16.8 : weapon === "laser" ? 18 : weapon === "minigun" ? 19.5 : weapon === "double_barrel" ? 7.8 : 10.4;
+        const barrelLength = weapon === "shotgun" ? 27 : weapon === "laser" ? 24 : weapon === "minigun" ? 33 : weapon === "double_barrel" ? 34 : 35;
+        const barrelY = weapon === "shotgun" ? -31 + reloadKick * 3.5 : weapon === "laser" ? -31 : weapon === "minigun" ? -36 : weapon === "double_barrel" ? -37 : -38;
+        const drawSingleBarrel = (centerX, recoil, muzzleRadius, width = barrelWidth) => {
+          const currentY = barrelY + recoil;
+          drawRoundedRectPath(context, centerX - width / 2, currentY, width, barrelLength, weapon === "shotgun" ? 7.2 : weapon === "laser" ? 9 : weapon === "minigun" ? 8.5 : 4.2);
+          context.fillStyle = barrelGradient;
+          context.fill();
+          context.lineWidth = 1;
+          context.strokeStyle = tankFrameStroke;
+          context.stroke();
+          context.beginPath();
+          context.moveTo(centerX, currentY + 4);
+          context.lineTo(centerX * 0.38, -8);
+          context.lineWidth = 1.1;
+          context.strokeStyle = tankCircuit;
+          context.stroke();
+          context.beginPath();
+          context.arc(centerX, currentY + (weapon === "shotgun" ? 1.5 : weapon === "laser" ? 3 : weapon === "minigun" ? 2.4 : 1), muzzleRadius, 0, Math.PI * 2);
+          context.fillStyle = tankCoreGlow;
+          context.fill();
+        };
+        if (weapon !== "land_mine" && weapon !== "guided_missile" && weapon !== "tow_missile" && weapon !== "tow_missile_active") {
+          if (weapon === "double_barrel") {
+            for (const offset of [-7.2, 7.2]) {
+              const recoil = Math.abs(offset - doubleBarrelRecoilOffset) < 0.1 ? doubleBarrelRecoil * 7.2 : 0;
+              drawSingleBarrel(offset, recoil, 4.1, 7.8);
+            }
+          } else {
+            drawSingleBarrel(0, 0, weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2);
+          }
+        }
         if (weapon === "shotgun") {
           context.beginPath();
           context.arc(-3.8, barrelY + 1.6, 2.2, 0, Math.PI * 2);
@@ -979,36 +1567,38 @@ const POLL_INTERVAL_MS = 45;
           context.fill();
           context.restore();
         }
-        context.beginPath();
-        context.moveTo(-8.5, -23);
-        context.lineTo(-11.5, -10);
-        context.lineTo(-8, 1);
-        context.lineTo(8, 1);
-        context.lineTo(11.5, -10);
-        context.lineTo(8.5, -23);
-        context.closePath();
-        context.fillStyle = barrelGradient;
-        context.shadowColor = tankNoseGlow;
-        context.shadowBlur = 7;
-        context.fill();
-        context.lineWidth = 1;
-        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
-        context.stroke();
-        context.beginPath();
-        context.moveTo(0, -20);
-        context.lineTo(-9, -7.5);
-        context.lineTo(9, -7.5);
-        context.closePath();
-        const noseGradient = context.createLinearGradient(0, -20, 0, -7.5);
-        noseGradient.addColorStop(0, tankGlassTop);
-        noseGradient.addColorStop(1, tankGlassBottom);
-        context.fillStyle = noseGradient;
-        context.shadowColor = tankNoseGlow;
-        context.shadowBlur = 9;
-        context.fill();
-        context.lineWidth = 1;
-        context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
-        context.stroke();
+        if (weapon !== "guided_missile" && weapon !== "tow_missile" && weapon !== "tow_missile_active") {
+          context.beginPath();
+          context.moveTo(-8.5, -23);
+          context.lineTo(-11.5, -10);
+          context.lineTo(-8, 1);
+          context.lineTo(8, 1);
+          context.lineTo(11.5, -10);
+          context.lineTo(8.5, -23);
+          context.closePath();
+          context.fillStyle = barrelGradient;
+          context.shadowColor = tankNoseGlow;
+          context.shadowBlur = 7;
+          context.fill();
+          context.lineWidth = 1;
+          context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
+          context.stroke();
+          context.beginPath();
+          context.moveTo(0, -20);
+          context.lineTo(-9, -7.5);
+          context.lineTo(9, -7.5);
+          context.closePath();
+          const noseGradient = context.createLinearGradient(0, -20, 0, -7.5);
+          noseGradient.addColorStop(0, tankGlassTop);
+          noseGradient.addColorStop(1, tankGlassBottom);
+          context.fillStyle = noseGradient;
+          context.shadowColor = tankNoseGlow;
+          context.shadowBlur = 9;
+          context.fill();
+          context.lineWidth = 1;
+          context.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
+          context.stroke();
+        }
         context.restore();
 
         context.save();
@@ -1108,7 +1698,33 @@ const POLL_INTERVAL_MS = 45;
         context.fill();
         context.restore();
 
-        if (flash > 0) {
+        if (weapon === "land_mine") {
+          drawLandMine(
+            context,
+            {
+              id: 0,
+              x: 0,
+              y: 0,
+              radius: 9.6,
+              trigger_radius: 10.4,
+              color: tank.color,
+              armed: true,
+              triggered: false,
+              visibleAlpha: 1,
+            },
+            theme,
+            elapsedMs,
+            true,
+          );
+        }
+        if (weapon === "guided_missile") {
+          drawTankMissileLauncher(context, tank.color, theme, elapsedMs);
+        }
+        if (weapon === "tow_missile" || weapon === "tow_missile_active") {
+          drawTankTowLauncher(context, tank.color, theme, elapsedMs);
+        }
+
+        if (flash > 0 && weapon !== "land_mine") {
           context.fillStyle = tankPalette.flash.replace(/, ([0-9.]+)\)$/, `, ${clamp(flash * 5.8, 0, 0.95)})`);
           context.beginPath();
           context.arc(0, -(radius + 18), 8 + flash * 24, 0, Math.PI * 2);
@@ -1364,7 +1980,19 @@ const POLL_INTERVAL_MS = 45;
           ctx.fill();
         }
 
+        for (const mine of smoothedMines.values()) {
+          drawLandMine(ctx, mine, theme, scene.elapsedMs);
+        }
+
         for (const fade of scene.bulletFades) {
+          if (fade.projectileType === "guided_missile") {
+            drawGuidedMissileExpiryEffect(ctx, fade, theme, scene.elapsedMs);
+            continue;
+          }
+          if (fade.projectileType === "tow_missile") {
+            drawTowMissileExpiryEffect(ctx, fade, theme, scene.elapsedMs);
+            continue;
+          }
           const fadeAlpha = clamp(fade.life / fade.maxLife, 0, 1);
           const fadePalette = getPlayerPalette(fade.color, theme);
           const radius = fade.radius + (1 - fadeAlpha) * 10;
@@ -1402,6 +2030,14 @@ const POLL_INTERVAL_MS = 45;
               ctx.stroke();
             }
             ctx.restore();
+            continue;
+          }
+          if (projectileType === "guided_missile") {
+            drawGuidedMissileProjectile(ctx, bullet, bullet.color, theme, scene.elapsedMs);
+            continue;
+          }
+          if (projectileType === "tow_missile") {
+            drawTowMissileProjectile(ctx, bullet, bullet.color, theme, scene.elapsedMs);
             continue;
           }
           const trailDx = bullet.x - (bullet.trailX ?? bullet.x);

@@ -6,6 +6,14 @@ export type LoginRequest = {
   auto_login: boolean;
 };
 
+export type SavedLoginAccount = {
+  host: string;
+  username: string;
+  password: string;
+  remember_password: boolean;
+  auto_login: boolean;
+};
+
 export type SettingsRequest = {
   host: string;
   username: string;
@@ -51,7 +59,82 @@ export type ControlMonitorOffer = {
   session: string;
   offerId: string;
   createdAt: string;
+  clientId?: string;
+  frontendClientId?: string;
+  robotClientId?: string;
   offer: ControlSessionDescription;
+};
+
+export type ControlMonitorKeyClientState = {
+  clientId: string;
+  firstSeenAt?: string;
+  firstSeenOrder?: number;
+  updatedAt: string;
+  ageMs: number;
+  latencyMs?: number | null;
+  latencySource?: string;
+  updateCount: number;
+  seq?: unknown;
+  sequence?: unknown;
+  ts?: unknown;
+  timestamp?: unknown;
+  sampledAt?: unknown;
+  type: string;
+  inputMode?: string;
+  callState: string;
+  pressedKeys: string[];
+};
+
+export type ControlMonitorLinkStatus = {
+  frontendDialing: boolean;
+  backendListening: boolean;
+  directConnected: boolean;
+  frontendLatencyMs?: number | null;
+  frontendLatencySource?: string;
+  backendLatencyMs?: number | null;
+  backendLatencySource?: string;
+  directLatencyMs?: number | null;
+  directLatencySource?: string;
+  pendingOffers: number;
+  userPendingOffers?: number;
+  internalPendingOffers?: number;
+  browserPosts: number;
+  robotPolls: number;
+  answersPosted: number;
+  activeClientCount: number;
+  dialingClientCount: number;
+  connectedClientCount: number;
+  robotPollFreshMs: number;
+  robotPollAgeMs?: number | null;
+  signalPairFreshMs?: number;
+  signalPairAgeMs?: number | null;
+  signalPaired?: boolean;
+  inferredDirectConnected?: boolean;
+  robotListenerClientId?: string;
+  robotListenerFreshMs?: number;
+  robotListenerAgeMs?: number | null;
+  robotListenerLatencyMs?: number | null;
+  robotListenerLatencySource?: string;
+  robotListenerLatencyUpdatedAt?: string | null;
+  robotListenerConflictCount?: number;
+  lastRobotListenerAt?: string | null;
+  lastBrowserOfferAt?: string | null;
+  lastRobotPollAt?: string | null;
+  lastAnswerAt?: string | null;
+  source?: string;
+};
+
+export type ControlMonitorKeyState = {
+  ok: boolean;
+  session: string;
+  ttlSec: number;
+  clientCount: number;
+  totalUpdates: number;
+  lastUpdateAt?: string | null;
+  serverTime: string;
+  clients: ControlMonitorKeyClientState[];
+  linkStatus: ControlMonitorLinkStatus;
+  commandLinkStatus?: ControlMonitorLinkStatus;
 };
 
 export type TankTroubleRoomRequest = {
@@ -89,11 +172,21 @@ export type TankTroubleVoteMarker = {
   color: string;
 };
 
+export type TankTroubleCustomOptions = {
+  health_system: boolean;
+  persistent_buffs: boolean;
+  same_place_respawn: boolean;
+};
+
 export type TankTroubleRoomState = {
   ok: boolean;
   room: string;
   map_seed: number;
   map_id: string;
+  match_mode?: "default" | "custom" | string;
+  custom_options?: TankTroubleCustomOptions;
+  match_mode_owner_id?: string;
+  mode_locked?: boolean;
   active_player_ids: string[];
   active_player_count: number;
   voted_player_ids: string[];
@@ -127,6 +220,8 @@ export type TankTroubleMatchLocalPlayerSyncState = {
   y: number;
   angle: number;
   radius: number;
+  deaths?: number;
+  spawn_seq?: number;
 };
 
 export type TankTroubleMatchRequest = {
@@ -134,6 +229,8 @@ export type TankTroubleMatchRequest = {
   player_id: string;
   country_code?: string;
   preferred_color?: string;
+  match_mode?: "default" | "custom" | string;
+  custom_options?: TankTroubleCustomOptions;
   input_seq: number;
   map_seed?: number;
   latency_ms?: number;
@@ -149,6 +246,8 @@ export type TankTroubleMatchPlayerState = {
   shotgun_ammo?: number;
   minigun_ammo?: number;
   double_barrel_ammo?: number;
+  mine_ammo?: number;
+  missile_ammo?: number;
   weapon_reload_ms?: number;
   shield_active_ms?: number;
   shield_visible_ms?: number;
@@ -159,12 +258,15 @@ export type TankTroubleMatchPlayerState = {
   angle: number;
   radius: number;
   flash: number;
+  hp?: number;
+  max_hp?: number;
   score: number;
   hits: number;
   deaths: number;
   shots: number;
   alive: boolean;
   respawn_in_ms: number;
+  spawn_seq?: number;
   latency_ms?: number;
   input?: TankTroubleMatchInputState;
   server_time_ms?: number;
@@ -185,6 +287,16 @@ export type TankTroubleMatchBulletState = {
   bounces_left?: number;
   has_bounced?: boolean;
   owner_shield_released?: boolean;
+  ignore_owner_shield?: boolean;
+  fire_seq?: number;
+  target_id?: string;
+  target_color?: string;
+  flame_color?: string;
+  locked?: boolean;
+  steer_locked_until_age?: number;
+  wall_hit_seq?: number;
+  wall_hit_x?: number;
+  wall_hit_y?: number;
   path_segments?: Array<{
     x1: number;
     y1: number;
@@ -198,6 +310,24 @@ export type TankTroubleMatchBulletState = {
     x2: number;
     y2: number;
   }>;
+  server_time_ms?: number;
+};
+
+export type TankTroubleMineState = {
+  id: number;
+  owner_id: string;
+  color: string;
+  x: number;
+  y: number;
+  radius: number;
+  trigger_radius: number;
+  blast_radius: number;
+  age: number;
+  armed: boolean;
+  triggered: boolean;
+  trigger_started_at_ms?: number;
+  created_at_ms: number;
+  fire_seq?: number;
   server_time_ms?: number;
 };
 
@@ -264,6 +394,8 @@ export type TankTroubleMatchLocalState = {
   shotgun_ammo?: number;
   minigun_ammo?: number;
   double_barrel_ammo?: number;
+  mine_ammo?: number;
+  missile_ammo?: number;
   weapon_reload_ms?: number;
   shield_active_ms?: number;
   shield_visible_ms?: number;
@@ -274,6 +406,8 @@ export type TankTroubleMatchLocalState = {
   angle: number;
   radius: number;
   flash: number;
+  hp?: number;
+  max_hp?: number;
   score: number;
   hits: number;
   deaths: number;
@@ -281,6 +415,7 @@ export type TankTroubleMatchLocalState = {
   fire_ack_seq?: number;
   alive: boolean;
   respawn_in_ms: number;
+  spawn_seq?: number;
   latency_ms?: number;
   server_time_ms?: number;
 };
@@ -295,11 +430,16 @@ export type TankTroubleMatchState = {
   local_player_color: string;
   local_state: TankTroubleMatchLocalState | null;
   local_player_voted: boolean;
+  match_mode?: "default" | "custom" | string;
+  custom_options?: TankTroubleCustomOptions;
+  match_mode_owner_id?: string;
+  mode_locked?: boolean;
   active_player_ids: string[];
   active_player_count: number;
   active_players: TankTroubleRoomPlayerState[];
   players: TankTroubleMatchPlayerState[];
   bullets: TankTroubleMatchBulletState[];
+  mines?: TankTroubleMineState[];
   targets: TankTroubleMatchTargetState[];
   tank_explosions?: TankTroubleTankExplosionState[];
   powerups?: TankTroublePowerupState[];
@@ -377,6 +517,8 @@ export type TankTroubleLatencyCloneState = {
   angle: number;
   radius: number;
   flash: number;
+  hp?: number;
+  max_hp?: number;
 };
 
 export type TankTroubleLatencyTargetRespawn = {
@@ -425,6 +567,8 @@ export type TankTroublePreviewTankState = {
   shotgun_ammo?: number;
   minigun_ammo?: number;
   double_barrel_ammo?: number;
+  mine_ammo?: number;
+  missile_ammo?: number;
   weapon_reload_ms?: number;
   x: number;
   y: number;
@@ -444,6 +588,16 @@ export type TankTroublePreviewBulletState = {
   vy: number;
   bounces_left?: number;
   has_bounced?: boolean;
+  owner_shield_released?: boolean;
+  ignore_owner_shield?: boolean;
+  target_id?: string;
+  target_color?: string;
+  flame_color?: string;
+  locked?: boolean;
+  steer_locked_until_age?: number;
+  wall_hit_seq?: number;
+  wall_hit_x?: number;
+  wall_hit_y?: number;
   path_segments?: Array<{
     x1: number;
     y1: number;
@@ -485,6 +639,8 @@ export type TankTroublePreviewFadeState = {
   life: number;
   maxLife: number;
   color: string;
+  projectileType?: string;
+  targetColor?: string;
 };
 
 export type TankTroublePreviewSceneState = {
@@ -495,6 +651,7 @@ export type TankTroublePreviewSceneState = {
   tanks: TankTroublePreviewTankState[];
   bullets: TankTroublePreviewBulletState[];
   targets: TankTroublePreviewTargetState[];
+  mines: TankTroubleMineState[];
   tankExplosions: TankTroubleTankExplosionState[];
   wallRipples: TankTroublePreviewRippleState[];
   bulletFades: TankTroublePreviewFadeState[];
@@ -506,12 +663,16 @@ export type TankTroublePreviewPlayerSnapshot = {
   shotgun_ammo?: number;
   minigun_ammo?: number;
   double_barrel_ammo?: number;
+  mine_ammo?: number;
+  missile_ammo?: number;
   weapon_reload_ms?: number;
   x: number;
   y: number;
   angle: number;
   radius: number;
   flash: number;
+  hp?: number;
+  max_hp?: number;
   shots: number;
   score: number;
   hits: number;
@@ -529,6 +690,7 @@ export type TankTroublePreviewPushRequest = {
   tank: TankTroublePreviewPlayerSnapshot;
   bullets: TankTroublePreviewBulletState[];
   targets: TankTroublePreviewTargetState[];
+  mines: TankTroubleMineState[];
   tankExplosions?: TankTroubleTankExplosionState[];
   updated_at_ms: number;
 };
@@ -543,6 +705,7 @@ export type LoginSettings = {
   password: string;
   remember_password: boolean;
   auto_login: boolean;
+  saved_accounts: SavedLoginAccount[];
 };
 
 export type ServiceStatus = {
@@ -592,6 +755,52 @@ export type NetworkSnapshot = {
   last_checked: string;
 };
 
+export type TrafficServiceStatus = {
+  name: string;
+  title: string;
+  running: boolean;
+};
+
+export type TrafficInterfaceStatus = {
+  name: string;
+  rx_bytes: number;
+  tx_bytes: number;
+  speed_mbps?: number | null;
+};
+
+export type TrafficMonitorSnapshot = {
+  connected: boolean;
+  timestamp: string;
+  timestamp_ms: number;
+  rx_bytes: number;
+  tx_bytes: number;
+  rx_bps: number;
+  tx_bps: number;
+  total_bps: number;
+  capacity_bps?: number | null;
+  capacity_source: string;
+  utilization_percent?: number | null;
+  congestion_level: "idle" | "good" | "warning" | "danger" | "unknown" | string;
+  congestion_note: string;
+  active_services: number;
+  monitored_services: number;
+  cpu_percent?: number | null;
+  cpu_core_count?: number | null;
+  memory_percent?: number | null;
+  memory_used_mb?: number | null;
+  memory_total_mb?: number | null;
+  load_1m?: number | null;
+  load_5m?: number | null;
+  load_15m?: number | null;
+  disk_percent?: number | null;
+  disk_used_gb?: number | null;
+  disk_total_gb?: number | null;
+  uptime_seconds?: number | null;
+  interfaces: TrafficInterfaceStatus[];
+  services: TrafficServiceStatus[];
+  error: string;
+};
+
 export type DashboardStatus = {
   connected: boolean;
   ssh_target: string;
@@ -620,6 +829,37 @@ export type LogsResponse = {
   logs: LogEntry[];
 };
 
+export type VideoPushModeStatus = {
+  live?: boolean;
+  state?: string;
+  streamName?: string;
+  lastHeartbeatAt?: string | null;
+  heartbeatAgeSec?: number | null;
+  heartbeatIntervalSec?: number | null;
+  staleAfterSec?: number | null;
+  statusReason?: string | null;
+  producerVisible?: boolean;
+  encoderDisplay?: string | null;
+  encoderName?: string | null;
+  ingestMode?: string | null;
+  uploadProtocol?: string | null;
+  playUrl?: string;
+  pushUrlHost?: string;
+  source?: string;
+  clientId?: string;
+  stoppedAt?: string | null;
+};
+
+export type VideoPushStatus = {
+  ok?: boolean;
+  activeMode?: "offline" | "legacy" | "tencent" | string;
+  conflict?: boolean;
+  availableModes?: string[];
+  legacy?: VideoPushModeStatus;
+  tencent?: VideoPushModeStatus;
+  serverTime?: string;
+};
+
 export type LocalSetupStatus = {
   ready: boolean;
   message: string;
@@ -629,6 +869,62 @@ export type LocalSetupResult = {
   ready: boolean;
   changed: boolean;
   message: string;
+};
+
+export type LocalStreamCamera = {
+  id: string;
+  name: string;
+  source: string;
+  status: string;
+};
+
+export type LocalStreamConfig = {
+  stream_name: string;
+  use_current_server: boolean;
+  cloud_public_scheme: string;
+  cloud_public_host: string;
+  cloud_api_port: number;
+  cloud_ingest_port: number;
+  cloud_srt_ingest_port: number;
+  cloud_webrtc_port: number;
+  camera_name: string;
+  camera_device: string;
+  input_format: string;
+  video_size: string;
+  output_video_size: string;
+  input_framerate: number;
+  target_framerate: number;
+  video_bitrate: string;
+  ffmpeg_path: string;
+  open_viewer_on_start: boolean;
+  hidden_delay_marker_enabled: boolean;
+  video_encoder: string;
+  ingest_mode: string;
+  srt_latency_ms: number;
+  srt_packet_size: number;
+  connect_timeout_ms: number;
+  drop_late_packets: boolean;
+};
+
+export type LocalStreamStatus = {
+  camera_connected: boolean;
+  cameras: LocalStreamCamera[];
+  running: boolean;
+  pid?: number | null;
+  config: LocalStreamConfig;
+  target_url: string;
+  ffmpeg_available: boolean;
+  server_reachable: boolean;
+  server_note: string;
+  local_stream_ready: boolean;
+  local_stream_note: string;
+  push_visible: boolean;
+  push_note: string;
+  pull_reachable: boolean;
+  pull_note: string;
+  log_tail: string;
+  message: string;
+  updated_at: string;
 };
 
 export type TankTroubleSetupStatus = {

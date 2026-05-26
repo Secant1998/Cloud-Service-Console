@@ -9,11 +9,14 @@ type TopbarProps = {
   statusText: string;
   theme: "light" | "dark";
   updater: AppUpdaterState;
+  onlineCount?: number;
+  accessRoleLabel?: string;
   busy?: boolean;
   setupBusy?: boolean;
   setupProgress?: number;
   setupMessage?: string;
   setupTone?: SetupFeedbackTone;
+  canRunSetup?: boolean;
   onRefresh: () => void;
   onInstallUpdate: () => void;
   onLocalSetup: () => void;
@@ -26,11 +29,14 @@ export function Topbar({
   statusText,
   theme,
   updater,
+  onlineCount = 1,
+  accessRoleLabel = "",
   busy = false,
   setupBusy = false,
   setupProgress = 0,
   setupMessage = "",
   setupTone = "idle",
+  canRunSetup = true,
   onRefresh,
   onInstallUpdate,
   onLocalSetup,
@@ -46,13 +52,18 @@ export function Topbar({
       </div>
       <div className="topbar-actions">
         <UpdateAction updater={updater} disabled={busy} onInstall={onInstallUpdate} />
+        <div className="topbar-online-pill" title="当前打开控制台的在线人数">
+          <span className="topbar-online-dot" aria-hidden="true" />
+          <span>当前 {Math.max(1, onlineCount)} 人在线</span>
+          {accessRoleLabel ? <span className="topbar-role-pill">{accessRoleLabel}</span> : null}
+        </div>
         <Button variant="ghost" className="theme-mode-button" disabled={busy} onClick={onToggleTheme}>
           {theme === "dark" ? "浅色模式" : "深色模式"}
         </Button>
         <Button variant="secondary" loading={busy} onClick={onRefresh}>
           刷新
         </Button>
-        <div className="topbar-action-stack topbar-setup-stack">
+        {canRunSetup ? <div className="topbar-action-stack topbar-setup-stack">
           <Button
             variant="secondary"
             className="topbar-setup-button"
@@ -70,7 +81,7 @@ export function Topbar({
               <span>{setupMessage}</span>
             ) : null}
           </div>
-        </div>
+        </div> : null}
         <Button variant="ghost" disabled={busy} onClick={onLogout}>
           退出
         </Button>

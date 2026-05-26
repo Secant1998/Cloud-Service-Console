@@ -26,12 +26,21 @@ class SettingsRequest(BaseModel):
     auto_login: bool = False
 
 
+class SavedLoginAccountResponse(BaseModel):
+    host: str
+    username: str
+    password: str = ""
+    remember_password: bool = False
+    auto_login: bool = False
+
+
 class LoginSettingsResponse(BaseModel):
     host: str
     username: str
     password: str = ""
     remember_password: bool = False
     auto_login: bool = False
+    saved_accounts: List[SavedLoginAccountResponse] = Field(default_factory=list)
 
 
 class ServiceStatus(BaseModel):
@@ -81,6 +90,52 @@ class NetworkSnapshot(BaseModel):
     last_checked: str = "never"
 
 
+class TrafficServiceStatus(BaseModel):
+    name: str
+    title: str
+    running: bool = False
+
+
+class TrafficInterfaceStatus(BaseModel):
+    name: str
+    rx_bytes: int = 0
+    tx_bytes: int = 0
+    speed_mbps: Optional[float] = None
+
+
+class TrafficMonitorSnapshot(BaseModel):
+    connected: bool = False
+    timestamp: str = ""
+    timestamp_ms: int = 0
+    rx_bytes: int = 0
+    tx_bytes: int = 0
+    rx_bps: float = 0.0
+    tx_bps: float = 0.0
+    total_bps: float = 0.0
+    capacity_bps: Optional[float] = None
+    capacity_source: str = ""
+    utilization_percent: Optional[float] = None
+    congestion_level: str = "unknown"
+    congestion_note: str = "等待流量采样"
+    active_services: int = 0
+    monitored_services: int = 0
+    cpu_percent: Optional[float] = None
+    cpu_core_count: Optional[int] = None
+    memory_percent: Optional[float] = None
+    memory_used_mb: Optional[float] = None
+    memory_total_mb: Optional[float] = None
+    load_1m: Optional[float] = None
+    load_5m: Optional[float] = None
+    load_15m: Optional[float] = None
+    disk_percent: Optional[float] = None
+    disk_used_gb: Optional[float] = None
+    disk_total_gb: Optional[float] = None
+    uptime_seconds: Optional[float] = None
+    interfaces: List[TrafficInterfaceStatus] = Field(default_factory=list)
+    services: List[TrafficServiceStatus] = Field(default_factory=list)
+    error: str = ""
+
+
 class DashboardStatus(BaseModel):
     connected: bool
     ssh_target: str
@@ -124,6 +179,62 @@ class LocalSetupRunRequest(BaseModel):
     password: str
 
 
+class LocalStreamCamera(BaseModel):
+    id: str
+    name: str
+    source: str = ""
+    status: str = ""
+
+
+class LocalStreamConfig(BaseModel):
+    stream_name: str = "main-camera"
+    use_current_server: bool = True
+    cloud_public_scheme: str = "http"
+    cloud_public_host: str = ""
+    cloud_api_port: int = 18081
+    cloud_ingest_port: int = 18084
+    cloud_srt_ingest_port: int = 19091
+    cloud_webrtc_port: int = 19090
+    camera_name: str = ""
+    camera_device: str = ""
+    input_format: str = ""
+    video_size: str = "1920x1080"
+    output_video_size: str = "1920x1080"
+    input_framerate: int = 30
+    target_framerate: int = 30
+    video_bitrate: str = "1800k"
+    ffmpeg_path: str = "ffmpeg"
+    open_viewer_on_start: bool = False
+    hidden_delay_marker_enabled: bool = False
+    video_encoder: str = "libx264"
+    ingest_mode: str = "srt"
+    srt_latency_ms: int = 1000
+    srt_packet_size: int = 1128
+    connect_timeout_ms: int = 3000
+    drop_late_packets: bool = False
+
+
+class LocalStreamStatus(BaseModel):
+    camera_connected: bool = False
+    cameras: List[LocalStreamCamera] = Field(default_factory=list)
+    running: bool = False
+    pid: Optional[int] = None
+    config: LocalStreamConfig = Field(default_factory=LocalStreamConfig)
+    target_url: str = ""
+    ffmpeg_available: bool = False
+    server_reachable: bool = False
+    server_note: str = ""
+    local_stream_ready: bool = False
+    local_stream_note: str = ""
+    push_visible: bool = False
+    push_note: str = ""
+    pull_reachable: bool = False
+    pull_note: str = ""
+    log_tail: str = ""
+    message: str = ""
+    updated_at: str = ""
+
+
 class TankTroubleSetupStatus(BaseModel):
     ready: bool
     message: str
@@ -163,7 +274,82 @@ class ControlMonitorOfferResponse(BaseModel):
     session: str
     offerId: str
     createdAt: str
+    clientId: str = ""
+    frontendClientId: str = ""
+    robotClientId: str = ""
     offer: ControlSessionDescription
+
+
+class ControlMonitorKeyClientState(BaseModel):
+    clientId: str
+    firstSeenAt: str = ""
+    firstSeenOrder: int = 0
+    updatedAt: str = ""
+    ageMs: int = 0
+    latencyMs: Optional[int] = None
+    latencySource: str = ""
+    updateCount: int = 0
+    seq: Any = None
+    sequence: Any = None
+    ts: Any = None
+    timestamp: Any = None
+    sampledAt: Any = None
+    type: str = ""
+    inputMode: str = ""
+    callState: str = ""
+    pressedKeys: List[str] = Field(default_factory=list)
+
+
+class ControlMonitorLinkStatus(BaseModel):
+    frontendDialing: bool = False
+    backendListening: bool = False
+    directConnected: bool = False
+    frontendLatencyMs: Optional[int] = None
+    frontendLatencySource: str = ""
+    backendLatencyMs: Optional[int] = None
+    backendLatencySource: str = ""
+    directLatencyMs: Optional[int] = None
+    directLatencySource: str = ""
+    pendingOffers: int = 0
+    userPendingOffers: int = 0
+    internalPendingOffers: int = 0
+    browserPosts: int = 0
+    robotPolls: int = 0
+    answersPosted: int = 0
+    activeClientCount: int = 0
+    dialingClientCount: int = 0
+    connectedClientCount: int = 0
+    robotPollFreshMs: int = 5000
+    robotPollAgeMs: Optional[int] = None
+    signalPairFreshMs: int = 15000
+    signalPairAgeMs: Optional[int] = None
+    signalPaired: bool = False
+    inferredDirectConnected: bool = False
+    robotListenerClientId: str = ""
+    robotListenerFreshMs: int = 10000
+    robotListenerAgeMs: Optional[int] = None
+    robotListenerLatencyMs: Optional[int] = None
+    robotListenerLatencySource: str = ""
+    robotListenerLatencyUpdatedAt: Optional[str] = None
+    robotListenerConflictCount: int = 0
+    lastRobotListenerAt: Optional[str] = None
+    lastBrowserOfferAt: Optional[str] = None
+    lastRobotPollAt: Optional[str] = None
+    lastAnswerAt: Optional[str] = None
+    source: str = ""
+
+
+class ControlMonitorKeyStateResponse(BaseModel):
+    ok: bool = True
+    session: str
+    ttlSec: float = 1.2
+    clientCount: int = 0
+    totalUpdates: int = 0
+    lastUpdateAt: Optional[str] = None
+    serverTime: str = ""
+    clients: List[ControlMonitorKeyClientState] = Field(default_factory=list)
+    linkStatus: ControlMonitorLinkStatus = Field(default_factory=ControlMonitorLinkStatus)
+    commandLinkStatus: ControlMonitorLinkStatus = Field(default_factory=ControlMonitorLinkStatus)
 
 
 class TankTroubleRoomRequest(BaseModel):
@@ -201,11 +387,21 @@ class TankTroubleVoteMarker(BaseModel):
     color: str = "green"
 
 
+class TankTroubleCustomOptions(BaseModel):
+    health_system: bool = False
+    persistent_buffs: bool = False
+    same_place_respawn: bool = False
+
+
 class TankTroubleRoomState(BaseModel):
     ok: bool = True
     room: str = "main"
     map_seed: int
     map_id: str
+    match_mode: str = "default"
+    custom_options: TankTroubleCustomOptions = Field(default_factory=TankTroubleCustomOptions)
+    match_mode_owner_id: str = ""
+    mode_locked: bool = False
     active_player_ids: List[str] = Field(default_factory=list)
     active_player_count: int = 0
     voted_player_ids: List[str] = Field(default_factory=list)
@@ -239,6 +435,8 @@ class TankTroubleMatchLocalPlayerSyncState(BaseModel):
     y: float
     angle: float
     radius: float = 20.0
+    deaths: int = 0
+    spawn_seq: int = 0
 
 
 class TankTroubleMatchRequest(BaseModel):
@@ -246,6 +444,8 @@ class TankTroubleMatchRequest(BaseModel):
     player_id: str
     country_code: str = ""
     preferred_color: str = ""
+    match_mode: str = "default"
+    custom_options: TankTroubleCustomOptions = Field(default_factory=TankTroubleCustomOptions)
     input_seq: int = 0
     map_seed: int = 0
     latency_ms: int = 0
@@ -261,6 +461,8 @@ class TankTroubleMatchPlayerState(BaseModel):
     shotgun_ammo: int = 0
     minigun_ammo: int = 0
     double_barrel_ammo: int = 0
+    mine_ammo: int = 0
+    missile_ammo: int = 0
     weapon_reload_ms: int = 0
     shield_active_ms: int = 0
     shield_visible_ms: int = 0
@@ -271,12 +473,15 @@ class TankTroubleMatchPlayerState(BaseModel):
     angle: float
     radius: float
     flash: float = 0.0
+    hp: float = 100.0
+    max_hp: float = 100.0
     score: int = 0
     hits: int = 0
     deaths: int = 0
     shots: int = 0
     alive: bool = True
     respawn_in_ms: int = 0
+    spawn_seq: int = 0
     latency_ms: int = 0
     input: TankTroubleMatchInputState = Field(default_factory=TankTroubleMatchInputState)
     server_time_ms: int = 0
@@ -297,9 +502,36 @@ class TankTroubleMatchBulletState(BaseModel):
     bounces_left: int = 0
     has_bounced: bool = False
     owner_shield_released: bool = True
+    ignore_owner_shield: bool = False
+    fire_seq: int = 0
+    target_id: str = ""
+    target_color: str = ""
+    flame_color: str = ""
+    locked: bool = False
+    steer_locked_until_age: float = 0.0
+    wall_hit_seq: int = 0
+    wall_hit_x: float = 0.0
+    wall_hit_y: float = 0.0
     path_segments: List[dict] = Field(default_factory=list)
     distance_travelled: float = 0.0
     segments: List[dict] = Field(default_factory=list)
+    server_time_ms: int = 0
+
+
+class TankTroubleMineState(BaseModel):
+    id: int
+    owner_id: str = ""
+    color: str = "green"
+    x: float
+    y: float
+    radius: float
+    trigger_radius: float
+    blast_radius: float
+    age: float = 0.0
+    armed: bool = False
+    triggered: bool = False
+    trigger_started_at_ms: int = 0
+    created_at_ms: int = 0
     server_time_ms: int = 0
 
 
@@ -366,6 +598,8 @@ class TankTroubleMatchLocalState(BaseModel):
     shotgun_ammo: int = 0
     minigun_ammo: int = 0
     double_barrel_ammo: int = 0
+    mine_ammo: int = 0
+    missile_ammo: int = 0
     weapon_reload_ms: int = 0
     shield_active_ms: int = 0
     shield_visible_ms: int = 0
@@ -376,6 +610,8 @@ class TankTroubleMatchLocalState(BaseModel):
     angle: float
     radius: float
     flash: float = 0.0
+    hp: float = 100.0
+    max_hp: float = 100.0
     score: int = 0
     hits: int = 0
     deaths: int = 0
@@ -383,6 +619,7 @@ class TankTroubleMatchLocalState(BaseModel):
     fire_ack_seq: int = 0
     alive: bool = True
     respawn_in_ms: int = 0
+    spawn_seq: int = 0
     latency_ms: int = 0
     server_time_ms: int = 0
 
@@ -397,11 +634,16 @@ class TankTroubleMatchState(BaseModel):
     local_player_color: str = "green"
     local_state: TankTroubleMatchLocalState | None = None
     local_player_voted: bool = False
+    match_mode: str = "default"
+    custom_options: TankTroubleCustomOptions = Field(default_factory=TankTroubleCustomOptions)
+    match_mode_owner_id: str = ""
+    mode_locked: bool = False
     active_player_ids: List[str] = Field(default_factory=list)
     active_player_count: int = 0
     active_players: List[TankTroubleRoomPlayerState] = Field(default_factory=list)
     players: List[TankTroubleMatchPlayerState] = Field(default_factory=list)
     bullets: List[TankTroubleMatchBulletState] = Field(default_factory=list)
+    mines: List[TankTroubleMineState] = Field(default_factory=list)
     targets: List[TankTroubleMatchTargetState] = Field(default_factory=list)
     tank_explosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
     powerups: List[TankTroublePowerupState] = Field(default_factory=list)
@@ -527,12 +769,16 @@ class TankTroublePreviewTankState(BaseModel):
     shotgun_ammo: int = 0
     minigun_ammo: int = 0
     double_barrel_ammo: int = 0
+    mine_ammo: int = 0
+    missile_ammo: int = 0
     weapon_reload_ms: int = 0
     x: float
     y: float
     angle: float
     radius: float
     flash: float = 0.0
+    hp: float = 100.0
+    max_hp: float = 100.0
 
 
 class TankTroublePreviewBulletState(BaseModel):
@@ -546,6 +792,16 @@ class TankTroublePreviewBulletState(BaseModel):
     vy: float = 0.0
     bounces_left: int = 0
     has_bounced: bool = False
+    owner_shield_released: bool = True
+    ignore_owner_shield: bool = False
+    target_id: str = ""
+    target_color: str = ""
+    flame_color: str = ""
+    locked: bool = False
+    steer_locked_until_age: float = 0.0
+    wall_hit_seq: int = 0
+    wall_hit_x: float = 0.0
+    wall_hit_y: float = 0.0
     path_segments: List[dict] = Field(default_factory=list)
     distance_travelled: float = 0.0
     segments: List[dict] = Field(default_factory=list)
@@ -577,6 +833,8 @@ class TankTroublePreviewFadeState(BaseModel):
     life: float
     maxLife: float
     color: str = "green"
+    projectileType: str = "bullet"
+    targetColor: str = ""
 
 
 class TankTroublePreviewSceneState(BaseModel):
@@ -587,6 +845,7 @@ class TankTroublePreviewSceneState(BaseModel):
     tanks: List[TankTroublePreviewTankState] = Field(default_factory=list)
     bullets: List[TankTroublePreviewBulletState] = Field(default_factory=list)
     targets: List[TankTroublePreviewTargetState] = Field(default_factory=list)
+    mines: List["TankTroubleMineState"] = Field(default_factory=list)
     tankExplosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
     wallRipples: List[TankTroublePreviewRippleState] = Field(default_factory=list)
     bulletFades: List[TankTroublePreviewFadeState] = Field(default_factory=list)
@@ -598,12 +857,16 @@ class TankTroublePreviewPlayerSnapshot(BaseModel):
     shotgun_ammo: int = 0
     minigun_ammo: int = 0
     double_barrel_ammo: int = 0
+    mine_ammo: int = 0
+    missile_ammo: int = 0
     weapon_reload_ms: int = 0
     x: float
     y: float
     angle: float
     radius: float
     flash: float = 0.0
+    hp: float = 100.0
+    max_hp: float = 100.0
     shots: int = 0
     score: int = 0
     hits: int = 0
@@ -621,6 +884,7 @@ class TankTroublePreviewPushRequest(BaseModel):
     tank: TankTroublePreviewPlayerSnapshot
     bullets: List[TankTroublePreviewBulletState] = Field(default_factory=list)
     targets: List[TankTroublePreviewTargetState] = Field(default_factory=list)
+    mines: List["TankTroubleMineState"] = Field(default_factory=list)
     tankExplosions: List[TankTroubleTankExplosionState] = Field(default_factory=list)
     updated_at_ms: int = 0
 

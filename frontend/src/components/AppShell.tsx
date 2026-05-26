@@ -4,7 +4,7 @@ import type { NetworkSnapshot } from "../types/cloud";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
-type ConsoleView = "overview" | "services" | "health" | "activity" | "games";
+type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "games";
 
 type AppShellProps = PropsWithChildren<{
   networkSnapshot: NetworkSnapshot;
@@ -12,13 +12,17 @@ type AppShellProps = PropsWithChildren<{
   statusText: string;
   theme: "light" | "dark";
   updater: AppUpdaterState;
+  onlineCount?: number;
+  accessRoleLabel?: string;
   activeView: ConsoleView;
+  localStreamAvailable?: boolean;
   busy?: boolean;
   sidebarRefreshBusy?: boolean;
   setupBusy?: boolean;
   setupProgress?: number;
   setupMessage?: string;
   setupTone?: "idle" | "progress" | "success" | "error";
+  canRunSetup?: boolean;
   scrollLocked?: boolean;
   onViewChange: (view: ConsoleView) => void;
   onRefresh: () => void;
@@ -35,13 +39,17 @@ export function AppShell({
   statusText,
   theme,
   updater,
+  onlineCount = 1,
+  accessRoleLabel = "",
   activeView,
+  localStreamAvailable = false,
   busy = false,
   sidebarRefreshBusy = false,
   setupBusy = false,
   setupProgress = 0,
   setupMessage = "",
   setupTone = "idle",
+  canRunSetup = true,
   scrollLocked = false,
   onViewChange,
   onRefresh,
@@ -202,6 +210,7 @@ export function AppShell({
       <Sidebar
         networkSnapshot={networkSnapshot}
         activeView={activeView}
+        localStreamAvailable={localStreamAvailable}
         refreshBusy={sidebarRefreshBusy}
         onViewChange={onViewChange}
         onRefresh={onSidebarRefresh}
@@ -212,11 +221,14 @@ export function AppShell({
           statusText={statusText}
           theme={theme}
           updater={updater}
+          onlineCount={onlineCount}
+          accessRoleLabel={accessRoleLabel}
           busy={busy}
           setupBusy={setupBusy}
           setupProgress={setupProgress}
           setupMessage={setupMessage}
           setupTone={setupTone}
+          canRunSetup={canRunSetup}
           onRefresh={onRefresh}
           onInstallUpdate={onInstallUpdate}
           onLocalSetup={onLocalSetup}

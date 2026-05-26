@@ -11,13 +11,24 @@
     "webrtcPort": 19090,
     "srtIngestPort": 19091,
     "rtspPort": 8554,
+    "turnUser": "telemetry",
+    "turnCredential": "123456",
+    "turnRelayMinPort": 20000,
+    "turnRelayMaxPort": 20199,
     "go2rtcReleaseTag": "v1.9.14"
   },
+  "webConsole": {
+    "remoteBase": "/opt/cloud-service-console-web",
+    "port": 18080,
+    "serviceName": "cloud-service-console-web",
+    "adminToken": "change-me-admin-token",
+    "userToken": "change-me-user-token"
+  },
   "transport": {
-    "ingestMode": "http",
-    "srtLatencyMs": 120,
-    "srtPacketSize": 1316,
+    "ingestMode": "srt",
+    "srtLatencyMs": 1000,
+    "srtPacketSize": 1128,
     "connectTimeoutMs": 3000,
-    "dropLatePackets": true
+    "dropLatePackets": false
   }
 }

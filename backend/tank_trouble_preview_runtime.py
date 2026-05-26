@@ -10,6 +10,7 @@ from models import (
     TankTroublePreviewClearRequest,
     TankTroublePreviewBulletState,
     TankTroublePreviewFadeState,
+    TankTroubleMineState,
     TankTroublePreviewPlayerSnapshot,
     TankTroublePreviewPushRequest,
     TankTroublePreviewRect,
@@ -40,6 +41,8 @@ LOGICAL_GRID_SIZE = min(ARENA_WIDTH / LOGICAL_GRID_COLS, ARENA_HEIGHT / LOGICAL_
 BULLET_SPEED = LOGICAL_GRID_SIZE * 1.85
 BULLET_LIFE = 10.0
 BULLET_BOUNCES = 7
+GUIDED_MISSILE_LIFE = 10.0
+TOW_MISSILE_LIFE = GUIDED_MISSILE_LIFE - 2.0
 MAX_BULLETS = 5
 SELF_HIT_ARM_DELAY = 0.16
 RIPPLE_LIFE = 0.34
@@ -274,9 +277,15 @@ class _PreviewBullet:
     life: float
     bounces_left: int
     age: float
+    target_id: str
+    target_color: str
+    locked: bool
+    flame_color: str
     path_segments: list[dict]
     distance_travelled: float
     segments: list[dict]
+    owner_shield_released: bool
+    ignore_owner_shield: bool
 
 
 @dataclass
@@ -299,6 +308,8 @@ class _PreviewFade:
     life: float
     max_life: float
     color: str
+    projectile_type: str = "bullet"
+    target_color: str = ""
 
 
 @dataclass
@@ -331,6 +342,7 @@ class _PreviewSession:
     walls: list[TankTroublePreviewRect]
     targets: list[TankTroublePreviewTargetState]
     bullets: list[_PreviewBullet]
+    mines: list[TankTroubleMineState]
     tank_explosions: list[TankTroubleTankExplosionState]
     wall_ripples: list[_PreviewRipple]
     bullet_fades: list[_PreviewFade]
@@ -367,25 +379,66 @@ def _normalize_preview_bullets(
         if bullet_id in seen_ids:
             continue
         seen_ids.add(bullet_id)
+        projectile_type = str(getattr(bullet, "projectile_type", "bullet") or "bullet")
+        projectile_life = TOW_MISSILE_LIFE if projectile_type == "tow_missile" else BULLET_LIFE
         normalized_bullets.append(
             _PreviewBullet(
                 id=bullet_id,
                 color=_normalize_color(bullet.color or default_color),
-                projectile_type=str(getattr(bullet, "projectile_type", "bullet") or "bullet"),
+                projectile_type=projectile_type,
                 x=float(bullet.x),
                 y=float(bullet.y),
                 radius=max(1.0, float(bullet.radius or BULLET_RADIUS)),
                 vx=float(bullet.vx or 0.0),
                 vy=float(bullet.vy or 0.0),
-                life=BULLET_LIFE,
+                life=projectile_life,
                 bounces_left=BULLET_BOUNCES,
                 age=0.0,
+                target_id=_limit_text(getattr(bullet, "target_id", ""), 32),
+                target_color=_normalize_color(getattr(bullet, "target_color", "") or default_color) if getattr(bullet, "target_color", "") else "",
+                locked=bool(getattr(bullet, "locked", False)),
+                flame_color=str(getattr(bullet, "flame_color", "") or ""),
                 path_segments=list(getattr(bullet, "path_segments", []) or []),
                 distance_travelled=max(0.0, float(getattr(bullet, "distance_travelled", 0.0) or 0.0)),
                 segments=list(getattr(bullet, "segments", []) or []),
+                owner_shield_released=bool(getattr(bullet, "owner_shield_released", True)),
+                ignore_owner_shield=bool(getattr(bullet, "ignore_owner_shield", False)),
             )
         )
     return normalized_bullets
+
+
+def _normalize_preview_mines(mines: list[TankTroubleMineState]) -> list[TankTroubleMineState]:
+    normalized: list[TankTroubleMineState] = []
+    seen_ids: set[int] = set()
+    current_ms = _now_ms()
+    for index, mine in enumerate(mines):
+        mine_id = int(getattr(mine, "id", 0) or index + 1)
+        if mine_id in seen_ids:
+            continue
+        seen_ids.add(mine_id)
+        created_at_ms = max(0, int(getattr(mine, "created_at_ms", 0) or current_ms))
+        server_time_ms = max(created_at_ms, int(getattr(mine, "server_time_ms", 0) or current_ms))
+        age = max(0.0, float(getattr(mine, "age", 0.0) or ((server_time_ms - created_at_ms) / 1000.0)))
+        normalized.append(
+            TankTroubleMineState(
+                id=mine_id,
+                owner_id=_limit_text(getattr(mine, "owner_id", ""), 32),
+                color=_normalize_color(getattr(mine, "color", "green")),
+                x=float(getattr(mine, "x", 0.0) or 0.0),
+                y=float(getattr(mine, "y", 0.0) or 0.0),
+                radius=max(1.0, float(getattr(mine, "radius", 0.0) or PLAYER_RADIUS * 2.0 / 3.0)),
+                trigger_radius=max(1.0, float(getattr(mine, "trigger_radius", 0.0) or PLAYER_RADIUS * 1.5)),
+                blast_radius=max(1.0, float(getattr(mine, "blast_radius", 0.0) or PLAYER_RADIUS * 4.95)),
+                age=age,
+                armed=bool(getattr(mine, "armed", False)),
+                triggered=bool(getattr(mine, "triggered", False)),
+                trigger_started_at_ms=max(0, int(getattr(mine, "trigger_started_at_ms", 0) or 0)),
+                created_at_ms=created_at_ms,
+                server_time_ms=server_time_ms,
+            )
+        )
+    return normalized[-80:]
 
 
 def _normalize_tank_explosions(explosions: list[TankTroubleTankExplosionState]) -> list[TankTroubleTankExplosionState]:
@@ -458,6 +511,7 @@ class TankTroublePreviewRuntime:
         tank: TankTroublePreviewPlayerSnapshot,
         bullets: list[_PreviewBullet],
         targets: list[TankTroublePreviewTargetState],
+        mines: list[TankTroubleMineState],
         tank_explosions: list[TankTroubleTankExplosionState],
         latency_ms: int = 0,
     ) -> _PreviewSession:
@@ -493,6 +547,7 @@ class TankTroublePreviewRuntime:
             walls=walls,
             targets=initial_targets,
             bullets=bullets,
+            mines=mines if authoritative_scene else [],
             tank_explosions=tank_explosions,
             wall_ripples=[],
             bullet_fades=[],
@@ -521,6 +576,8 @@ class TankTroublePreviewRuntime:
 
     @staticmethod
     def _push_bullet_fade(session: _PreviewSession, bullet: _PreviewBullet) -> None:
+        projectile_type = str(bullet.projectile_type or "bullet")
+        fade_life = 0.28 if projectile_type == "tow_missile" else 0.44 if projectile_type == "guided_missile" else FADE_LIFE
         session.bullet_fades.append(
             _PreviewFade(
                 id=session.next_effect_id,
@@ -528,8 +585,10 @@ class TankTroublePreviewRuntime:
                 y=bullet.y,
                 radius=bullet.radius,
                 color=bullet.color,
-                life=FADE_LIFE,
-                max_life=FADE_LIFE,
+                life=fade_life,
+                max_life=fade_life,
+                projectile_type=projectile_type,
+                target_color=str(bullet.target_color or ""),
             )
         )
         session.next_effect_id += 1
@@ -558,6 +617,8 @@ class TankTroublePreviewRuntime:
                 color=fade.color,
                 life=max(0.0, fade.life - dt),
                 max_life=fade.max_life,
+                projectile_type=fade.projectile_type,
+                target_color=fade.target_color,
             )
             for fade in session.bullet_fades
             if fade.life > dt
@@ -621,9 +682,15 @@ class TankTroublePreviewRuntime:
                 life=max(0.0, BULLET_LIFE - age_sec),
                 bounces_left=BULLET_BOUNCES,
                 age=age_sec,
+                target_id="",
+                target_color="",
+                locked=False,
+                flame_color="",
                 path_segments=[],
                 distance_travelled=0.0,
                 segments=[],
+                owner_shield_released=True,
+                ignore_owner_shield=False,
             )
         )
         session.next_bullet_id += 1
@@ -656,9 +723,15 @@ class TankTroublePreviewRuntime:
                     life=bullet.life - step_dt,
                     bounces_left=bullet.bounces_left,
                     age=bullet.age + step_dt,
+                    target_id=bullet.target_id,
+                    target_color=bullet.target_color,
+                    locked=bullet.locked,
+                    flame_color=bullet.flame_color,
                     path_segments=list(bullet.path_segments or []),
                     distance_travelled=bullet.distance_travelled,
                     segments=list(bullet.segments or []),
+                    owner_shield_released=bullet.owner_shield_released,
+                    ignore_owner_shield=bullet.ignore_owner_shield,
                 )
 
                 for wall in session.walls:
@@ -768,18 +841,24 @@ class TankTroublePreviewRuntime:
             weapon=str(getattr(payload.tank, "weapon", "default") or "default"),
             shotgun_ammo=max(0, int(getattr(payload.tank, "shotgun_ammo", 0) or 0)),
             minigun_ammo=max(0, int(getattr(payload.tank, "minigun_ammo", 0) or 0)),
+            double_barrel_ammo=max(0, int(getattr(payload.tank, "double_barrel_ammo", 0) or 0)),
+            mine_ammo=max(0, int(getattr(payload.tank, "mine_ammo", 0) or 0)),
+            missile_ammo=max(0, int(getattr(payload.tank, "missile_ammo", 0) or 0)),
             weapon_reload_ms=max(0, int(getattr(payload.tank, "weapon_reload_ms", 0) or 0)),
             x=float(payload.tank.x),
             y=float(payload.tank.y),
             angle=float(payload.tank.angle),
             radius=max(1.0, float(payload.tank.radius)),
             flash=max(0.0, float(payload.tank.flash or 0.0)),
+            hp=max(0.0, float(getattr(payload.tank, "hp", 100.0) or 0.0)),
+            max_hp=max(1.0, float(getattr(payload.tank, "max_hp", 100.0) or 100.0)),
             shots=max(0, int(payload.tank.shots or 0)),
             score=max(0, int(payload.tank.score or 0)),
             hits=max(0, int(payload.tank.hits or 0)),
         )
         bullets = _normalize_preview_bullets(payload.bullets if authoritative_scene else [], tank.color)
         targets = _normalize_preview_targets(payload.targets if authoritative_scene else [])
+        mines = _normalize_preview_mines(payload.mines if authoritative_scene else [])
         tank_explosions = _normalize_tank_explosions(payload.tankExplosions if authoritative_scene else [])
 
         with self._lock:
@@ -812,6 +891,7 @@ class TankTroublePreviewRuntime:
                     tank=tank,
                     bullets=bullets,
                     targets=targets,
+                    mines=mines,
                     tank_explosions=tank_explosions,
                     latency_ms=latency_ms,
                 )
@@ -848,6 +928,7 @@ class TankTroublePreviewRuntime:
             if authoritative_scene:
                 existing.bullets = bullets
                 existing.targets = targets
+                existing.mines = mines
                 existing.tank_explosions = tank_explosions
                 existing.wall_ripples = []
                 existing.bullet_fades = []
@@ -855,6 +936,7 @@ class TankTroublePreviewRuntime:
                 existing.last_simulated_ms = updated_at_ms
                 existing.next_bullet_id = max(existing.next_bullet_id, max((bullet.id for bullet in bullets), default=0) + 1)
             else:
+                existing.mines = []
                 if tank.shots < existing.last_reported_shots:
                     existing.bullets = []
                     existing.last_reported_shots = tank.shots
@@ -954,12 +1036,17 @@ class TankTroublePreviewRuntime:
                     weapon=str(getattr(session.tank, "weapon", "default") or "default"),
                     shotgun_ammo=max(0, int(getattr(session.tank, "shotgun_ammo", 0) or 0)),
                     minigun_ammo=max(0, int(getattr(session.tank, "minigun_ammo", 0) or 0)),
+                    double_barrel_ammo=max(0, int(getattr(session.tank, "double_barrel_ammo", 0) or 0)),
+                    mine_ammo=max(0, int(getattr(session.tank, "mine_ammo", 0) or 0)),
+                    missile_ammo=max(0, int(getattr(session.tank, "missile_ammo", 0) or 0)),
                     weapon_reload_ms=max(0, int(getattr(session.tank, "weapon_reload_ms", 0) or 0)),
                     x=session.tank.x,
                     y=session.tank.y,
                     angle=session.tank.angle,
                     radius=session.tank.radius,
                     flash=session.tank.flash,
+                    hp=float(getattr(session.tank, "hp", 100.0) or 0.0),
+                    max_hp=max(1.0, float(getattr(session.tank, "max_hp", 100.0) or 100.0)),
                 )
             ],
             bullets=[
@@ -973,12 +1060,19 @@ class TankTroublePreviewRuntime:
                     vx=bullet.vx,
                     vy=bullet.vy,
                     path_segments=list(bullet.path_segments or []),
+                    target_id=bullet.target_id,
+                    target_color=bullet.target_color,
+                    flame_color=bullet.flame_color,
+                    locked=bullet.locked,
                     distance_travelled=bullet.distance_travelled,
                     segments=list(bullet.segments or []),
+                    owner_shield_released=bullet.owner_shield_released,
+                    ignore_owner_shield=bullet.ignore_owner_shield,
                 )
                 for bullet in session.bullets
             ],
             targets=[target.model_copy(deep=True) for target in session.targets],
+            mines=[mine.model_copy(deep=True) for mine in session.mines],
             tankExplosions=[explosion.model_copy(deep=True) for explosion in session.tank_explosions],
             wallRipples=[
                 TankTroublePreviewRippleState(
@@ -1001,6 +1095,8 @@ class TankTroublePreviewRuntime:
                     life=fade.life,
                     maxLife=fade.max_life,
                     color=fade.color,
+                    projectileType=fade.projectile_type,
+                    targetColor=fade.target_color,
                 )
                 for fade in session.bullet_fades
             ],

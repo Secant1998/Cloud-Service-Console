@@ -1,5 +1,35 @@
 # Cloud Service Console Frontend README
 
+## Latest: Tank Trouble Land Mine Powerup
+
+Version: local development after `0.3.60`
+
+This update only changes Tank Trouble gameplay/rendering, cloud room service state, local/cloud preview pages, and Tank Trouble game assets.
+
+What changed:
+
+- Added a gray `land_mine` powerup using `land-mine.png` and pickup text `AT MINE`.
+- Picking it up gives 3 mines, removes the tank's long barrel visually, and mounts a circular mine on top of the tank.
+- Firing plants a mine in place; mines arm after 1s, blink with the planter color, trigger on any tank including the planter, then explode after 1s.
+- Mines fade after 3s over 2s but remain active, and they reveal quickly when a tank enters trigger range.
+- Mine explosions use the same damage range as tank destruction but render with a separate distortion-style shockwave.
+- Desktop online Canvas, local preview page, cloud room authority, and cloud spectator page all carry/render the mine state.
+
+Where to change this next:
+
+- Desktop rendering and prediction: `frontend/src/components/TankTroublePanel.tsx`.
+- Shared protocol models: `frontend/src/types/cloud.ts` and `backend/models.py`.
+- Local preview: `backend/tank_trouble_preview_runtime.py` and `backend/tank_trouble_preview_page.py`.
+- Cloud room and spectator page: `backend/cloud_setup_bundle/tank_trouble_room.py`.
+- Desktop asset: `frontend/public/tank-trouble/powerups/land-mine.png`.
+- Cloud asset: `backend/cloud_setup_bundle/www/tank-trouble/powerups/land-mine.png`.
+
+Boundary notes:
+
+- No go2rtc video ingest/playback code is involved.
+- No mechanical-arm/control-signal listener code is involved.
+- Tank Trouble one-click setup already hashes the cloud game script and `www/tank-trouble/**`, so it will sync the new script and mine asset to any configured server and restart only `cloud-service-console-tank-trouble`.
+
 ## Latest: Tank Trouble One-Click Cloud Bundle Sync
 
 Version: `0.3.50`

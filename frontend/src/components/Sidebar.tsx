@@ -1,11 +1,12 @@
 import type { NetworkEndpointStatus, NetworkSnapshot } from "../types/cloud";
 
-type ConsoleView = "overview" | "services" | "health" | "activity" | "games";
+type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "games";
 
 type SidebarProps = {
   networkSnapshot: NetworkSnapshot;
   activeView: ConsoleView;
   refreshBusy?: boolean;
+  localStreamAvailable?: boolean;
   onViewChange: (view: ConsoleView) => void;
   onRefresh: () => void;
 };
@@ -15,6 +16,7 @@ const NAV_ITEMS: Array<{ key: ConsoleView; label: string }> = [
   { key: "services", label: "服务管理" },
   { key: "health", label: "健康检查" },
   { key: "activity", label: "活动日志" },
+  { key: "localStream", label: "本地推流" },
   { key: "games", label: "玩玩游戏" },
 ];
 
@@ -41,6 +43,7 @@ export function Sidebar({
   networkSnapshot,
   activeView,
   refreshBusy = false,
+  localStreamAvailable = false,
   onViewChange,
   onRefresh,
 }: SidebarProps) {
@@ -55,7 +58,7 @@ export function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((item) => item.key !== "localStream" || localStreamAvailable).map((item) => (
           <button
             type="button"
             key={item.key}

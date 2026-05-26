@@ -5,6 +5,7 @@ import type { ServiceStatus } from "../types/cloud";
 type ServiceCardProps = {
   service: ServiceStatus;
   busy?: boolean;
+  canControl?: boolean;
   onStart: (name: string) => void;
   onStop: (name: string) => void;
 };
@@ -68,9 +69,9 @@ function isServiceSwitchBusy(service: ServiceStatus, busy: boolean) {
   return busy || active === "activating" || active === "deactivating";
 }
 
-export function ServiceCard({ service, busy = false, onStart, onStop }: ServiceCardProps) {
+export function ServiceCard({ service, busy = false, canControl = true, onStart, onStop }: ServiceCardProps) {
   const checked = isServiceRunning(service);
-  const switchBusy = isServiceSwitchBusy(service, busy);
+  const switchBusy = isServiceSwitchBusy(service, busy) || !canControl;
 
   return (
     <div className="panel service-card">
@@ -98,6 +99,7 @@ export function ServiceCard({ service, busy = false, onStart, onStop }: ServiceC
           busy={switchBusy}
           size="lg"
           ariaLabel={`${service.title} ${checked ? "stop" : "start"}`}
+          disabled={!canControl}
           onClick={() => (checked ? onStop(service.name) : onStart(service.name))}
         />
       </div>

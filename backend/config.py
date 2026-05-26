@@ -11,6 +11,7 @@ DEFAULT_BACKEND_HOST = "127.0.0.1"
 DEFAULT_BACKEND_PORT = 8765
 APP_STORAGE_DIRNAME = "CloudServiceConsole"
 LOGIN_SETTINGS_FILENAME = "cloud-console-login.json"
+STORAGE_DIR_ENV = "CLOUD_CONSOLE_STORAGE_DIR"
 BUILTIN_CONFIG_PATH = Path("built-in-defaults")
 BUILTIN_PUBLIC_SCHEME = "http"
 BUILTIN_API_PORT = 18081
@@ -22,34 +23,52 @@ TANK_GAME_SERVER_IDLE_TIMEOUT = 0
 
 REMOTE_SERVICE_ORDER = [
     "nginx",
+    "coturn",
     "go2rtc-cloud",
     "go2rtc-srt-bridge",
     "go2rtc-control-signaling",
+    "go2rtc-telemetry-relay",
 ]
 
 REMOTE_SERVICE_STOP_ORDER = [
     "go2rtc-srt-bridge",
+    "go2rtc-telemetry-relay",
     "go2rtc-control-signaling",
     "go2rtc-cloud",
+    "coturn",
     "nginx",
 ]
 
 REMOTE_SERVICE_META = {
     "nginx": {
         "title": "Nginx Gateway",
-        "description": "Port 18081 public HTTP entry",
+        "description": "Public gateway on port 18081",
+        "detail": "Shared entry for video pages/API, telemetry routes, and /control/* proxy.",
+    },
+    "coturn": {
+        "title": "TURN Server",
+        "description": "STUN/TURN relay for WebRTC traversal",
+        "detail": "Used only when WebRTC cannot connect directly; safe to keep resident with low idle cost.",
     },
     "go2rtc-cloud": {
         "title": "go2rtc Cloud",
-        "description": "Video pages and WebRTC signaling",
+        "description": "Cloud video playback and viewer signaling",
+        "detail": "Serves video pages/API and WebRTC viewing; it is not the control signaling broker.",
     },
     "go2rtc-srt-bridge": {
         "title": "Ingest Bridge",
         "description": "Video ingest listener and RTSP republisher",
+        "detail": "Receives the current SRT/HTTP ingest and republishes RTSP for go2rtc.",
     },
     "go2rtc-control-signaling": {
         "title": "Control Signaling",
-        "description": "Browser and robot WebRTC broker",
+        "description": "Browser and robot WebRTC control broker",
+        "detail": "Pairs frontends with robot receivers for control DataChannel setup; it does not handle video.",
+    },
+    "go2rtc-telemetry-relay": {
+        "title": "Telemetry Relay",
+        "description": "Video status and runtime telemetry feed",
+        "detail": "Feeds status, diagnostics, and latency panels; stopping it should not stop the main video/control paths.",
     },
 }
 
@@ -62,6 +81,7 @@ REMOTE_PORT_META = [
     {"key": "srt", "title": "SRT", "port": 19091, "protocols": ["udp"]},
     {"key": "rtsp", "title": "RTSP", "port": 8554, "protocols": ["tcp"]},
     {"key": "tank-game", "title": "Tank Game", "port": TANK_GAME_SERVER_PORT, "protocols": ["tcp"]},
+    {"key": "web-console", "title": "Web Console", "port": 18080, "protocols": ["tcp"]},
 ]
 
 HEALTH_CHECK_ORDER = ["clock", "streams", "control"]
@@ -160,6 +180,15 @@ class LoginSettings:
     auto_login: bool
 
 
+@dataclass
+class SavedLoginAccount:
+    host: str
+    username: str
+    password: str
+    remember_password: bool
+    auto_login: bool
+
+
 def normalize_host(raw_value: str) -> str:
     text = str(raw_value or "").strip()
     if not text:
@@ -189,6 +218,12 @@ def get_runtime_dir() -> Path:
 
 
 def get_user_data_dir() -> Path:
+    configured_dir = str(os.environ.get(STORAGE_DIR_ENV) or "").strip()
+    if configured_dir:
+        app_dir = Path(configured_dir).expanduser()
+        app_dir.mkdir(parents=True, exist_ok=True)
+        return app_dir
+
     if sys.platform.startswith("win"):
         base_dir = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
     elif sys.platform == "darwin":
@@ -217,9 +252,9 @@ def load_config_defaults(config_path: Path | None = None, project_dir: Path | No
         config_path=config_path or BUILTIN_CONFIG_PATH,
         project_dir=resolved_project_dir,
         app_dir=app_dir,
-        public_scheme=BUILTIN_PUBLIC_SCHEME,
-        api_port=BUILTIN_API_PORT,
-        ssh_port=BUILTIN_SSH_PORT,
-        default_host=BUILTIN_DEFAULT_HOST,
-        default_ssh_user=BUILTIN_SSH_USER,
+        public_scheme=str(os.environ.get("CLOUD_CONSOLE_PUBLIC_SCHEME") or BUILTIN_PUBLIC_SCHEME).strip() or BUILTIN_PUBLIC_SCHEME,
+        api_port=int(os.environ.get("CLOUD_CONSOLE_API_PORT") or BUILTIN_API_PORT),
+        ssh_port=int(os.environ.get("CLOUD_CONSOLE_SSH_PORT") or BUILTIN_SSH_PORT),
+        default_host=str(os.environ.get("CLOUD_CONSOLE_DEFAULT_HOST") or BUILTIN_DEFAULT_HOST).strip(),
+        default_ssh_user=str(os.environ.get("CLOUD_CONSOLE_DEFAULT_SSH_USER") or BUILTIN_SSH_USER).strip() or BUILTIN_SSH_USER,
     )

@@ -1,8 +1,9 @@
 {
   "name": "cloud-service-console",
   "private": true,
-  "version": "0.3.50",
+  "version": "0.3.68",
   "scripts": {
+    "installer:build": "python scripts\\build_installer.py",
     "tauri:build": "frontend\\node_modules\\.bin\\tauri.cmd build --config src-tauri/tauri.conf.json",
     "tauri:dev": "frontend\\node_modules\\.bin\\tauri.cmd dev --config src-tauri/tauri.conf.json"
   }

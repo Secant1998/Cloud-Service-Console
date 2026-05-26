@@ -24,7 +24,24 @@ POWERUP_SPAWN_INTERVAL_MS = 5000
 POWERUP_RESPAWN_MS = 2000
 POWERUP_LINGER_MS = 1400
 DEATH_EVENT_LINGER_MS = 2400
+RESPAWN_REPORT_GRACE_MS = 2500
+RESPAWN_REPORT_SNAP_TOLERANCE = 32.0
 CASH_POWERUP_SCORE = 100
+MATCH_MODE_DEFAULT = "default"
+MATCH_MODE_CUSTOM = "custom"
+CUSTOM_OPTION_DEFAULTS = {
+    "health_system": False,
+    "persistent_buffs": False,
+    "same_place_respawn": False,
+}
+MAX_TANK_HP = 100
+HEAL_AMOUNT = 50
+DEFAULT_BULLET_DAMAGE = 23
+SHOTGUN_DAMAGE = 9
+MINIGUN_DAMAGE = 13
+LASER_DAMAGE = 80
+LAND_MINE_DAMAGE = 40
+GUIDED_MISSILE_DAMAGE = 80
 
 WORLD_WIDTH = 1280.0
 WORLD_HEIGHT = 800.0
@@ -76,6 +93,29 @@ MINIGUN_BARREL_OFFSET_PATTERN = (-0.5, -0.18, 0.16, 0.48, -0.34, 0.02, 0.36, -0.
 DOUBLE_BARREL_AMMO = 10
 DOUBLE_BARREL_COOLDOWN = SHOOT_COOLDOWN / 2.0
 DOUBLE_BARREL_BARREL_OFFSET = 7.2
+MINE_AMMO = 3
+MINE_COOLDOWN = 0.16
+MINE_ARM_DELAY_MS = 1000
+MINE_DETONATION_DELAY_MS = 1000
+MINE_RADIUS = PLAYER_RADIUS * 2.0 / 3.0
+MINE_TRIGGER_RADIUS = PLAYER_RADIUS * 1.5
+MINE_BLAST_RADIUS = PLAYER_RADIUS * 4.95
+GUIDED_MISSILE_AMMO = 1
+GUIDED_MISSILE_RADIUS = BULLET_RADIUS * 1.25
+GUIDED_MISSILE_HIT_RADIUS = BULLET_RADIUS * 0.52
+GUIDED_MISSILE_SPEED = LOGICAL_GRID_SIZE * 1.72
+GUIDED_MISSILE_LIFE = 10.0
+GUIDED_MISSILE_COOLDOWN = 0.34
+GUIDED_MISSILE_LOCK_DELAY = 2.5
+GUIDED_MISSILE_TURN_RATE = math.pi * 1.08
+GUIDED_MISSILE_TURN_RAMP_SECONDS = 0.85
+TOW_MISSILE_AMMO = 1
+TOW_MISSILE_RADIUS = GUIDED_MISSILE_RADIUS
+TOW_MISSILE_HIT_RADIUS = GUIDED_MISSILE_HIT_RADIUS
+TOW_MISSILE_SPEED = GUIDED_MISSILE_SPEED
+TOW_MISSILE_LIFE = GUIDED_MISSILE_LIFE - 2.0
+TOW_MISSILE_COOLDOWN = GUIDED_MISSILE_COOLDOWN
+TOW_MISSILE_TURN_RATE = math.pi * 1.18
 SHIELD_RADIUS = PLAYER_RADIUS + 30.0
 SHIELD_ACTIVE_MS = 3000
 SHIELD_FLICKER_MS = 1500
@@ -84,6 +124,7 @@ SHIELD_POWERUP_COLOR = "#9ca3af"
 
 LATENCY_CLONE_NAME = "RelayBot"
 LATENCY_CLONE_COUNTRY = "US"
+RUNTIME_FEATURES = ("land_mine", "custom_mode", "tank_health", "heal_powerup", "guided_missile", "tow_missile", "custom_mode_rules_v30")
 POWERUP_KINDS = (
     {
         "kind": "cash",
@@ -125,6 +166,34 @@ POWERUP_KINDS = (
         "color": SHIELD_POWERUP_COLOR,
         "symbol": "SH",
         "effect": "shield",
+        "score_delta": 0,
+    },
+    {
+        "kind": "land_mine",
+        "color": "#9ca3af",
+        "symbol": "AT",
+        "effect": "land_mine",
+        "score_delta": 0,
+    },
+    {
+        "kind": "heal",
+        "color": "#9ca3af",
+        "symbol": "+",
+        "effect": "heal",
+        "score_delta": 0,
+    },
+    {
+        "kind": "guided_missile",
+        "color": "#9ca3af",
+        "symbol": "GM",
+        "effect": "guided_missile",
+        "score_delta": 0,
+    },
+    {
+        "kind": "tow_missile",
+        "color": "#9ca3af",
+        "symbol": "TOW",
+        "effect": "tow_missile",
         "score_delta": 0,
     },
 )
@@ -299,6 +368,8 @@ def reset_player_weapon_state(player_meta: dict[str, object]) -> None:
     player_meta["shotgun_ammo"] = 0
     player_meta["minigun_ammo"] = 0
     player_meta["double_barrel_ammo"] = 0
+    player_meta["mine_ammo"] = 0
+    player_meta["missile_ammo"] = 0
     player_meta["minigun_spinup"] = 0.0
     player_meta["minigun_idle"] = 0.0
     player_meta["minigun_shot_accum"] = 0.0
@@ -488,11 +559,12 @@ def build_reflected_ray_segments(
                 nearest = hit
                 nearest_kind = "wall"
         for shield in shields or []:
+            shield_core_radius = float(shield.get("radius") or SHIELD_RADIUS)
             shield_circle = {
                 **shield,
-                "radius": float(shield.get("radius") or SHIELD_RADIUS) + LASER_RADIUS,
+                "radius": shield_core_radius + LASER_RADIUS,
             }
-            if distance(x, y, float(shield_circle.get("x") or 0.0), float(shield_circle.get("y") or 0.0)) < float(shield_circle["radius"]) - 0.5:
+            if distance(x, y, float(shield_circle.get("x") or 0.0), float(shield_circle.get("y") or 0.0)) < shield_core_radius - 0.5:
                 continue
             hit = ray_circle_hit(x, y, dx, dy, shield_circle)
             if hit and hit["t"] <= remaining and (nearest is None or hit["t"] < nearest["t"]):
@@ -723,6 +795,10 @@ def build_default_state(room: str) -> dict[str, object]:
         "room": room,
         "map_seed": seed,
         "map_id": map_id_from_seed(seed),
+        "match_mode": MATCH_MODE_DEFAULT,
+        "custom_options": dict(CUSTOM_OPTION_DEFAULTS),
+        "match_mode_owner_id": "",
+        "mode_locked": False,
         "votes": {},
         "players": {},
         "player_revisions": {},
@@ -737,6 +813,8 @@ def build_default_state(room: str) -> dict[str, object]:
         "powerup_respawns": [],
         "death_events": [],
         "next_death_event_id": 1,
+        "mines": [],
+        "next_mine_id": 1,
         "bullets": [],
         "next_bullet_id": 1,
         "snapshot_seq": 0,
@@ -759,6 +837,10 @@ def load_state(state_path: Path, room: str) -> dict[str, object]:
         return build_default_state(room)
 
     payload["room"] = room
+    payload["match_mode"] = normalize_match_mode(payload.get("match_mode"))
+    payload["custom_options"] = normalize_custom_options(payload.get("custom_options"))
+    payload.setdefault("match_mode_owner_id", "")
+    payload.setdefault("mode_locked", False)
     payload.setdefault("votes", {})
     payload.setdefault("players", {})
     payload.setdefault("player_revisions", {})
@@ -773,6 +855,8 @@ def load_state(state_path: Path, room: str) -> dict[str, object]:
     payload.setdefault("powerup_respawns", [])
     payload.setdefault("death_events", [])
     payload.setdefault("next_death_event_id", 1)
+    payload.setdefault("mines", [])
+    payload.setdefault("next_mine_id", 1)
     payload.setdefault("bullets", [])
     payload.setdefault("next_bullet_id", 1)
     payload.setdefault("snapshot_seq", 0)
@@ -803,11 +887,129 @@ def normalize_match_input(raw_value: object) -> dict[str, object]:
     }
 
 
+def normalize_match_mode(raw_value: object) -> str:
+    return MATCH_MODE_CUSTOM if str(raw_value or "").strip().lower() == MATCH_MODE_CUSTOM else MATCH_MODE_DEFAULT
+
+
+def normalize_custom_options(raw_value: object) -> dict[str, bool]:
+    payload = raw_value if isinstance(raw_value, dict) else {}
+    return {
+        "health_system": bool(payload.get("health_system", CUSTOM_OPTION_DEFAULTS["health_system"])),
+        "persistent_buffs": bool(payload.get("persistent_buffs", CUSTOM_OPTION_DEFAULTS["persistent_buffs"])),
+        "same_place_respawn": bool(payload.get("same_place_respawn", CUSTOM_OPTION_DEFAULTS["same_place_respawn"])),
+    }
+
+
+def get_custom_options(state: dict[str, object]) -> dict[str, bool]:
+    options = normalize_custom_options(state.get("custom_options"))
+    state["custom_options"] = options
+    return options
+
+
+def get_match_mode(state: dict[str, object]) -> str:
+    mode = normalize_match_mode(state.get("match_mode"))
+    state["match_mode"] = mode
+    return mode
+
+
+def is_health_system_enabled(state: dict[str, object]) -> bool:
+    return get_match_mode(state) == MATCH_MODE_CUSTOM and bool(get_custom_options(state).get("health_system"))
+
+
+def is_persistent_buffs_enabled(state: dict[str, object]) -> bool:
+    return get_match_mode(state) == MATCH_MODE_CUSTOM and bool(get_custom_options(state).get("persistent_buffs"))
+
+
+def is_same_place_respawn_enabled(state: dict[str, object]) -> bool:
+    return get_match_mode(state) == MATCH_MODE_CUSTOM and bool(get_custom_options(state).get("same_place_respawn"))
+
+
+def reset_match_mode_if_empty(state: dict[str, object]) -> None:
+    if get_active_players(state):
+        return
+    state["match_mode"] = MATCH_MODE_DEFAULT
+    state["custom_options"] = dict(CUSTOM_OPTION_DEFAULTS)
+    state["match_mode_owner_id"] = ""
+    state["mode_locked"] = False
+    clear_empty_room_combat_state(state)
+    clear_powerup_state(state)
+
+
+def apply_match_mode_request(state: dict[str, object], player_id: str, requested_mode: str, raw_options: object) -> None:
+    players = get_active_players(state)
+    requested_mode = normalize_match_mode(requested_mode)
+    existing_mode = get_match_mode(state)
+    existing_options = get_custom_options(state)
+    only_requesting_player_present = bool(players) and all(str(existing_id) == player_id for existing_id in players.keys())
+
+    if players and existing_mode != requested_mode and not only_requesting_player_present:
+        if existing_mode == MATCH_MODE_CUSTOM:
+            raise RuntimeError("Current room is running custom mode; use Custom Mode to join.")
+        raise RuntimeError("Current room is running default online mode; custom mode cannot start until it is empty.")
+
+    if requested_mode == MATCH_MODE_CUSTOM:
+        if not players or only_requesting_player_present:
+            next_options = normalize_custom_options(raw_options)
+            options_changed = existing_mode != MATCH_MODE_CUSTOM or next_options != existing_options
+            state["custom_options"] = next_options
+            state["match_mode_owner_id"] = player_id
+            if options_changed:
+                clear_powerup_state(state)
+                for player_meta in get_active_players(state).values():
+                    if not isinstance(player_meta, dict):
+                        continue
+                    if not next_options.get("same_place_respawn"):
+                        clear_player_death_spawn_state(player_meta)
+        state["match_mode"] = MATCH_MODE_CUSTOM
+    else:
+        if players and existing_mode == MATCH_MODE_CUSTOM and not only_requesting_player_present:
+            raise RuntimeError("Current room is running custom mode; default online cannot start until it is empty.")
+        if existing_mode != MATCH_MODE_DEFAULT:
+            clear_powerup_state(state)
+        state["match_mode"] = MATCH_MODE_DEFAULT
+        state["custom_options"] = dict(CUSTOM_OPTION_DEFAULTS)
+        state["match_mode_owner_id"] = ""
+
+    state["mode_locked"] = bool(get_active_players(state))
+
+
+def ensure_player_health(player_meta: dict[str, object], state: dict[str, object]) -> None:
+    if is_health_system_enabled(state):
+        player_meta["max_hp"] = MAX_TANK_HP
+        hp = player_meta.get("hp")
+        if hp is None or float(hp or 0) <= 0 and bool(player_meta.get("alive", True)):
+            player_meta["hp"] = MAX_TANK_HP
+        else:
+            player_meta["hp"] = clamp(float(hp or MAX_TANK_HP), 0.0, float(MAX_TANK_HP))
+        return
+    player_meta["max_hp"] = MAX_TANK_HP
+    player_meta["hp"] = MAX_TANK_HP
+
+
+def projectile_damage(projectile_type: str) -> int:
+    if projectile_type == "shotgun":
+        return SHOTGUN_DAMAGE
+    if projectile_type == "minigun":
+        return MINIGUN_DAMAGE
+    if projectile_type == "laser":
+        return LASER_DAMAGE
+    if projectile_type in ("guided_missile", "tow_missile"):
+        return GUIDED_MISSILE_DAMAGE
+    return DEFAULT_BULLET_DAMAGE
+
+
 def reset_match_combat_state(player_meta: dict[str, object]) -> None:
     player_meta["last_fire_seq"] = 0
     player_meta["input"] = normalize_match_input({})
     player_meta["cooldown"] = 0.0
     reset_player_weapon_state(player_meta)
+
+
+def clear_player_death_spawn_state(player_meta: dict[str, object]) -> None:
+    player_meta["death_x"] = None
+    player_meta["death_y"] = None
+    player_meta["death_angle"] = None
+    player_meta["death_map_seed"] = 0
 
 
 def normalize_match_local_player(raw_value: object) -> dict[str, float] | None:
@@ -818,6 +1020,8 @@ def normalize_match_local_player(raw_value: object) -> dict[str, float] | None:
         "y": float(raw_value.get("y") or 0.0),
         "angle": float(raw_value.get("angle") or 0.0),
         "radius": float(raw_value.get("radius") or PLAYER_RADIUS),
+        "deaths": max(0, int(raw_value.get("deaths") or 0)),
+        "spawn_seq": max(0, int(raw_value.get("spawn_seq") or 0)),
     }
 
 
@@ -1063,6 +1267,15 @@ def clear_powerup_state(state: dict[str, object]) -> None:
     state["powerup_respawns"] = []
 
 
+def clear_empty_room_combat_state(state: dict[str, object]) -> None:
+    state["targets"] = []
+    state["death_events"] = []
+    state["mines"] = []
+    state["next_mine_id"] = 1
+    state["bullets"] = []
+    state["next_bullet_id"] = 1
+
+
 def schedule_next_powerup_spawn(state: dict[str, object], current_ms: int) -> None:
     state["next_powerup_spawn_at_ms"] = current_ms + POWERUP_SPAWN_INTERVAL_MS
     if int(state.get("powerup_started_at_ms") or 0) <= 0:
@@ -1099,6 +1312,63 @@ def prune_death_events(state: dict[str, object], current_ms: int) -> list[dict[s
     return kept
 
 
+def ensure_mines_state(state: dict[str, object], current_ms: int | None = None) -> list[dict[str, object]]:
+    current_ms = current_ms if current_ms is not None else now_ms()
+    raw_mines = state.get("mines")
+    mines = raw_mines if isinstance(raw_mines, list) else []
+    normalized: list[dict[str, object]] = []
+    for mine in mines:
+        if not isinstance(mine, dict):
+            continue
+        created_at_ms = int(mine.get("created_at_ms") or 0)
+        if created_at_ms <= 0:
+            created_at_ms = current_ms
+        triggered = bool(mine.get("triggered"))
+        trigger_started_at_ms = int(mine.get("trigger_started_at_ms") or 0)
+        normalized.append(
+            {
+                "id": int(mine.get("id") or 0),
+                "owner_id": str(mine.get("owner_id") or ""),
+                "owner_revision": int(mine.get("owner_revision") or 0),
+                "color": normalize_color(mine.get("color")),
+                "x": float(mine.get("x") or 0.0),
+                "y": float(mine.get("y") or 0.0),
+                "radius": float(mine.get("radius") or MINE_RADIUS),
+                "trigger_radius": float(mine.get("trigger_radius") or MINE_TRIGGER_RADIUS),
+                "blast_radius": float(mine.get("blast_radius") or MINE_BLAST_RADIUS),
+                "created_at_ms": created_at_ms,
+                "armed_at_ms": int(mine.get("armed_at_ms") or (created_at_ms + MINE_ARM_DELAY_MS)),
+                "triggered": triggered,
+                "trigger_started_at_ms": trigger_started_at_ms,
+                "age_ms": max(0, current_ms - created_at_ms),
+            }
+        )
+    state["mines"] = normalized
+    return normalized
+
+
+def serialize_mines(state: dict[str, object], current_ms: int) -> list[dict[str, object]]:
+    return [
+        {
+            "id": int(mine.get("id") or 0),
+            "owner_id": str(mine.get("owner_id") or ""),
+            "color": normalize_color(mine.get("color")),
+            "x": float(mine.get("x") or 0.0),
+            "y": float(mine.get("y") or 0.0),
+            "radius": float(mine.get("radius") or MINE_RADIUS),
+            "trigger_radius": float(mine.get("trigger_radius") or MINE_TRIGGER_RADIUS),
+            "blast_radius": float(mine.get("blast_radius") or MINE_BLAST_RADIUS),
+            "age": max(0.0, (current_ms - int(mine.get("created_at_ms") or current_ms)) / 1000.0),
+            "armed": current_ms >= int(mine.get("armed_at_ms") or current_ms),
+            "triggered": bool(mine.get("triggered")),
+            "trigger_started_at_ms": int(mine.get("trigger_started_at_ms") or 0),
+            "created_at_ms": int(mine.get("created_at_ms") or current_ms),
+            "server_time_ms": current_ms,
+        }
+        for mine in ensure_mines_state(state, current_ms)
+    ]
+
+
 def serialize_powerups(state: dict[str, object]) -> list[dict[str, object]]:
     return [
         {
@@ -1115,7 +1385,7 @@ def serialize_powerups(state: dict[str, object]) -> list[dict[str, object]]:
             "respawn_ms": max(0, int(powerup.get("respawn_at_ms") or 0) - now_ms()) if powerup.get("disabled") else 0,
         }
         for powerup in ensure_powerups_state(state)
-        if not bool(powerup.get("disabled"))
+        if not bool(powerup.get("disabled")) and (is_health_system_enabled(state) or str(powerup.get("kind") or "") != "heal")
     ]
 
 
@@ -1147,8 +1417,8 @@ def serialize_death_events(state: dict[str, object], current_ms: int) -> list[di
             "y": float(event.get("y") or 0.0),
             "radius": float(event.get("radius") or PLAYER_RADIUS),
             "color": normalize_color(event.get("color")),
-            "life": max(0.0, 0.78 - max(0.0, (current_ms - int(event.get("created_at_ms") or current_ms)) / 1000.0)),
-            "maxLife": 0.78,
+            "life": max(0.0, float(event.get("max_life") or 0.78) - max(0.0, (current_ms - int(event.get("created_at_ms") or current_ms)) / 1000.0)),
+            "maxLife": float(event.get("max_life") or 0.78),
             "seed": int(event.get("seed") or 0),
             "created_at_ms": int(event.get("created_at_ms") or current_ms),
             "killer_id": str(event.get("killer_id") or ""),
@@ -1161,6 +1431,28 @@ def serialize_death_events(state: dict[str, object], current_ms: int) -> list[di
         }
         for event in prune_death_events(state, current_ms)
     ]
+
+
+def has_injured_living_player(players: dict[str, dict[str, object]]) -> bool:
+    for player_meta in players.values():
+        if not isinstance(player_meta, dict) or not bool(player_meta.get("alive", True)):
+            continue
+        max_hp = max(1.0, float(player_meta.get("max_hp") or MAX_TANK_HP))
+        if float(player_meta.get("hp") or max_hp) < max_hp:
+            return True
+    return False
+
+
+def available_powerup_kinds(
+    state: dict[str, object],
+    players: dict[str, dict[str, object]] | None = None,
+    *,
+    persistent: bool | None = None,
+) -> tuple[dict[str, object], ...]:
+    health_enabled = is_health_system_enabled(state)
+    persistent_mode = is_persistent_buffs_enabled(state) if persistent is None else persistent
+    allow_heal = health_enabled and (persistent_mode or has_injured_living_player(players or {}))
+    return tuple(template for template in POWERUP_KINDS if allow_heal or str(template.get("kind") or "") != "heal")
 
 
 def spawn_powerup(
@@ -1208,9 +1500,14 @@ def spawn_powerup(
         },
     )
     powerups = ensure_powerups_state(state)
+    available_kinds = available_powerup_kinds(state, players)
+    if not available_kinds:
+        return
     if kind_template is None:
-        powerup_kind = dict(POWERUP_KINDS[int(rng() * len(POWERUP_KINDS)) % len(POWERUP_KINDS)])
+        powerup_kind = dict(available_kinds[int(rng() * len(available_kinds)) % len(available_kinds)])
     else:
+        if str(kind_template.get("kind") or "") == "heal" and not is_health_system_enabled(state):
+            return
         powerup_kind = dict(kind_template)
     powerups.append(
         {
@@ -1236,11 +1533,14 @@ def ensure_test_powerup_set(
     players: dict[str, dict[str, object]],
 ) -> None:
     powerups = ensure_powerups_state(state)
+    if not is_health_system_enabled(state):
+        powerups[:] = [powerup for powerup in powerups if str(powerup.get("kind") or "") != "heal"]
     existing_kinds = {str(powerup.get("kind") or "") for powerup in powerups}
-    for template in POWERUP_KINDS:
+    for template in available_powerup_kinds(state, players, persistent=True):
         if str(template.get("kind") or "") not in existing_kinds:
             spawn_powerup(state, current_ms, walls, players, template)
             existing_kinds.add(str(template.get("kind") or ""))
+    state["powerups"] = ensure_powerups_state(state)
 
 
 def advance_powerups(
@@ -1251,10 +1551,41 @@ def advance_powerups(
 ) -> None:
     active_players = [player for player in players.values() if isinstance(player, dict)]
     if not active_players:
-        clear_powerup_state(state)
+        reset_match_mode_if_empty(state)
         return
 
     powerups = ensure_powerups_state(state)
+    if not is_health_system_enabled(state):
+        powerups = [powerup for powerup in powerups if str(powerup.get("kind") or "") != "heal"]
+        state["powerups"] = powerups
+    if not is_persistent_buffs_enabled(state):
+        active_powerups = [powerup for powerup in powerups if not bool(powerup.get("disabled"))]
+        max_powerups = max(1, len(active_players) * 2 - 1)
+        if len(active_powerups) > max_powerups:
+            powerups = active_powerups[-max_powerups:]
+            state["powerups"] = powerups
+            active_powerups = powerups
+        active_count = len([powerup for powerup in powerups if not bool(powerup.get("disabled"))])
+        if active_count >= max_powerups:
+            state["next_powerup_spawn_at_ms"] = 0
+            state["powerup_started_at_ms"] = 0
+            state["powerups"] = [powerup for powerup in ensure_powerups_state(state) if not bool(powerup.get("disabled"))]
+            return
+        started_at_ms = int(state.get("powerup_started_at_ms") or 0)
+        if started_at_ms <= 0:
+            state["powerup_started_at_ms"] = current_ms
+            started_at_ms = current_ms
+        next_spawn_at_ms = int(state.get("next_powerup_spawn_at_ms") or 0)
+        if next_spawn_at_ms <= 0:
+            state["next_powerup_spawn_at_ms"] = current_ms + POWERUP_SPAWN_INTERVAL_MS
+            return
+        if current_ms >= next_spawn_at_ms:
+            spawn_powerup(state, current_ms, walls, players)
+            active_count = len([powerup for powerup in ensure_powerups_state(state) if not bool(powerup.get("disabled"))])
+            state["next_powerup_spawn_at_ms"] = 0 if active_count >= max_powerups else current_ms + POWERUP_SPAWN_INTERVAL_MS
+        state["powerups"] = [powerup for powerup in ensure_powerups_state(state) if not bool(powerup.get("disabled"))]
+        return
+
     for powerup in powerups:
         if bool(powerup.get("disabled")) and int(powerup.get("respawn_at_ms") or 0) <= current_ms:
             powerup["disabled"] = False
@@ -1262,6 +1593,20 @@ def advance_powerups(
             powerup["x"] = float(powerup.get("home_x") or powerup.get("x") or 0.0)
             powerup["y"] = float(powerup.get("home_y") or powerup.get("y") or 0.0)
     ensure_test_powerup_set(state, current_ms, walls, players)
+    if is_health_system_enabled(state) and not any(str(powerup.get("kind") or "") == "heal" for powerup in ensure_powerups_state(state)):
+        spawn_powerup(
+            state,
+            current_ms,
+            walls,
+            players,
+            {
+                "kind": "heal",
+                "color": "#9ca3af",
+                "symbol": "+",
+                "effect": "heal",
+                "score_delta": 0,
+            },
+        )
     state["next_powerup_spawn_at_ms"] = 0
     if int(state.get("powerup_started_at_ms") or 0) <= 0:
         state["powerup_started_at_ms"] = current_ms
@@ -1314,6 +1659,8 @@ def handle_powerup_pickups(
             picked_by["shotgun_ammo"] = SHOTGUN_AMMO
             picked_by["minigun_ammo"] = 0
             picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = 0
             picked_by["minigun_spinup"] = 0.0
             picked_by["minigun_idle"] = 0.0
             picked_by["minigun_shot_accum"] = 0.0
@@ -1323,6 +1670,8 @@ def handle_powerup_pickups(
             picked_by["shotgun_ammo"] = 0
             picked_by["minigun_ammo"] = 0
             picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = 0
             picked_by["minigun_spinup"] = 0.0
             picked_by["minigun_idle"] = 0.0
             picked_by["minigun_shot_accum"] = 0.0
@@ -1332,6 +1681,8 @@ def handle_powerup_pickups(
             picked_by["shotgun_ammo"] = 0
             picked_by["minigun_ammo"] = MINIGUN_AMMO
             picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = 0
             picked_by["minigun_spinup"] = 0.0
             picked_by["minigun_idle"] = 0.0
             picked_by["minigun_shot_accum"] = 0.0
@@ -1341,10 +1692,52 @@ def handle_powerup_pickups(
             picked_by["shotgun_ammo"] = 0
             picked_by["minigun_ammo"] = 0
             picked_by["double_barrel_ammo"] = DOUBLE_BARREL_AMMO
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = 0
             picked_by["minigun_spinup"] = 0.0
             picked_by["minigun_idle"] = 0.0
             picked_by["minigun_shot_accum"] = 0.0
             picked_by["cooldown"] = max(float(picked_by.get("cooldown") or 0.0), 0.0)
+        elif powerup_effect == "land_mine":
+            picked_by["weapon"] = "land_mine"
+            picked_by["shotgun_ammo"] = 0
+            picked_by["minigun_ammo"] = 0
+            picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = MINE_AMMO
+            picked_by["missile_ammo"] = 0
+            picked_by["minigun_spinup"] = 0.0
+            picked_by["minigun_idle"] = 0.0
+            picked_by["minigun_shot_accum"] = 0.0
+            picked_by["cooldown"] = max(float(picked_by.get("cooldown") or 0.0), 0.0)
+        elif powerup_effect == "guided_missile":
+            picked_by["weapon"] = "guided_missile"
+            picked_by["shotgun_ammo"] = 0
+            picked_by["minigun_ammo"] = 0
+            picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = GUIDED_MISSILE_AMMO
+            picked_by["minigun_spinup"] = 0.0
+            picked_by["minigun_idle"] = 0.0
+            picked_by["minigun_shot_accum"] = 0.0
+            picked_by["cooldown"] = max(float(picked_by.get("cooldown") or 0.0), 0.0)
+        elif powerup_effect == "tow_missile":
+            picked_by["weapon"] = "tow_missile"
+            picked_by["shotgun_ammo"] = 0
+            picked_by["minigun_ammo"] = 0
+            picked_by["double_barrel_ammo"] = 0
+            picked_by["mine_ammo"] = 0
+            picked_by["missile_ammo"] = TOW_MISSILE_AMMO
+            picked_by["minigun_spinup"] = 0.0
+            picked_by["minigun_idle"] = 0.0
+            picked_by["minigun_shot_accum"] = 0.0
+            picked_by["cooldown"] = max(float(picked_by.get("cooldown") or 0.0), 0.0)
+        elif powerup_effect == "heal":
+            if not is_health_system_enabled(state):
+                remaining_powerups.append(powerup)
+                continue
+            ensure_player_health(picked_by, state)
+            max_hp = max(1.0, float(picked_by.get("max_hp") or MAX_TANK_HP))
+            picked_by["hp"] = clamp(float(picked_by.get("hp") or max_hp) + HEAL_AMOUNT, 0.0, max_hp)
         elif powerup_effect == "shield":
             picked_by["shield_started_at_ms"] = current_ms
             picked_by["shield_until_ms"] = current_ms + SHIELD_ACTIVE_MS
@@ -1387,6 +1780,10 @@ def push_death_event(
     killer_meta: dict[str, object] | None = None,
     weapon: str = "bullet",
     bullet_id: int = 0,
+    event_x: float | None = None,
+    event_y: float | None = None,
+    event_radius: float | None = None,
+    event_color: str | None = None,
 ) -> None:
     death_event_id = int(state.get("next_death_event_id") or 1)
     events = prune_death_events(state, current_ms)
@@ -1394,14 +1791,15 @@ def push_death_event(
     killer_id = str((killer_meta or {}).get("player_id") or "")
     suicide = not killer_id or killer_id == victim_id
     victim_color = normalize_color(victim_meta.get("color"))
+    visual_color = normalize_color(event_color) if event_color else victim_color
     killer_color = "" if suicide else normalize_color((killer_meta or {}).get("color"))
     events.append(
         {
             "id": death_event_id,
-            "x": float(victim_meta.get("x") or 0.0),
-            "y": float(victim_meta.get("y") or 0.0),
-            "radius": float(victim_meta.get("radius") or PLAYER_RADIUS),
-            "color": victim_color,
+            "x": float(event_x if event_x is not None else victim_meta.get("x") or 0.0),
+            "y": float(event_y if event_y is not None else victim_meta.get("y") or 0.0),
+            "radius": float(event_radius if event_radius is not None else victim_meta.get("radius") or PLAYER_RADIUS),
+            "color": visual_color,
             "seed": (int(state.get("map_seed") or 1) ^ death_event_id ^ int(current_ms & 0xFFFFFFFF)) & 0xFFFFFFFF,
             "created_at_ms": current_ms,
             "killer_id": "" if suicide else killer_id,
@@ -1415,6 +1813,259 @@ def push_death_event(
     )
     state["death_events"] = events[-40:]
     state["next_death_event_id"] = death_event_id + 1
+
+
+def push_visual_event(
+    state: dict[str, object],
+    current_ms: int,
+    *,
+    x: float,
+    y: float,
+    radius: float,
+    color: str,
+    weapon: str = "bullet",
+    bullet_id: int = 0,
+    max_life: float = 0.78,
+) -> None:
+    death_event_id = int(state.get("next_death_event_id") or 1)
+    events = prune_death_events(state, current_ms)
+    events.append(
+        {
+            "id": death_event_id,
+            "x": float(x),
+            "y": float(y),
+            "radius": float(radius),
+            "color": normalize_color(color),
+            "seed": (int(state.get("map_seed") or 1) ^ death_event_id ^ int(current_ms & 0xFFFFFFFF)) & 0xFFFFFFFF,
+            "created_at_ms": current_ms,
+            "killer_id": "",
+            "victim_id": "",
+            "killer_color": "",
+            "victim_color": normalize_color(color),
+            "weapon": weapon,
+            "bullet_id": int(bullet_id or 0),
+            "suicide": False,
+            "max_life": float(max_life),
+        }
+    )
+    state["death_events"] = events[-40:]
+    state["next_death_event_id"] = death_event_id + 1
+
+
+def push_hit_event(
+    state: dict[str, object],
+    victim_meta: dict[str, object],
+    current_ms: int,
+    *,
+    weapon: str,
+    bullet_id: int = 0,
+) -> None:
+    push_visual_event(
+        state,
+        current_ms,
+        x=float(victim_meta.get("x") or 0.0),
+        y=float(victim_meta.get("y") or 0.0),
+        radius=max(6.0, float(victim_meta.get("radius") or PLAYER_RADIUS) * 0.56),
+        color=normalize_color(victim_meta.get("color")),
+        weapon=f"hit:{weapon}",
+        bullet_id=bullet_id,
+        max_life=0.34,
+    )
+
+
+def mark_player_destroyed(
+    state: dict[str, object],
+    victim_meta: dict[str, object],
+    current_ms: int,
+    *,
+    killer_meta: dict[str, object] | None = None,
+    weapon: str = "bullet",
+    bullet_id: int = 0,
+    event_x: float | None = None,
+    event_y: float | None = None,
+    event_radius: float | None = None,
+    event_color: str | None = None,
+    award_kill: bool = True,
+) -> None:
+    victim_id = str(victim_meta.get("player_id") or "")
+    killer_id = str((killer_meta or {}).get("player_id") or "")
+    if (
+        award_kill
+        and isinstance(killer_meta, dict)
+        and killer_id
+        and killer_id != victim_id
+    ):
+        killer_meta["hits"] = int(killer_meta.get("hits") or 0) + 1
+        killer_meta["score"] = int(killer_meta.get("score") or 0) + 250
+
+    if is_same_place_respawn_enabled(state):
+        victim_meta["death_x"] = float(victim_meta.get("x") or 0.0)
+        victim_meta["death_y"] = float(victim_meta.get("y") or 0.0)
+        victim_meta["death_angle"] = float(victim_meta.get("angle") or 0.0)
+        victim_meta["death_map_seed"] = int(state.get("map_seed") or victim_meta.get("map_seed") or 0)
+    else:
+        clear_player_death_spawn_state(victim_meta)
+    victim_meta["deaths"] = int(victim_meta.get("deaths") or 0) + 1
+    victim_meta["score"] = max(0, int(victim_meta.get("score") or 0) - 120)
+    victim_meta["alive"] = False
+    victim_meta["respawn_at_ms"] = current_ms + int(PLAYER_RESPAWN_SECONDS * 1000)
+    victim_meta["cooldown"] = 0.0
+    victim_meta["flash"] = 0.18
+    victim_meta["hp"] = 0
+    reset_player_weapon_state(victim_meta)
+    push_death_event(
+        state,
+        victim_meta,
+        current_ms,
+        killer_meta=killer_meta if isinstance(killer_meta, dict) else None,
+        weapon=weapon,
+        bullet_id=bullet_id,
+        event_x=event_x,
+        event_y=event_y,
+        event_radius=event_radius,
+        event_color=event_color,
+    )
+
+
+def apply_damage_to_player(
+    state: dict[str, object],
+    victim_meta: dict[str, object],
+    current_ms: int,
+    *,
+    damage: int,
+    killer_meta: dict[str, object] | None = None,
+    weapon: str = "bullet",
+    bullet_id: int = 0,
+    event_x: float | None = None,
+    event_y: float | None = None,
+    event_radius: float | None = None,
+    event_color: str | None = None,
+) -> bool:
+    if not is_health_system_enabled(state):
+        mark_player_destroyed(
+            state,
+            victim_meta,
+            current_ms,
+            killer_meta=killer_meta,
+            weapon=weapon,
+            bullet_id=bullet_id,
+            event_x=event_x,
+            event_y=event_y,
+            event_radius=event_radius,
+            event_color=event_color,
+        )
+        return True
+
+    ensure_player_health(victim_meta, state)
+    next_hp = clamp(float(victim_meta.get("hp") or MAX_TANK_HP) - float(damage), 0.0, float(MAX_TANK_HP))
+    victim_meta["hp"] = next_hp
+    victim_meta["flash"] = max(float(victim_meta.get("flash") or 0.0), 0.14)
+    if next_hp <= 0:
+        mark_player_destroyed(
+            state,
+            victim_meta,
+            current_ms,
+            killer_meta=killer_meta,
+            weapon=weapon,
+            bullet_id=bullet_id,
+            event_x=event_x,
+            event_y=event_y,
+            event_radius=event_radius,
+            event_color=event_color,
+        )
+        return True
+
+    push_hit_event(state, victim_meta, current_ms, weapon=weapon, bullet_id=bullet_id)
+    return False
+
+
+def destroy_player_by_mine(
+    state: dict[str, object],
+    victim_meta: dict[str, object],
+    owner_meta: dict[str, object] | None,
+    mine: dict[str, object],
+    current_ms: int,
+) -> None:
+    valid_owner = (
+        owner_meta
+        if isinstance(owner_meta, dict)
+        and int(owner_meta.get("revision") or 0) == int(mine.get("owner_revision") or 0)
+        else None
+    )
+    apply_damage_to_player(
+        state,
+        victim_meta,
+        current_ms,
+        damage=LAND_MINE_DAMAGE,
+        killer_meta=valid_owner,
+        weapon="land_mine",
+        bullet_id=int(mine.get("id") or 0),
+        event_x=float(mine.get("x") or 0.0),
+        event_y=float(mine.get("y") or 0.0),
+        event_radius=float(mine.get("blast_radius") or MINE_BLAST_RADIUS) / 4.95,
+        event_color=normalize_color(mine.get("color")),
+    )
+
+
+def advance_mines(state: dict[str, object], current_ms: int, players: dict[str, dict[str, object]]) -> None:
+    mines = ensure_mines_state(state, current_ms)
+    if not mines:
+        return
+
+    next_mines: list[dict[str, object]] = []
+    for mine in mines:
+        mine_x = float(mine.get("x") or 0.0)
+        mine_y = float(mine.get("y") or 0.0)
+        trigger_radius = float(mine.get("trigger_radius") or MINE_TRIGGER_RADIUS)
+        blast_radius = float(mine.get("blast_radius") or MINE_BLAST_RADIUS)
+        armed = current_ms >= int(mine.get("armed_at_ms") or current_ms)
+        triggered = bool(mine.get("triggered"))
+
+        if armed and not triggered:
+            for candidate_meta in players.values():
+                if not bool(candidate_meta.get("alive", True)):
+                    continue
+                candidate_radius = float(candidate_meta.get("radius") or PLAYER_RADIUS)
+                if distance(mine_x, mine_y, float(candidate_meta.get("x") or 0.0), float(candidate_meta.get("y") or 0.0)) <= trigger_radius + candidate_radius:
+                    mine["triggered"] = True
+                    mine["trigger_started_at_ms"] = current_ms
+                    triggered = True
+                    break
+
+        trigger_started_at_ms = int(mine.get("trigger_started_at_ms") or 0)
+        if triggered and trigger_started_at_ms and current_ms - trigger_started_at_ms >= MINE_DETONATION_DELAY_MS:
+            owner_meta = players.get(str(mine.get("owner_id") or ""))
+            push_visual_event(
+                state,
+                current_ms,
+                x=mine_x,
+                y=mine_y,
+                radius=float(mine.get("blast_radius") or MINE_BLAST_RADIUS) / 4.95,
+                color=normalize_color(mine.get("color")),
+                weapon="land_mine",
+                bullet_id=int(mine.get("id") or 0),
+            )
+            push_mine_shield_pulses(state, mine, current_ms, players)
+            victims: list[dict[str, object]] = []
+            for candidate_meta in players.values():
+                if not bool(candidate_meta.get("alive", True)):
+                    continue
+                candidate_radius = float(candidate_meta.get("radius") or PLAYER_RADIUS)
+                if distance(mine_x, mine_y, float(candidate_meta.get("x") or 0.0), float(candidate_meta.get("y") or 0.0)) <= blast_radius + candidate_radius:
+                    victims.append(candidate_meta)
+            for victim_meta in victims:
+                destroy_player_by_mine(
+                    state,
+                    victim_meta,
+                    owner_meta if isinstance(owner_meta, dict) else None,
+                    mine,
+                    current_ms,
+                )
+            continue
+
+        next_mines.append(mine)
+
+    state["mines"] = next_mines
 
 
 def ensure_player_color(
@@ -1482,7 +2133,24 @@ def spawn_match_player(
 
     rng_seed = (seed ^ string_seed(player_id) ^ int(current_ms & 0xFFFFFFFF) ^ (len(players) * 1315423911)) & 0xFFFFFFFF
     rng = create_seeded_random(rng_seed)
-    spawn = pick_spawn_point(rng, walls, occupied, PLAYER_RADIUS, player_spawn_band(color))
+    same_place_respawn = (
+        is_same_place_respawn_enabled(state)
+        and preserve_stats
+        and int(player_meta.get("death_map_seed") or 0) == seed
+        and player_meta.get("death_x") is not None
+        and player_meta.get("death_y") is not None
+    )
+    if same_place_respawn:
+        spawn = {
+            "x": float(player_meta.get("death_x") or ARENA_X + 100),
+            "y": float(player_meta.get("death_y") or ARENA_Y + 100),
+            "radius": PLAYER_RADIUS,
+        }
+        spawn_angle = float(player_meta.get("death_angle") or player_spawn_angle(color))
+    else:
+        spawn_band = None if preserve_stats else player_spawn_band(color)
+        spawn = pick_spawn_point(rng, walls, occupied, PLAYER_RADIUS, spawn_band)
+        spawn_angle = rng() * math.pi * 2.0 if preserve_stats else player_spawn_angle(color)
 
     if not preserve_stats:
         player_meta["score"] = 0
@@ -1495,12 +2163,18 @@ def spawn_match_player(
     player_meta["map_seed"] = seed
     player_meta["x"] = float(spawn["x"])
     player_meta["y"] = float(spawn["y"])
-    player_meta["angle"] = player_spawn_angle(color)
+    player_meta["angle"] = spawn_angle
     player_meta["radius"] = PLAYER_RADIUS
     player_meta["cooldown"] = 0.0
     player_meta["flash"] = 0.18
     player_meta["alive"] = True
     player_meta["respawn_at_ms"] = 0
+    player_meta["spawned_at_ms"] = current_ms
+    player_meta["spawn_seq"] = int(player_meta.get("spawn_seq") or 0) + 1
+    if not same_place_respawn:
+        clear_player_death_spawn_state(player_meta)
+    else:
+        player_meta["death_map_seed"] = int(player_meta.get("death_map_seed") or 0)
     player_meta["input"] = normalize_match_input(player_meta.get("input"))
     player_meta["input"]["fire_seq"] = int(player_meta.get("last_fire_seq") or 0)
     player_meta["score"] = int(player_meta.get("score") or 0)
@@ -1510,9 +2184,17 @@ def spawn_match_player(
     player_meta["last_fire_seq"] = int(player_meta.get("last_fire_seq") or 0)
     player_meta["last_ack_input_seq"] = int(player_meta.get("last_ack_input_seq") or 0)
     player_meta["weapon"] = str(player_meta.get("weapon") or "default")
+    player_meta["hp"] = MAX_TANK_HP
+    player_meta["max_hp"] = MAX_TANK_HP
+    if not same_place_respawn:
+        clear_player_death_spawn_state(player_meta)
+    else:
+        player_meta["death_map_seed"] = int(player_meta.get("death_map_seed") or 0)
     player_meta["shotgun_ammo"] = max(0, int(player_meta.get("shotgun_ammo") or 0))
     player_meta["minigun_ammo"] = max(0, int(player_meta.get("minigun_ammo") or 0))
     player_meta["double_barrel_ammo"] = max(0, int(player_meta.get("double_barrel_ammo") or 0))
+    player_meta["mine_ammo"] = max(0, int(player_meta.get("mine_ammo") or 0))
+    player_meta["missile_ammo"] = max(0, int(player_meta.get("missile_ammo") or 0))
     player_meta["minigun_spinup"] = float(player_meta.get("minigun_spinup") or 0.0)
     player_meta["minigun_idle"] = float(player_meta.get("minigun_idle") or 0.0)
     player_meta["minigun_shot_accum"] = float(player_meta.get("minigun_shot_accum") or 0.0)
@@ -1551,10 +2233,13 @@ def ensure_match_player(
     player_meta["last_ack_input_seq"] = int(player_meta.get("last_ack_input_seq") or 0)
     player_meta["alive"] = bool(player_meta.get("alive", True))
     player_meta["respawn_at_ms"] = int(player_meta.get("respawn_at_ms") or 0)
+    ensure_player_health(player_meta, state)
     player_meta["weapon"] = str(player_meta.get("weapon") or "default")
     player_meta["shotgun_ammo"] = max(0, int(player_meta.get("shotgun_ammo") or 0))
     player_meta["minigun_ammo"] = max(0, int(player_meta.get("minigun_ammo") or 0))
     player_meta["double_barrel_ammo"] = max(0, int(player_meta.get("double_barrel_ammo") or 0))
+    player_meta["mine_ammo"] = max(0, int(player_meta.get("mine_ammo") or 0))
+    player_meta["missile_ammo"] = max(0, int(player_meta.get("missile_ammo") or 0))
     player_meta["minigun_spinup"] = float(player_meta.get("minigun_spinup") or 0.0)
     player_meta["minigun_idle"] = float(player_meta.get("minigun_idle") or 0.0)
     player_meta["minigun_shot_accum"] = float(player_meta.get("minigun_shot_accum") or 0.0)
@@ -1648,7 +2333,7 @@ def prune_players(state: dict[str, object], current_ms: int) -> None:
             latency_tests.pop(player_id, None)
 
     if not players:
-        clear_powerup_state(state)
+        reset_match_mode_if_empty(state)
 
 
 def update_player(state: dict[str, object], player_id: str, country_code: str, current_ms: int) -> None:
@@ -1685,7 +2370,7 @@ def refresh_vote_state(state: dict[str, object], current_ms: int) -> None:
         votes = {}
         state["votes"] = votes
 
-    active_player_ids = sorted(players.keys())
+    active_player_ids = [player_id for player_id in sorted(players.keys()) if isinstance(players.get(player_id), dict)]
     all_voted = bool(active_player_ids) and all(player_id in votes for player_id in active_player_ids)
 
     if not all_voted:
@@ -1730,6 +2415,10 @@ def build_response(state: dict[str, object], room: str, player_id: str | None, c
         "room": room,
         "map_seed": int(state.get("map_seed") or 1),
         "map_id": str(state.get("map_id") or map_id_from_seed(int(state.get("map_seed") or 1))),
+        "match_mode": get_match_mode(state),
+        "custom_options": get_custom_options(state),
+        "match_mode_owner_id": str(state.get("match_mode_owner_id") or ""),
+        "mode_locked": bool(get_active_players(state)),
         "active_player_ids": active_player_ids,
         "active_player_count": len(active_player_ids),
         "voted_player_ids": voted_player_ids,
@@ -1876,10 +2565,19 @@ def apply_reported_match_player_state(
     player_meta: dict[str, object],
     local_player: dict[str, float] | None,
     walls: list[dict[str, float]],
-) -> None:
+    current_ms: int,
+) -> bool:
     if local_player is None or not bool(player_meta.get("alive", True)):
-        return
-
+        return False
+    if str(player_meta.get("weapon") or "default") == "tow_missile_active":
+        return False
+    spawned_at_ms = int(player_meta.get("spawned_at_ms") or 0)
+    server_spawn_seq = max(0, int(player_meta.get("spawn_seq") or 0))
+    client_spawn_seq = max(0, int(local_player.get("spawn_seq") or 0))
+    if server_spawn_seq > 0 and client_spawn_seq != server_spawn_seq:
+        return False
+    server_deaths = max(0, int(player_meta.get("deaths") or 0))
+    client_deaths = max(0, int(local_player.get("deaths") or 0))
     radius = float(player_meta.get("radius") or PLAYER_RADIUS)
     min_x = ARENA_X + radius
     max_x = ARENA_X + ARENA_WIDTH - radius
@@ -1887,14 +2585,45 @@ def apply_reported_match_player_state(
     max_y = ARENA_Y + ARENA_HEIGHT - radius
     candidate_x = clamp(float(local_player.get("x") or 0.0), min_x, max_x)
     candidate_y = clamp(float(local_player.get("y") or 0.0), min_y, max_y)
-    candidate = {"x": candidate_x, "y": candidate_y, "radius": radius + 0.75}
+    if spawned_at_ms > 0 and current_ms - spawned_at_ms < RESPAWN_REPORT_GRACE_MS:
+        current_x = float(player_meta.get("x") or candidate_x)
+        current_y = float(player_meta.get("y") or candidate_y)
+        if client_deaths < server_deaths:
+            return False
+        if distance(current_x, current_y, candidate_x, candidate_y) > RESPAWN_REPORT_SNAP_TOLERANCE:
+            return False
+    if float(player_meta.get("hp") or MAX_TANK_HP) < 25.0:
+        max_delta = PLAYER_SPEED * 0.8 * 0.22
+        current_x = float(player_meta.get("x") or candidate_x)
+        current_y = float(player_meta.get("y") or candidate_y)
+        delta_x = candidate_x - current_x
+        delta_y = candidate_y - current_y
+        delta_length = math.hypot(delta_x, delta_y)
+        if delta_length > max_delta:
+            scale = max_delta / max(delta_length, 0.0001)
+            candidate_x = current_x + delta_x * scale
+            candidate_y = current_y + delta_y * scale
+    collision_radius = radius + 0.75
+    candidate = {"x": candidate_x, "y": candidate_y, "radius": collision_radius}
     if any(circle_intersects_rect(candidate, wall) for wall in walls):
-        return
+        pushed_x, pushed_y = push_out_of_wall(
+            candidate_x,
+            candidate_y,
+            float(local_player.get("angle") or 0.0),
+            collision_radius,
+            walls,
+        )
+        candidate_x = clamp(pushed_x, min_x, max_x)
+        candidate_y = clamp(pushed_y, min_y, max_y)
+        candidate = {"x": candidate_x, "y": candidate_y, "radius": collision_radius}
+        if any(circle_intersects_rect(candidate, wall) for wall in walls):
+            return False
 
     player_meta["x"] = candidate_x
     player_meta["y"] = candidate_y
     player_meta["angle"] = float(local_player.get("angle") or 0.0)
     player_meta["radius"] = radius
+    return True
 
 
 def separate_match_players(players: dict[str, dict[str, object]], walls: list[dict[str, float]]) -> None:
@@ -1930,6 +2659,26 @@ def separate_match_players(players: dict[str, dict[str, object]], walls: list[di
             return
 
 
+def projectile_spawn_inside_owner_shield(
+    player_meta: dict[str, object],
+    spawn_x: float,
+    spawn_y: float,
+    radius: float,
+    current_ms: int,
+) -> bool:
+    if int(player_meta.get("shield_visible_until_ms") or 0) <= current_ms:
+        return False
+    shield_core_radius = max(PLAYER_RADIUS + 10.0, float(player_meta.get("shield_radius") or SHIELD_RADIUS))
+    return point_inside_circle(
+        spawn_x,
+        spawn_y,
+        float(player_meta.get("x") or 0.0),
+        float(player_meta.get("y") or 0.0),
+        shield_core_radius + max(radius, LASER_RADIUS) + 2.0,
+        margin=0.0,
+    )
+
+
 def spawn_match_bullet(
     room_state: dict[str, object],
     player_meta: dict[str, object],
@@ -1940,6 +2689,8 @@ def spawn_match_bullet(
     lateral_offset: float = 0.0,
     projectile_type: str = "bullet",
     life: float = BULLET_LIFE,
+    fire_seq: int = 0,
+    current_ms: int | None = None,
 ) -> dict[str, object]:
     bullet_id = int(room_state.get("next_bullet_id") or 1)
     color = normalize_color(player_meta.get("color"))
@@ -1950,6 +2701,14 @@ def spawn_match_bullet(
         walls,
         projectile_radius=radius,
         lateral_offset=lateral_offset,
+    )
+    resolved_current_ms = int(current_ms if current_ms is not None else now_ms())
+    spawned_inside_owner_shield = projectile_spawn_inside_owner_shield(
+        player_meta,
+        spawn_x,
+        spawn_y,
+        radius,
+        resolved_current_ms,
     )
     bullet = {
         "id": bullet_id,
@@ -1966,13 +2725,25 @@ def spawn_match_bullet(
         "bouncesLeft": BULLET_BOUNCES,
         "age": 0.0,
         "has_bounced": False,
+        "steer_locked_until_age": 0.0,
+        "wall_hit_seq": 0,
+        "wall_hit_x": 0.0,
+        "wall_hit_y": 0.0,
         "owner_shield_released": False,
+        "ignore_owner_shield": spawned_inside_owner_shield,
+        "fire_seq": max(0, int(fire_seq or 0)),
     }
     room_state["next_bullet_id"] = bullet_id + 1
     return bullet
 
 
-def spawn_shotgun_pellets(room_state: dict[str, object], player_meta: dict[str, object], current_ms: int) -> list[dict[str, object]]:
+def spawn_shotgun_pellets(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    current_ms: int,
+    *,
+    fire_seq: int = 0,
+) -> list[dict[str, object]]:
     angle = float(player_meta.get("angle") or 0.0)
     rng = create_seeded_random(
         (
@@ -1999,12 +2770,20 @@ def spawn_shotgun_pellets(room_state: dict[str, object], player_meta: dict[str, 
                 lateral_offset=lateral_offset,
                 projectile_type="shotgun",
                 life=SHOTGUN_PELLET_LIFE,
+                fire_seq=fire_seq,
+                current_ms=current_ms,
             )
         )
     return pellets
 
 
-def spawn_laser_bullet(room_state: dict[str, object], player_meta: dict[str, object], current_ms: int) -> dict[str, object]:
+def spawn_laser_bullet(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    current_ms: int,
+    *,
+    fire_seq: int = 0,
+) -> dict[str, object]:
     angle = float(player_meta.get("angle") or 0.0)
     walls = build_training_walls(int(room_state.get("map_seed") or 1))
     spawn_x, spawn_y = safe_fire_spawn_point(
@@ -2013,6 +2792,21 @@ def spawn_laser_bullet(room_state: dict[str, object], player_meta: dict[str, obj
         walls,
         projectile_radius=LASER_RADIUS,
     )
+    owner_id = str(player_meta.get("player_id") or "")
+    spawned_inside_owner_shield = projectile_spawn_inside_owner_shield(
+        player_meta,
+        spawn_x,
+        spawn_y,
+        LASER_RADIUS,
+        current_ms,
+    )
+    shields = active_shields(
+        get_active_players(room_state),
+        current_ms,
+        include_visual=True,
+    )
+    if spawned_inside_owner_shield:
+        shields = [shield for shield in shields if str(shield.get("player_id") or "") != owner_id]
     path_segments = build_reflected_ray_segments(
         spawn_x,
         spawn_y,
@@ -2020,11 +2814,7 @@ def spawn_laser_bullet(room_state: dict[str, object], player_meta: dict[str, obj
         LASER_SPEED * LASER_LIFE + LASER_LENGTH,
         walls,
         max_bounces=12,
-        shields=active_shields(
-            get_active_players(room_state),
-            current_ms,
-            include_visual=True,
-        ),
+        shields=shields,
     )
     bullet = spawn_match_bullet(
         room_state,
@@ -2034,12 +2824,15 @@ def spawn_laser_bullet(room_state: dict[str, object], player_meta: dict[str, obj
         speed=LASER_SPEED,
         projectile_type="laser",
         life=LASER_LIFE,
+        fire_seq=fire_seq,
+        current_ms=current_ms,
     )
     bullet["x"] = spawn_x
     bullet["y"] = spawn_y
     bullet["path_segments"] = path_segments
     bullet["segments"] = slice_path_segments(path_segments, 0.0, LASER_LENGTH)
     bullet["distance_travelled"] = 0.0
+    bullet["ignore_owner_shield"] = spawned_inside_owner_shield
     return bullet
 
 
@@ -2050,7 +2843,11 @@ def minigun_lateral_offset(player_meta: dict[str, object]) -> float:
     return float(pattern * MINIGUN_BARREL_WIDTH)
 
 
-def spawn_minigun_bullet(room_state: dict[str, object], player_meta: dict[str, object]) -> dict[str, object]:
+def spawn_minigun_bullet(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    current_ms: int,
+) -> dict[str, object]:
     return spawn_match_bullet(
         room_state,
         player_meta,
@@ -2060,6 +2857,8 @@ def spawn_minigun_bullet(room_state: dict[str, object], player_meta: dict[str, o
         lateral_offset=minigun_lateral_offset(player_meta),
         projectile_type="minigun",
         life=MINIGUN_BULLET_LIFE,
+        fire_seq=int(normalize_match_input(player_meta.get("input")).get("fire_seq") or 0),
+        current_ms=current_ms,
     )
 
 
@@ -2069,7 +2868,11 @@ def double_barrel_lateral_offset(player_meta: dict[str, object]) -> float:
     return (-1.0 if shot_index % 2 == 0 else 1.0) * DOUBLE_BARREL_BARREL_OFFSET
 
 
-def spawn_double_barrel_bullet(room_state: dict[str, object], player_meta: dict[str, object]) -> dict[str, object]:
+def spawn_double_barrel_bullet(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    current_ms: int,
+) -> dict[str, object]:
     return spawn_match_bullet(
         room_state,
         player_meta,
@@ -2079,7 +2882,211 @@ def spawn_double_barrel_bullet(room_state: dict[str, object], player_meta: dict[
         lateral_offset=double_barrel_lateral_offset(player_meta),
         projectile_type="double_barrel",
         life=BULLET_LIFE,
+        fire_seq=int(normalize_match_input(player_meta.get("input")).get("fire_seq") or 0),
+        current_ms=current_ms,
     )
+
+
+def spawn_guided_missile_bullet(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    *,
+    fire_seq: int = 0,
+    current_ms: int | None = None,
+) -> dict[str, object]:
+    return spawn_match_bullet(
+        room_state,
+        player_meta,
+        float(player_meta.get("angle") or 0.0),
+        radius=GUIDED_MISSILE_RADIUS,
+        speed=GUIDED_MISSILE_SPEED,
+        projectile_type="guided_missile",
+        life=GUIDED_MISSILE_LIFE,
+        fire_seq=fire_seq,
+        current_ms=current_ms,
+    )
+
+
+def spawn_tow_missile_bullet(
+    room_state: dict[str, object],
+    player_meta: dict[str, object],
+    *,
+    fire_seq: int = 0,
+    current_ms: int | None = None,
+) -> dict[str, object]:
+    return spawn_match_bullet(
+        room_state,
+        player_meta,
+        float(player_meta.get("angle") or 0.0),
+        radius=TOW_MISSILE_RADIUS,
+        speed=TOW_MISSILE_SPEED,
+        projectile_type="tow_missile",
+        life=TOW_MISSILE_LIFE,
+        fire_seq=fire_seq,
+        current_ms=current_ms,
+    )
+
+
+def record_bullet_wall_hit(bullet: dict[str, object], wall: dict[str, float]) -> None:
+    wall_x = float(wall.get("x") or 0.0)
+    wall_y = float(wall.get("y") or 0.0)
+    wall_w = float(wall.get("w") or 0.0)
+    wall_h = float(wall.get("h") or 0.0)
+    bullet["wall_hit_seq"] = int(bullet.get("wall_hit_seq") or 0) + 1
+    bullet["wall_hit_x"] = clamp(float(bullet.get("x") or 0.0), wall_x, wall_x + wall_w)
+    bullet["wall_hit_y"] = clamp(float(bullet.get("y") or 0.0), wall_y, wall_y + wall_h)
+
+
+def place_bullet_after_wall_bounce(
+    bullet: dict[str, object],
+    expanded: dict[str, float],
+    previous_x: float,
+    previous_y: float,
+    step: float,
+    flip_x: bool,
+    flip_y: bool,
+) -> None:
+    if str(bullet.get("projectile_type") or "bullet") != "tow_missile":
+        bullet["x"] = previous_x + float(bullet.get("vx") or 0.0) * step * 0.4
+        bullet["y"] = previous_y + float(bullet.get("vy") or 0.0) * step * 0.4
+        return
+
+    exit_padding = 0.75
+    if flip_x:
+        bullet["x"] = (
+            float(expanded.get("x") or 0.0) + float(expanded.get("w") or 0.0) + exit_padding
+            if float(bullet.get("vx") or 0.0) >= 0.0
+            else float(expanded.get("x") or 0.0) - exit_padding
+        )
+    else:
+        bullet["x"] = previous_x + float(bullet.get("vx") or 0.0) * step * 0.4
+    if flip_y:
+        bullet["y"] = (
+            float(expanded.get("y") or 0.0) + float(expanded.get("h") or 0.0) + exit_padding
+            if float(bullet.get("vy") or 0.0) >= 0.0
+            else float(expanded.get("y") or 0.0) - exit_padding
+        )
+    else:
+        bullet["y"] = previous_y + float(bullet.get("vy") or 0.0) * step * 0.4
+
+
+def shortest_angle_delta(target_angle: float, current_angle: float) -> float:
+    return (target_angle - current_angle + math.pi) % (math.pi * 2.0) - math.pi
+
+
+def smooth_step(value: float) -> float:
+    safe_value = clamp(value, 0.0, 1.0)
+    return safe_value * safe_value * (3.0 - 2.0 * safe_value)
+
+
+def find_guided_missile_target(
+    missile: dict[str, object],
+    players: dict[str, dict[str, object]],
+) -> tuple[str, dict[str, object]] | None:
+    missile_x = float(missile.get("x") or 0.0)
+    missile_y = float(missile.get("y") or 0.0)
+
+    best: tuple[float, str, dict[str, object]] | None = None
+    for candidate_id, candidate_meta in players.items():
+        if not isinstance(candidate_meta, dict) or not bool(candidate_meta.get("alive", True)):
+            continue
+        candidate_distance = distance(
+            missile_x,
+            missile_y,
+            float(candidate_meta.get("x") or 0.0),
+            float(candidate_meta.get("y") or 0.0),
+        )
+        if best is None or candidate_distance < best[0]:
+            best = (candidate_distance, candidate_id, candidate_meta)
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def steer_guided_missile(
+    missile: dict[str, object],
+    players: dict[str, dict[str, object]],
+    step: float,
+) -> None:
+    age = float(missile.get("age") or 0.0)
+    if age < GUIDED_MISSILE_LOCK_DELAY:
+        missile["locked"] = False
+        missile["target_id"] = ""
+        missile["target_color"] = ""
+        return
+
+    target = find_guided_missile_target(missile, players)
+    if target is None:
+        missile["locked"] = False
+        missile["target_id"] = ""
+        missile["target_color"] = ""
+        return
+
+    target_id, target_meta = target
+    missile["locked"] = True
+    missile["target_id"] = target_id
+    missile["target_color"] = normalize_color(target_meta.get("color"))
+    current_speed = math.hypot(float(missile.get("vx") or 0.0), float(missile.get("vy") or 0.0)) or GUIDED_MISSILE_SPEED
+    current_angle = math.atan2(float(missile.get("vy") or 0.0), float(missile.get("vx") or 0.0))
+    target_angle = math.atan2(
+        float(target_meta.get("y") or 0.0) - float(missile.get("y") or 0.0),
+        float(target_meta.get("x") or 0.0) - float(missile.get("x") or 0.0),
+    )
+    ramp = smooth_step((age - GUIDED_MISSILE_LOCK_DELAY) / GUIDED_MISSILE_TURN_RAMP_SECONDS)
+    max_turn = GUIDED_MISSILE_TURN_RATE * (0.28 + ramp * 0.72) * max(0.0, step)
+    next_angle = current_angle + clamp(shortest_angle_delta(target_angle, current_angle), -max_turn, max_turn)
+    missile["vx"] = math.cos(next_angle) * current_speed
+    missile["vy"] = math.sin(next_angle) * current_speed
+
+
+def steer_tow_missile(
+    missile: dict[str, object],
+    owner_meta: dict[str, object] | None,
+    step: float,
+) -> None:
+    if not isinstance(owner_meta, dict):
+        return
+    input_state = normalize_match_input(owner_meta.get("input"))
+    turn_intent = (1 if bool(input_state.get("right")) else 0) - (1 if bool(input_state.get("left")) else 0)
+    current_speed = math.hypot(float(missile.get("vx") or 0.0), float(missile.get("vy") or 0.0)) or TOW_MISSILE_SPEED
+    current_angle = math.atan2(float(missile.get("vy") or 0.0), float(missile.get("vx") or 0.0))
+    next_angle = current_angle + turn_intent * TOW_MISSILE_TURN_RATE * max(0.0, step)
+    missile["vx"] = math.cos(next_angle) * current_speed
+    missile["vy"] = math.sin(next_angle) * current_speed
+
+
+def release_tow_controller(players: dict[str, dict[str, object]], bullet: dict[str, object]) -> None:
+    owner_meta = players.get(str(bullet.get("owner_id") or ""))
+    if not isinstance(owner_meta, dict):
+        return
+    if str(owner_meta.get("weapon") or "default") == "tow_missile_active":
+        owner_meta["weapon"] = "default"
+        owner_meta["missile_ammo"] = 0
+        owner_meta["cooldown"] = min(float(owner_meta.get("cooldown") or 0.0), TOW_MISSILE_COOLDOWN)
+
+
+def plant_land_mine(room_state: dict[str, object], player_meta: dict[str, object], current_ms: int) -> dict[str, object]:
+    mine_id = int(room_state.get("next_mine_id") or 1)
+    mine = {
+        "id": mine_id,
+        "owner_id": str(player_meta.get("player_id") or ""),
+        "owner_revision": int(player_meta.get("revision") or 0),
+        "color": normalize_color(player_meta.get("color")),
+        "x": float(player_meta.get("x") or 0.0),
+        "y": float(player_meta.get("y") or 0.0),
+        "radius": MINE_RADIUS,
+        "trigger_radius": MINE_TRIGGER_RADIUS,
+        "blast_radius": MINE_BLAST_RADIUS,
+        "created_at_ms": current_ms,
+        "armed_at_ms": current_ms + MINE_ARM_DELAY_MS,
+        "triggered": False,
+        "trigger_started_at_ms": 0,
+    }
+    mines = ensure_mines_state(room_state, current_ms)
+    mines.append(mine)
+    room_state["mines"] = mines
+    room_state["next_mine_id"] = mine_id + 1
+    return mine
 
 
 def serialize_bullet_segments(bullet: dict[str, object]) -> list[dict[str, float]]:
@@ -2124,6 +3131,10 @@ def segment_circle_hit_test(
     closest_x = x1 + (x2 - x1) * t
     closest_y = y1 + (y2 - y1) * t
     return distance(circle_x, circle_y, closest_x, closest_y) < hit_radius
+
+
+def point_inside_circle(point_x: float, point_y: float, circle_x: float, circle_y: float, radius: float, margin: float = 0.5) -> bool:
+    return distance(point_x, point_y, circle_x, circle_y) < max(0.0, radius - margin)
 
 
 def segment_circle_collision(
@@ -2187,6 +3198,9 @@ def segment_circle_collision(
 
 
 def bullet_has_left_owner_shield(bullet: dict[str, object], players: dict[str, dict[str, object]]) -> bool:
+    if bool(bullet.get("ignore_owner_shield")):
+        bullet["owner_shield_released"] = True
+        return False
     if bool(bullet.get("owner_shield_released")):
         return True
     owner_meta = players.get(str(bullet.get("owner_id") or ""))
@@ -2219,11 +3233,16 @@ def reflect_bullet_from_shields(
     allow_owner_shield = bullet_has_left_owner_shield(bullet, players)
     for shield in active_shields(players, current_ms, include_visual=True):
         shield_owner_id = str(shield.get("player_id") or "")
+        if shield_owner_id == str(bullet.get("owner_id") or "") and bool(bullet.get("ignore_owner_shield")):
+            continue
         if shield_owner_id == str(bullet.get("owner_id") or "") and not allow_owner_shield:
             continue
         shield_x = float(shield.get("x") or 0.0)
         shield_y = float(shield.get("y") or 0.0)
-        shield_radius = float(shield.get("radius") or SHIELD_RADIUS) + float(bullet.get("radius") or BULLET_RADIUS)
+        shield_core_radius = float(shield.get("radius") or SHIELD_RADIUS)
+        shield_radius = shield_core_radius + float(bullet.get("radius") or BULLET_RADIUS)
+        if point_inside_circle(previous_x, previous_y, shield_x, shield_y, shield_core_radius):
+            continue
         collision = segment_circle_collision(
             previous_x,
             previous_y,
@@ -2261,11 +3280,14 @@ def candidate_shield_blocks_bullet(
         return False
     if str(bullet.get("last_shield_hit_id") or "") == str(candidate_meta.get("player_id") or ""):
         return True
+    if str(bullet.get("owner_id") or "") == str(candidate_meta.get("player_id") or "") and bool(bullet.get("ignore_owner_shield")):
+        return False
     if str(bullet.get("owner_id") or "") == str(candidate_meta.get("player_id") or "") and not bool(bullet.get("owner_shield_released")):
         return False
     candidate_x = float(candidate_meta.get("x") or 0.0)
     candidate_y = float(candidate_meta.get("y") or 0.0)
-    shield_radius = float(candidate_meta.get("shield_radius") or SHIELD_RADIUS) + float(bullet.get("radius") or BULLET_RADIUS)
+    shield_core_radius = float(candidate_meta.get("shield_radius") or SHIELD_RADIUS)
+    shield_radius = shield_core_radius + float(bullet.get("radius") or BULLET_RADIUS)
     if str(bullet.get("projectile_type") or "bullet") == "laser":
         laser_segments = [
             segment
@@ -2276,6 +3298,14 @@ def candidate_shield_blocks_bullet(
             if isinstance(segment, dict)
         ]
         return any(
+            not point_inside_circle(
+                float(segment.get("x1") or 0.0),
+                float(segment.get("y1") or 0.0),
+                candidate_x,
+                candidate_y,
+                shield_core_radius,
+            )
+            and
             segment_circle_hit_test(
                 float(segment.get("x1") or 0.0),
                 float(segment.get("y1") or 0.0),
@@ -2296,6 +3326,12 @@ def candidate_shield_blocks_bullet(
         candidate_x,
         candidate_y,
         shield_radius,
+    ) and not point_inside_circle(
+        float(bullet.get("_previous_x", bullet.get("x")) or 0.0),
+        float(bullet.get("_previous_y", bullet.get("y")) or 0.0),
+        candidate_x,
+        candidate_y,
+        shield_core_radius,
     )
 
 
@@ -2303,12 +3339,50 @@ def player_has_visible_shield(player_meta: dict[str, object], current_ms: int) -
     return int(player_meta.get("shield_visible_until_ms") or 0) > current_ms
 
 
+def push_mine_shield_pulses(
+    state: dict[str, object],
+    mine: dict[str, object],
+    current_ms: int,
+    players: dict[str, dict[str, object]],
+) -> None:
+    mine_x = float(mine.get("x") or 0.0)
+    mine_y = float(mine.get("y") or 0.0)
+    blast_radius = float(mine.get("blast_radius") or MINE_BLAST_RADIUS)
+    mine_id = int(mine.get("id") or 0)
+    for player_meta in players.values():
+        if not isinstance(player_meta, dict) or not bool(player_meta.get("alive", True)):
+            continue
+        if not player_has_visible_shield(player_meta, current_ms):
+            continue
+        shield_x = float(player_meta.get("x") or 0.0)
+        shield_y = float(player_meta.get("y") or 0.0)
+        shield_radius = float(player_meta.get("shield_radius") or SHIELD_RADIUS)
+        if distance(mine_x, mine_y, shield_x, shield_y) > blast_radius + shield_radius:
+            continue
+        push_visual_event(
+            state,
+            current_ms,
+            x=shield_x,
+            y=shield_y,
+            radius=max(PLAYER_RADIUS + 10.0, shield_radius),
+            color=normalize_color(player_meta.get("color")),
+            weapon="shield_pulse",
+            bullet_id=mine_id,
+            max_life=0.46,
+        )
+
+
 def bullet_hit_test(bullet: dict[str, object], candidate_meta: dict[str, object]) -> bool:
     candidate_x = float(candidate_meta.get("x") or 0.0)
     candidate_y = float(candidate_meta.get("y") or 0.0)
     candidate_radius = float(candidate_meta.get("radius") or PLAYER_RADIUS)
+    projectile_type = str(bullet.get("projectile_type") or "bullet")
     bullet_radius = float(bullet.get("radius") or BULLET_RADIUS)
-    if str(bullet.get("projectile_type") or "bullet") == "laser":
+    if projectile_type == "guided_missile":
+        bullet_radius = min(bullet_radius, GUIDED_MISSILE_HIT_RADIUS)
+    if projectile_type == "tow_missile":
+        bullet_radius = min(bullet_radius, TOW_MISSILE_HIT_RADIUS)
+    if projectile_type == "laser":
         previous_segments = bullet.get("_previous_segments", [])
         current_segments = bullet.get("segments", [])
         laser_segments = [
@@ -2357,6 +3431,8 @@ def reset_match_world(state: dict[str, object], current_ms: int) -> None:
     clear_powerup_state(state)
     schedule_next_powerup_spawn(state, current_ms)
     state["death_events"] = []
+    state["mines"] = []
+    state["next_mine_id"] = 1
     state["bullets"] = []
     state["next_bullet_id"] = 1
     state["last_tick_ms"] = current_ms
@@ -2371,6 +3447,10 @@ def reset_match_world(state: dict[str, object], current_ms: int) -> None:
     clear_powerup_state(state)
     schedule_next_powerup_spawn(state, current_ms)
     state["death_events"] = []
+    state["mines"] = []
+    state["next_mine_id"] = 1
+    state["bullets"] = []
+    state["next_bullet_id"] = 1
     state["snapshot_seq"] = int(state.get("snapshot_seq") or 0) + 1
     state["updated_at_ms"] = current_ms
 
@@ -2398,6 +3478,8 @@ def build_match_state(
                     "shotgun_ammo": max(0, int(local_player_meta.get("shotgun_ammo") or 0)),
                     "minigun_ammo": max(0, int(local_player_meta.get("minigun_ammo") or 0)),
                     "double_barrel_ammo": max(0, int(local_player_meta.get("double_barrel_ammo") or 0)),
+                    "mine_ammo": max(0, int(local_player_meta.get("mine_ammo") or 0)),
+                    "missile_ammo": max(0, int(local_player_meta.get("missile_ammo") or 0)),
                     "weapon_reload_ms": max(0, int(float(local_player_meta.get("cooldown") or 0.0) * 1000)),
                     "shield_active_ms": max(0, int(local_player_meta.get("shield_until_ms") or 0) - current_ms),
                     "shield_visible_ms": max(0, int(local_player_meta.get("shield_visible_until_ms") or 0) - current_ms),
@@ -2408,6 +3490,8 @@ def build_match_state(
                     "angle": float(local_player_meta.get("angle") or 0.0),
                     "radius": float(local_player_meta.get("radius") or PLAYER_RADIUS),
                     "flash": float(local_player_meta.get("flash") or 0.0),
+                    "hp": float(local_player_meta.get("hp") or MAX_TANK_HP),
+                    "max_hp": float(local_player_meta.get("max_hp") or MAX_TANK_HP),
                     "score": int(local_player_meta.get("score") or 0),
                     "hits": int(local_player_meta.get("hits") or 0),
                     "deaths": int(local_player_meta.get("deaths") or 0),
@@ -2415,6 +3499,7 @@ def build_match_state(
                     "fire_ack_seq": int(local_player_meta.get("last_fire_seq") or 0),
                     "alive": bool(local_player_meta.get("alive", True)),
                     "respawn_in_ms": max(0, int(local_player_meta.get("respawn_at_ms") or 0) - current_ms),
+                    "spawn_seq": max(0, int(local_player_meta.get("spawn_seq") or 0)),
                     "latency_ms": normalize_latency_ms(local_player_meta.get("latency_ms")),
                     "server_time_ms": current_ms,
                 }
@@ -2430,6 +3515,8 @@ def build_match_state(
                     "shotgun_ammo": max(0, int(player_meta.get("shotgun_ammo") or 0)),
                     "minigun_ammo": max(0, int(player_meta.get("minigun_ammo") or 0)),
                     "double_barrel_ammo": max(0, int(player_meta.get("double_barrel_ammo") or 0)),
+                    "mine_ammo": max(0, int(player_meta.get("mine_ammo") or 0)),
+                    "missile_ammo": max(0, int(player_meta.get("missile_ammo") or 0)),
                     "weapon_reload_ms": max(0, int(float(player_meta.get("cooldown") or 0.0) * 1000)),
                     "shield_active_ms": max(0, int(player_meta.get("shield_until_ms") or 0) - current_ms),
                     "shield_visible_ms": max(0, int(player_meta.get("shield_visible_until_ms") or 0) - current_ms),
@@ -2440,12 +3527,15 @@ def build_match_state(
                     "angle": float(player_meta.get("angle") or 0.0),
                     "radius": float(player_meta.get("radius") or PLAYER_RADIUS),
                     "flash": float(player_meta.get("flash") or 0.0),
+                    "hp": float(player_meta.get("hp") or MAX_TANK_HP),
+                    "max_hp": float(player_meta.get("max_hp") or MAX_TANK_HP),
                     "score": int(player_meta.get("score") or 0),
                     "hits": int(player_meta.get("hits") or 0),
                     "deaths": int(player_meta.get("deaths") or 0),
                     "shots": int(player_meta.get("shots") or 0),
                     "alive": bool(player_meta.get("alive", True)),
                     "respawn_in_ms": max(0, int(player_meta.get("respawn_at_ms") or 0) - current_ms),
+                    "spawn_seq": max(0, int(player_meta.get("spawn_seq") or 0)),
                     "latency_ms": normalize_latency_ms(player_meta.get("latency_ms")),
                     "input": normalize_match_input(player_meta.get("input")),
                     "server_time_ms": current_ms,
@@ -2468,6 +3558,16 @@ def build_match_state(
                     "age": float(bullet.get("age") or 0.0),
                     "bounces_left": int(bullet.get("bouncesLeft") or 0),
                     "has_bounced": bool(bullet.get("has_bounced", False)),
+                    "owner_shield_released": bool(bullet.get("owner_shield_released", True)),
+                    "ignore_owner_shield": bool(bullet.get("ignore_owner_shield", False)),
+                    "fire_seq": max(0, int(bullet.get("fire_seq") or 0)),
+                    "target_id": str(bullet.get("target_id") or ""),
+                    "target_color": normalize_color(bullet.get("target_color")) if bullet.get("target_color") else "",
+                    "locked": bool(bullet.get("locked", False)),
+                    "steer_locked_until_age": float(bullet.get("steer_locked_until_age") or 0.0),
+                    "wall_hit_seq": int(bullet.get("wall_hit_seq") or 0),
+                    "wall_hit_x": float(bullet.get("wall_hit_x") or 0.0),
+                    "wall_hit_y": float(bullet.get("wall_hit_y") or 0.0),
                     "path_segments": serialize_bullet_path_segments(bullet),
                     "distance_travelled": float(bullet.get("distance_travelled") or 0.0),
                     "segments": serialize_bullet_segments(bullet),
@@ -2476,6 +3576,7 @@ def build_match_state(
                 for bullet in state.get("bullets", [])
                 if isinstance(bullet, dict)
             ],
+            "mines": serialize_mines(state, current_ms),
             "targets": [],
             "tank_explosions": serialize_death_events(state, current_ms),
             "powerups": serialize_powerups(state),
@@ -2495,6 +3596,8 @@ def _serialize_match_players(state: dict[str, object], current_ms: int) -> list[
             "shotgun_ammo": max(0, int(player_meta.get("shotgun_ammo") or 0)),
             "minigun_ammo": max(0, int(player_meta.get("minigun_ammo") or 0)),
             "double_barrel_ammo": max(0, int(player_meta.get("double_barrel_ammo") or 0)),
+            "mine_ammo": max(0, int(player_meta.get("mine_ammo") or 0)),
+            "missile_ammo": max(0, int(player_meta.get("missile_ammo") or 0)),
             "weapon_reload_ms": max(0, int(float(player_meta.get("cooldown") or 0.0) * 1000)),
             "shield_active_ms": max(0, int(player_meta.get("shield_until_ms") or 0) - current_ms),
             "shield_visible_ms": max(0, int(player_meta.get("shield_visible_until_ms") or 0) - current_ms),
@@ -2505,12 +3608,15 @@ def _serialize_match_players(state: dict[str, object], current_ms: int) -> list[
             "angle": float(player_meta.get("angle") or 0.0),
             "radius": float(player_meta.get("radius") or PLAYER_RADIUS),
             "flash": float(player_meta.get("flash") or 0.0),
+            "hp": float(player_meta.get("hp") or MAX_TANK_HP),
+            "max_hp": float(player_meta.get("max_hp") or MAX_TANK_HP),
             "score": int(player_meta.get("score") or 0),
             "hits": int(player_meta.get("hits") or 0),
             "deaths": int(player_meta.get("deaths") or 0),
             "shots": int(player_meta.get("shots") or 0),
             "alive": bool(player_meta.get("alive", True)),
             "respawn_in_ms": max(0, int(player_meta.get("respawn_at_ms") or 0) - current_ms),
+            "spawn_seq": max(0, int(player_meta.get("spawn_seq") or 0)),
             "latency_ms": normalize_latency_ms(player_meta.get("latency_ms")),
             "input": normalize_match_input(player_meta.get("input")),
             "server_time_ms": current_ms,
@@ -2538,6 +3644,16 @@ def _serialize_match_bullets(state: dict[str, object], current_ms: int) -> list[
             "bounces_left": int(bullet.get("bouncesLeft") or bullet.get("bounces_left") or 0),
             "has_bounced": bool(bullet.get("has_bounced", False)),
             "owner_shield_released": bool(bullet.get("owner_shield_released", True)),
+            "ignore_owner_shield": bool(bullet.get("ignore_owner_shield", False)),
+            "fire_seq": max(0, int(bullet.get("fire_seq") or 0)),
+            "target_id": str(bullet.get("target_id") or ""),
+            "target_color": normalize_color(bullet.get("target_color")) if bullet.get("target_color") else "",
+            "flame_color": str(bullet.get("flame_color") or ""),
+            "locked": bool(bullet.get("locked", False)),
+            "steer_locked_until_age": float(bullet.get("steer_locked_until_age") or 0.0),
+            "wall_hit_seq": int(bullet.get("wall_hit_seq") or 0),
+            "wall_hit_x": float(bullet.get("wall_hit_x") or 0.0),
+            "wall_hit_y": float(bullet.get("wall_hit_y") or 0.0),
             "path_segments": serialize_bullet_path_segments(bullet),
             "distance_travelled": float(bullet.get("distance_travelled") or 0.0),
             "segments": serialize_bullet_segments(bullet),
@@ -2581,7 +3697,7 @@ def tick_spectator_world(state: dict[str, object], current_ms: int) -> bool:
 
     # If a room has been empty for longer than the maximum bullet lifetime,
     # do not replay stale projectiles slowly when a monitor tab polls again.
-    max_life = max(BULLET_LIFE, LASER_LIFE, MINIGUN_BULLET_LIFE, SHOTGUN_PELLET_LIFE)
+    max_life = max(BULLET_LIFE, LASER_LIFE, MINIGUN_BULLET_LIFE, SHOTGUN_PELLET_LIFE, GUIDED_MISSILE_LIFE, TOW_MISSILE_LIFE)
     if elapsed_sec >= max_life + 0.5:
         state["bullets"] = []
         state["last_tick_ms"] = current_ms
@@ -2623,6 +3739,16 @@ def tick_spectator_world(state: dict[str, object], current_ms: int) -> bool:
                 "age": float(bullet.get("age") or 0.0) + step,
                 "has_bounced": bool(bullet.get("has_bounced", False)),
                 "owner_shield_released": bool(bullet.get("owner_shield_released", False)),
+                "ignore_owner_shield": bool(bullet.get("ignore_owner_shield", False)),
+                "fire_seq": max(0, int(bullet.get("fire_seq") or 0)),
+                "target_id": str(bullet.get("target_id") or ""),
+                "target_color": normalize_color(bullet.get("target_color")) if bullet.get("target_color") else "",
+                "flame_color": str(bullet.get("flame_color") or ""),
+                "locked": bool(bullet.get("locked", False)),
+                "steer_locked_until_age": float(bullet.get("steer_locked_until_age") or 0.0),
+                "wall_hit_seq": int(bullet.get("wall_hit_seq") or 0),
+                "wall_hit_x": float(bullet.get("wall_hit_x") or 0.0),
+                "wall_hit_y": float(bullet.get("wall_hit_y") or 0.0),
             }
             if projectile_type == "laser":
                 path_segments = [
@@ -2689,8 +3815,9 @@ def tick_spectator_world(state: dict[str, object], current_ms: int) -> bool:
                         next_bullet["vy"] *= -1
                     next_bullet["bouncesLeft"] -= 1
                     next_bullet["has_bounced"] = True
-                    next_bullet["x"] = previous_x + next_bullet["vx"] * step * 0.4
-                    next_bullet["y"] = previous_y + next_bullet["vy"] * step * 0.4
+                    if projectile_type == "tow_missile":
+                        record_bullet_wall_hit(next_bullet, wall)
+                    place_bullet_after_wall_bounce(next_bullet, expanded, previous_x, previous_y, step, flip_x, flip_y)
                     break
 
             if (
@@ -2719,6 +3846,7 @@ def build_spectator_state(state: dict[str, object], room: str, current_ms: int) 
     room_state = build_response(state, room, None, current_ms)
     players = _serialize_match_players(state, current_ms)
     bullets = _serialize_match_bullets(state, current_ms)
+    mines = serialize_mines(state, current_ms)
     targets = _serialize_match_targets(state)
     death_events = serialize_death_events(state, current_ms)
     powerups = serialize_powerups(state)
@@ -2741,6 +3869,7 @@ def build_spectator_state(state: dict[str, object], room: str, current_ms: int) 
             },
             "players": players,
             "bullets": bullets,
+            "mines": mines,
             "targets": targets,
             "tank_explosions": death_events,
             "powerups": powerups,
@@ -3110,6 +4239,14 @@ def build_spectator_html() -> str:
       const DOUBLE_BARREL_COOLDOWN = SHOOT_COOLDOWN / 2;
       const DOUBLE_BARREL_RECOIL_MS = Math.round(DOUBLE_BARREL_COOLDOWN * 1000);
       const DOUBLE_BARREL_BARREL_OFFSET = 7.2;
+      const MINE_ARM_DELAY_MS = 1000;
+      const MINE_RADIUS = PLAYER_RADIUS * 2 / 3;
+      const MINE_TRIGGER_RADIUS = PLAYER_RADIUS * 1.5;
+      const MINE_FADE_START_MS = 3000;
+      const MINE_FADE_DURATION_MS = 2000;
+      const MINE_REVEAL_RATE = 6;
+      const TOW_MISSILE_LIFE = 8;
+      const TOW_MISSILE_FADE_LIFE = 0.28;
       const SHIELD_RADIUS = PLAYER_RADIUS + 30;
       const SHIELD_FLICKER_MS = 1500;
       const POWERUP_ICON_SOURCES = {
@@ -3119,6 +4256,10 @@ def build_spectator_html() -> str:
         minigun: "assets/tank-trouble/powerups/minigun.png",
         double_barrel: "assets/tank-trouble/powerups/double-barrel.png",
         shield: "assets/tank-trouble/powerups/shield.png",
+        land_mine: "assets/tank-trouble/powerups/land-mine.png",
+        heal: "assets/tank-trouble/powerups/plus.png",
+        guided_missile: "assets/tank-trouble/powerups/missile.png",
+        tow_missile: "assets/tank-trouble/powerups/tow-missile.png",
       };
       const SCOREBOARD_RANK_ICON_SOURCES = {
         1: "assets/tank-trouble/scoreboard/rank-1.png",
@@ -3170,9 +4311,12 @@ def build_spectator_html() -> str:
       const bulletFades = [];
       const bulletSmokeEffects = [];
       const wallRipples = [];
+      const shieldPulseEffects = [];
       const shellCasings = [];
       const tankExplosions = new Map();
+      const seenVisualEventIds = new Set();
       const powerupEffects = new Map();
+      const renderMines = new Map();
       const powerupIconCache = new Map();
       const killFeedEntries = [];
       let nextRippleId = 1;
@@ -3207,7 +4351,18 @@ def build_spectator_html() -> str:
       }
 
       function shouldSpawnProjectileSmoke(projectileType) {
-        return String(projectileType || "bullet") !== "laser";
+        const normalizedType = String(projectileType || "bullet");
+        return normalizedType !== "laser" && normalizedType !== "guided_missile" && normalizedType !== "tow_missile";
+      }
+
+      function isSteeredMissileType(projectileType) {
+        const normalizedType = String(projectileType || "bullet");
+        return normalizedType === "guided_missile" || normalizedType === "tow_missile";
+      }
+
+      function isTowMissileWeapon(weapon) {
+        const normalizedWeapon = String(weapon || "default");
+        return normalizedWeapon === "tow_missile" || normalizedWeapon === "tow_missile_active";
       }
 
       function lerp(from, to, t) {
@@ -3377,6 +4532,24 @@ def build_spectator_html() -> str:
           }));
       }
 
+      function projectileStartsInsideOwnerShield(owner, spawn, radius) {
+        if (!owner || !owner.alive || numberValue(owner.shield_visible_ms || owner.shieldVisibleMs) <= 0) return false;
+        const shieldCoreRadius = Math.max(PLAYER_RADIUS + 10, numberValue(owner.shield_radius || owner.shieldRadius, SHIELD_RADIUS));
+        return distance(
+          numberValue(spawn.x),
+          numberValue(spawn.y),
+          numberValue(owner.x),
+          numberValue(owner.y),
+        ) <= shieldCoreRadius + Math.max(numberValue(radius, BULLET_RADIUS), LASER_RADIUS) + 2;
+      }
+
+      function shieldCollidersForProjectileStart(players, owner, spawn, radius) {
+        const shields = activeShieldColliders(players);
+        if (!projectileStartsInsideOwnerShield(owner, spawn, radius)) return shields;
+        const ownerId = String(owner.player_id || owner.id || "");
+        return shields.filter((shield) => shield.id !== ownerId);
+      }
+
       function segmentCircleCollision(x1, y1, x2, y2, centerX, centerY, radius) {
         const dx = x2 - x1;
         const dy = y2 - y1;
@@ -3534,8 +4707,9 @@ def build_spectator_html() -> str:
             if (hit && hit.t <= remaining && (!nearest || hit.t < nearest.t)) nearest = { ...hit, kind: "wall" };
           }
           for (const shield of shields || []) {
-            const shieldRadius = numberValue(shield.shieldRadius, SHIELD_RADIUS) + LASER_RADIUS;
-            if (distance(x, y, numberValue(shield.x), numberValue(shield.y)) < shieldRadius - 0.5) continue;
+            const shieldCoreRadius = numberValue(shield.shieldRadius, SHIELD_RADIUS);
+            const shieldRadius = shieldCoreRadius + LASER_RADIUS;
+            if (distance(x, y, numberValue(shield.x), numberValue(shield.y)) < shieldCoreRadius - 0.5) continue;
             const hit = rayCircleHit(
               x,
               y,
@@ -3693,6 +4867,10 @@ def build_spectator_html() -> str:
         if (effectName === "minigun") return "MINIGUN";
         if (effectName === "double_barrel") return "BARREL+1";
         if (effectName === "shield") return "SHIELD";
+        if (effectName === "land_mine") return "AT MINE";
+        if (effectName === "heal") return "HEAL";
+        if (effectName === "guided_missile") return "GUIDED MISSILE";
+        if (effectName === "tow_missile") return "TOW";
         return effectName.toUpperCase();
       }
 
@@ -3718,7 +4896,10 @@ def build_spectator_html() -> str:
         const key = String(color || "green").toLowerCase();
         let base = "#22c55e";
         let bright = theme === "dark" ? "#86efac" : "#16a34a";
-        if (key === "red") {
+        if (key.startsWith("#")) {
+          base = key;
+          bright = key;
+        } else if (key === "red") {
           base = "#ef4444";
           bright = theme === "dark" ? "#fca5a5" : "#dc2626";
         } else if (key === "blue") {
@@ -3736,6 +4917,31 @@ def build_spectator_html() -> str:
           flash: hexToRgba(bright, theme === "dark" ? 0.9 : 0.76),
           ripple: hexToRgba(bright, theme === "dark" ? 0.72 : 0.58),
         };
+      }
+
+      function resolveGameColor(value, theme = spectatorTheme, fallback = "#f8fafc") {
+        const normalized = String(value || "").trim();
+        if (!normalized) return fallback;
+        if (normalized.startsWith("#")) return normalized;
+        return getPlayerPalette(normalized, theme).bright;
+      }
+
+      function mixHexColors(from, to, amount) {
+        const read = (value) => {
+          const normalized = String(value || "#ffffff").replace("#", "");
+          const expanded = normalized.length === 3 ? normalized.replace(/(.)/g, "$1$1") : normalized;
+          const padded = expanded.padEnd(6, "f");
+          return {
+            r: Number.parseInt(padded.slice(0, 2), 16) || 0,
+            g: Number.parseInt(padded.slice(2, 4), 16) || 0,
+            b: Number.parseInt(padded.slice(4, 6), 16) || 0,
+          };
+        };
+        const source = read(from);
+        const target = read(to);
+        const t = clamp(amount, 0, 1);
+        const channel = (start, end) => Math.round(start + (end - start) * t).toString(16).padStart(2, "0");
+        return `#${channel(source.r, target.r)}${channel(source.g, target.g)}${channel(source.b, target.b)}`;
       }
 
       function palette(color) {
@@ -3900,6 +5106,24 @@ def build_spectator_html() -> str:
           targets: Array.isArray(raw?.targets) ? raw.targets : [],
           tank_explosions: Array.isArray(raw?.tank_explosions) ? raw.tank_explosions : [],
           powerups: Array.isArray(raw?.powerups) ? raw.powerups : [],
+          mines: Array.isArray(raw?.mines)
+            ? raw.mines.map((mine) => ({
+                id: numberValue(mine?.id),
+                owner_id: String(mine?.owner_id || ""),
+                color: String(mine?.color || "green"),
+                x: numberValue(mine?.x),
+                y: numberValue(mine?.y),
+                radius: Math.max(1, numberValue(mine?.radius, MINE_RADIUS)),
+                trigger_radius: Math.max(1, numberValue(mine?.trigger_radius, MINE_TRIGGER_RADIUS)),
+                blast_radius: Math.max(1, numberValue(mine?.blast_radius, PLAYER_RADIUS * 4.95)),
+                age: Math.max(0, numberValue(mine?.age)),
+                armed: Boolean(mine?.armed),
+                triggered: Boolean(mine?.triggered),
+                trigger_started_at_ms: numberValue(mine?.trigger_started_at_ms),
+                created_at_ms: numberValue(mine?.created_at_ms),
+                server_time_ms: numberValue(mine?.server_time_ms),
+              }))
+            : [],
           powerup_effects: Array.isArray(raw?.powerup_effects) ? raw.powerup_effects : [],
           active_players: Array.isArray(raw?.active_players)
             ? raw.active_players.map((row) => ({ ...row, latency_ms: normalizeLatencyMs(row?.latency_ms) }))
@@ -3954,12 +5178,13 @@ def build_spectator_html() -> str:
         const input = player.input || {};
         const turnIntent = (input.right ? 1 : 0) - (input.left ? 1 : 0);
         const moveIntent = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+        const speedMultiplier = Number(player.hp || 100) < 25 ? 0.8 : 1;
         const angle = numberValue(player.angle) + turnIntent * PLAYER_TURN_SPEED * seconds;
         return {
           ...player,
           angle,
-          x: numberValue(player.x) + Math.cos(angle) * moveIntent * PLAYER_SPEED * seconds,
-          y: numberValue(player.y) + Math.sin(angle) * moveIntent * PLAYER_SPEED * seconds,
+          x: numberValue(player.x) + Math.cos(angle) * moveIntent * PLAYER_SPEED * speedMultiplier * seconds,
+          y: numberValue(player.y) + Math.sin(angle) * moveIntent * PLAYER_SPEED * speedMultiplier * seconds,
           flash: Math.max(0, numberValue(player.flash) - seconds),
         };
       }
@@ -4013,6 +5238,7 @@ def build_spectator_html() -> str:
           ),
           server_bullets: next.bullets || [],
           powerups: next.powerups || [],
+          mines: next.mines || [],
           powerup_effects: next.powerup_effects || [],
           tank_explosions: next.tank_explosions || [],
         };
@@ -4026,6 +5252,7 @@ def build_spectator_html() -> str:
           bullets: (state.bullets || []).map((bullet) => extrapolateBullet(bullet, offsetMs)),
           server_bullets: state.bullets || [],
           powerups: state.powerups || [],
+          mines: state.mines || [],
           powerup_effects: state.powerup_effects || [],
           tank_explosions: state.tank_explosions || [],
         };
@@ -4073,25 +5300,94 @@ def build_spectator_html() -> str:
         if (wallRipples.length > maxRipples) wallRipples.splice(0, wallRipples.length - maxRipples);
       }
 
-      function pushShieldRipple(x, y, color) {
-        if (renderBullets.size > 34 && wallRipples.length > 20) return;
-        wallRipples.push({
+      function findWallForImpact(x, y, radius) {
+        const walls = latest?.walls || [];
+        const nearbyWalls = queryNearbyWalls(staticWallIndex || buildWallSpatialIndex(walls), x, y, Math.max(24, radius + 8));
+        let bestWall = undefined;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        for (const wall of nearbyWalls.length ? nearbyWalls : walls) {
+          const clampedX = clamp(x, numberValue(wall.x), numberValue(wall.x) + numberValue(wall.w));
+          const clampedY = clamp(y, numberValue(wall.y), numberValue(wall.y) + numberValue(wall.h));
+          const hitDistance = distance(x, y, clampedX, clampedY);
+          if (hitDistance < bestDistance) {
+            bestDistance = hitDistance;
+            bestWall = wall;
+          }
+        }
+        return bestWall;
+      }
+
+      function maybePushServerWallRipple(entry, existing) {
+        if (String(entry.projectile_type || entry.projectileType || "bullet") !== "tow_missile") return false;
+        const previousSeq = Math.max(0, Math.floor(numberValue(existing?.wall_hit_seq ?? existing?.wallHitSeq, 0)));
+        const wallHitSeq = Math.max(0, Math.floor(numberValue(entry.wall_hit_seq ?? entry.wallHitSeq, 0)));
+        if (wallHitSeq <= previousSeq) return false;
+        const wallHitX = numberValue(entry.wall_hit_x ?? entry.wallHitX, entry.x);
+        const wallHitY = numberValue(entry.wall_hit_y ?? entry.wallHitY, entry.y);
+        const wall = findWallForImpact(wallHitX, wallHitY, numberValue(entry.radius, BULLET_RADIUS * 1.25));
+        if (!wall) return false;
+        pushWallRipple(wall, wallHitX, wallHitY, getPlayerPalette(entry.color || "green").bright);
+        return true;
+      }
+
+      function syncTowBounceFromServer(entry, existing, targetX, targetY, targetVx, targetVy) {
+        if (!maybePushServerWallRipple(entry, existing)) return false;
+        existing.x = targetX;
+        existing.y = targetY;
+        existing.targetX = targetX;
+        existing.targetY = targetY;
+        existing.vx = targetVx;
+        existing.vy = targetVy;
+        existing.targetVx = targetVx;
+        existing.targetVy = targetVy;
+        existing.towBounceSnapUntil = performance.now() + 110;
+        return true;
+      }
+
+      function pushShieldPulse(x, y, color, radius = SHIELD_RADIUS, centerX = x, centerY = y, source = "impact", life, maxLife) {
+        if (renderBullets.size > 34 && shieldPulseEffects.length > 20) return;
+        const resolvedMaxLife = Math.max(0.08, numberValue(maxLife, source === "blast" ? 0.46 : 0.36));
+        shieldPulseEffects.push({
           id: nextRippleId,
-          wall: { x: x - 48, y: y - 48, w: 96, h: 96 },
-          x,
-          y,
+          x: centerX,
+          y: centerY,
+          impactX: x,
+          impactY: y,
+          radius: Math.max(PLAYER_RADIUS + 10, numberValue(radius, SHIELD_RADIUS)),
           color,
-          life: 0.3,
-          maxLife: 0.3,
+          life: clamp(numberValue(life, resolvedMaxLife), 0.01, resolvedMaxLife),
+          maxLife: resolvedMaxLife,
+          source,
         });
         nextRippleId += 1;
-        const maxRipples = renderBullets.size > 34 ? 24 : 48;
-        if (wallRipples.length > maxRipples) wallRipples.splice(0, wallRipples.length - maxRipples);
+        const maxPulses = renderBullets.size > 34 ? 24 : 48;
+        if (shieldPulseEffects.length > maxPulses) shieldPulseEffects.splice(0, shieldPulseEffects.length - maxPulses);
       }
 
       function pushBulletFade(bullet) {
         const projectileType = String(bullet.projectile_type || bullet.projectileType || "bullet");
-        const fadeLife = projectileType === "laser" ? 0.12 : 0.18;
+        if (projectileType === "tow_missile") {
+          const existingFade = bulletFades.find(
+            (fade) => String(fade.projectile_type || fade.projectileType || "bullet") === "tow_missile" && Number(fade.id || 0) === Number(bullet.id || 0),
+          );
+          if (existingFade) {
+            existingFade.x = numberValue(bullet.x);
+            existingFade.y = numberValue(bullet.y);
+            existingFade.vx = numberValue(bullet.vx) * 0.18;
+            existingFade.vy = numberValue(bullet.vy) * 0.18;
+            existingFade.life = Math.max(numberValue(existingFade.life), TOW_MISSILE_FADE_LIFE * 0.72);
+            existingFade.maxLife = Math.max(numberValue(existingFade.maxLife), TOW_MISSILE_FADE_LIFE);
+            return;
+          }
+        }
+        const fadeLife =
+          projectileType === "laser"
+            ? 0.12
+            : projectileType === "tow_missile"
+              ? TOW_MISSILE_FADE_LIFE
+              : isSteeredMissileType(projectileType)
+                ? 0.44
+                : 0.18;
         bulletFades.push({
           id: bullet.id,
           x: numberValue(bullet.x),
@@ -4101,6 +5397,7 @@ def build_spectator_html() -> str:
           vy: numberValue(bullet.vy) * 0.18,
           color: bullet.color || "green",
           projectile_type: projectileType,
+          target_color: bullet.target_color || bullet.targetColor || "",
           path_segments: normalizeSegments(bullet.path_segments),
           segments: normalizeSegments(bullet.segments),
           life: fadeLife,
@@ -4211,11 +5508,12 @@ def build_spectator_html() -> str:
           const segments = normalizeSegments(entry.segments);
           const existing = renderBullets.get(key);
           if (!existing) {
+            const projectileType = String(entry.projectile_type || "bullet");
             renderBullets.set(key, {
               id: numberValue(entry.id),
               ownerId: String(entry.owner_id || ""),
               color: entry.color || "green",
-              projectile_type: String(entry.projectile_type || "bullet"),
+              projectile_type: projectileType,
               x: targetX,
               y: targetY,
               targetX,
@@ -4227,11 +5525,20 @@ def build_spectator_html() -> str:
               targetVy,
               path_segments: pathSegments,
               segments,
-              life: numberValue(entry.life, BULLET_LIFE),
-              age: numberValue(entry.age, Math.max(0, BULLET_LIFE - numberValue(entry.life, BULLET_LIFE))),
+              life: numberValue(entry.life, projectileType === "tow_missile" ? TOW_MISSILE_LIFE : BULLET_LIFE),
+              age: numberValue(entry.age, Math.max(0, (projectileType === "tow_missile" ? TOW_MISSILE_LIFE : BULLET_LIFE) - numberValue(entry.life, BULLET_LIFE))),
               bouncesLeft: numberValue(entry.bounces_left ?? entry.bouncesLeft, BULLET_BOUNCES),
               hasBounced: Boolean(entry.has_bounced ?? entry.hasBounced ?? false),
               ownerShieldReleased: Boolean(entry.owner_shield_released ?? true),
+              ignoreOwnerShield: Boolean(entry.ignore_owner_shield ?? entry.ignoreOwnerShield ?? false),
+              target_id: String(entry.target_id || ""),
+              target_color: String(entry.target_color || ""),
+              flame_color: "#f8fafc",
+              target_flame_color: entry.locked ? resolveGameColor(entry.target_color || "") : "#f8fafc",
+              locked: Boolean(entry.locked ?? false),
+              wall_hit_seq: Math.max(0, Math.floor(numberValue(entry.wall_hit_seq ?? entry.wallHitSeq, 0))),
+              wall_hit_x: numberValue(entry.wall_hit_x ?? entry.wallHitX, targetX),
+              wall_hit_y: numberValue(entry.wall_hit_y ?? entry.wallHitY, targetY),
               lastSeenAt: performance.now(),
             });
             if (String(entry.projectile_type || "bullet") === "shotgun") {
@@ -4261,7 +5568,20 @@ def build_spectator_html() -> str:
           );
           existing.hasBounced = Boolean(entry.has_bounced ?? existing.hasBounced ?? false);
           existing.ownerShieldReleased = Boolean(entry.owner_shield_released ?? existing.ownerShieldReleased ?? true);
-          if (existing.projectile_type !== "laser" && distance(existing.x, existing.y, targetX, targetY) > 420) {
+          existing.ignoreOwnerShield = Boolean(entry.ignore_owner_shield ?? existing.ignoreOwnerShield ?? false);
+          existing.target_id = String(entry.target_id || existing.target_id || "");
+          existing.target_color = String(entry.target_color || existing.target_color || "");
+          existing.locked = Boolean(entry.locked ?? existing.locked ?? false);
+          existing.target_flame_color = existing.locked ? resolveGameColor(existing.target_color || "") : "#f8fafc";
+          const snappedTowBounce = syncTowBounceFromServer(entry, existing, targetX, targetY, targetVx, targetVy);
+          existing.wall_hit_seq = Math.max(
+            Math.max(0, Math.floor(numberValue(existing.wall_hit_seq ?? existing.wallHitSeq, 0))),
+            Math.floor(numberValue(entry.wall_hit_seq ?? entry.wallHitSeq, 0)),
+          );
+          existing.wall_hit_x = numberValue(entry.wall_hit_x ?? entry.wallHitX, existing.wall_hit_x ?? targetX);
+          existing.wall_hit_y = numberValue(entry.wall_hit_y ?? entry.wallHitY, existing.wall_hit_y ?? targetY);
+          const snapDistance = isSteeredMissileType(existing.projectile_type) ? 120 : 420;
+          if (!snappedTowBounce && existing.projectile_type !== "laser" && distance(existing.x, existing.y, targetX, targetY) > snapDistance) {
             existing.x = targetX;
             existing.y = targetY;
           }
@@ -4322,7 +5642,10 @@ def build_spectator_html() -> str:
         bullet.age += dt;
 
         for (const shield of activeShieldColliders(playersForFrame, bullet.owner_id || bullet.ownerId || "", true)) {
-          const shieldRadius = numberValue(shield.shieldRadius, SHIELD_RADIUS) + numberValue(bullet.radius, BULLET_RADIUS);
+          if (shield.id === String(bullet.owner_id || bullet.ownerId || "") && Boolean(bullet.ignore_owner_shield ?? bullet.ignoreOwnerShield)) continue;
+          const shieldCoreRadius = numberValue(shield.shieldRadius, SHIELD_RADIUS);
+          const shieldRadius = shieldCoreRadius + numberValue(bullet.radius, BULLET_RADIUS);
+          if (distance(previousX, previousY, shield.x, shield.y) < shieldCoreRadius - 0.5) continue;
           const collision = segmentCircleCollision(previousX, previousY, bullet.x, bullet.y, shield.x, shield.y, shieldRadius);
           if (!collision) continue;
           const dot = bullet.vx * collision.normalX + bullet.vy * collision.normalY;
@@ -4332,7 +5655,15 @@ def build_spectator_html() -> str:
           bullet.hasBounced = true;
           bullet.x = shield.x + collision.normalX * (shieldRadius + 2.5);
           bullet.y = shield.y + collision.normalY * (shieldRadius + 2.5);
-          pushShieldRipple(collision.x, collision.y, getPlayerPalette(shield.color).bright);
+          pushShieldPulse(
+            collision.x,
+            collision.y,
+            getPlayerPalette(shield.color).bright,
+            Math.max(PLAYER_RADIUS + 10, numberValue(shield.shieldRadius, SHIELD_RADIUS)),
+            shield.x,
+            shield.y,
+            "impact",
+          );
           break;
         }
 
@@ -4365,8 +5696,27 @@ def build_spectator_html() -> str:
           if (flipY) bullet.vy *= -1;
           bullet.bouncesLeft -= 1;
           bullet.hasBounced = true;
-          bullet.x = previousX + bullet.vx * dt * 0.4;
-          bullet.y = previousY + bullet.vy * dt * 0.4;
+          if (String(bullet.projectile_type || bullet.projectileType || "bullet") === "tow_missile") {
+            const exitPadding = 0.75;
+            bullet.x = flipX
+              ? bullet.vx >= 0
+                ? expanded.x + expanded.w + exitPadding
+                : expanded.x - exitPadding
+              : previousX + bullet.vx * dt * 0.4;
+            bullet.y = flipY
+              ? bullet.vy >= 0
+                ? expanded.y + expanded.h + exitPadding
+                : expanded.y - exitPadding
+              : previousY + bullet.vy * dt * 0.4;
+            bullet.targetX = bullet.x;
+            bullet.targetY = bullet.y;
+            bullet.targetVx = bullet.vx;
+            bullet.targetVy = bullet.vy;
+            bullet.towBounceSnapUntil = performance.now() + 110;
+          } else {
+            bullet.x = previousX + bullet.vx * dt * 0.4;
+            bullet.y = previousY + bullet.vy * dt * 0.4;
+          }
           pushWallRipple(
             wall,
             clamp(bullet.x, numberValue(wall.x), numberValue(wall.x) + numberValue(wall.w)),
@@ -4378,10 +5728,28 @@ def build_spectator_html() -> str:
 
         const drift = distance(bullet.x, bullet.y, bullet.targetX, bullet.targetY);
         const velocityBlend = dampFactor(7, dt);
-        const positionBlend = dampFactor(drift > 220 ? 7 : 1.8, dt);
+        const projectileType = String(bullet.projectile_type || bullet.projectileType || "bullet");
+        const isGuidedMissile = isSteeredMissileType(projectileType);
+        if (projectileType === "tow_missile" && numberValue(bullet.towBounceSnapUntil) > performance.now()) {
+          bullet.vx = bullet.targetVx;
+          bullet.vy = bullet.targetVy;
+          if (drift > 56) {
+            bullet.x = bullet.targetX;
+            bullet.y = bullet.targetY;
+          } else {
+            const bounceBlend = dampFactor(18, dt);
+            bullet.x += (bullet.targetX - bullet.x) * bounceBlend;
+            bullet.y += (bullet.targetY - bullet.y) * bounceBlend;
+          }
+          continue;
+        }
+        const positionBlend = isGuidedMissile ? dampFactor(drift > 80 ? 13 : 5.2, dt) : dampFactor(drift > 220 ? 7 : 1.8, dt);
         bullet.vx += (bullet.targetVx - bullet.vx) * velocityBlend;
         bullet.vy += (bullet.targetVy - bullet.vy) * velocityBlend;
-        if (drift > 360) {
+        if (projectileType === "guided_missile") {
+          bullet.flame_color = mixHexColors(bullet.flame_color || "#f8fafc", bullet.target_flame_color || "#f8fafc", dampFactor(5.8, dt));
+        }
+        if (drift > (isGuidedMissile ? 180 : 360)) {
           bullet.x = bullet.targetX;
           bullet.y = bullet.targetY;
         } else {
@@ -4407,6 +5775,10 @@ def build_spectator_html() -> str:
         for (let index = wallRipples.length - 1; index >= 0; index -= 1) {
           wallRipples[index].life -= dt;
           if (wallRipples[index].life <= 0) wallRipples.splice(index, 1);
+        }
+        for (let index = shieldPulseEffects.length - 1; index >= 0; index -= 1) {
+          shieldPulseEffects[index].life -= dt;
+          if (shieldPulseEffects[index].life <= 0) shieldPulseEffects.splice(index, 1);
         }
         for (let index = bulletFades.length - 1; index >= 0; index -= 1) {
           const fade = bulletFades[index];
@@ -4717,19 +6089,35 @@ def build_spectator_html() -> str:
         const now = Date.now();
         for (const event of state.tank_explosions || []) {
           const eventId = numberValue(event.id);
-          if (!eventId || tankExplosions.has(eventId)) continue;
+          if (!eventId || seenVisualEventIds.has(eventId)) continue;
+          seenVisualEventIds.add(eventId);
           if (String(event.weapon || "") === "laser") {
             removeLaserHitBullet(event.suicide ? event.victim_id : event.killer_id, event.bullet_id);
           }
           const createdAt = numberValue(event.created_at_ms, state.server_time_ms || now);
           const maxLife = Math.max(0.12, numberValue(event.maxLife, 0.78));
           const age = Math.max(0, (now + serverClockOffsetMs - createdAt) / 1000);
+          if (String(event.weapon || "") === "shield_pulse") {
+            pushShieldPulse(
+              numberValue(event.x),
+              numberValue(event.y),
+              event.color || "green",
+              Math.max(PLAYER_RADIUS + 10, numberValue(event.radius, SHIELD_RADIUS)),
+              numberValue(event.x),
+              numberValue(event.y),
+              "blast",
+              Math.max(0.01, maxLife - age),
+              maxLife,
+            );
+            continue;
+          }
           tankExplosions.set(eventId, {
             id: eventId,
             x: numberValue(event.x),
             y: numberValue(event.y),
             radius: numberValue(event.radius, 20),
-          color: event.color || "green",
+            color: event.color || "green",
+            weapon: String(event.weapon || "bullet"),
             life: Math.max(0.01, maxLife - age),
             maxLife,
           });
@@ -4749,6 +6137,11 @@ def build_spectator_html() -> str:
             if (killFeedEntries.length > 12) killFeedEntries.splice(0, killFeedEntries.length - 12);
           }
         }
+        if (seenVisualEventIds.size > 400) {
+          const recentIds = Array.from(seenVisualEventIds).slice(-200);
+          seenVisualEventIds.clear();
+          for (const eventId of recentIds) seenVisualEventIds.add(eventId);
+        }
         for (const effect of state.powerup_effects || []) {
           const effectId = numberValue(effect.id);
           if (!effectId || powerupEffects.has(effectId)) continue;
@@ -4767,6 +6160,40 @@ def build_spectator_html() -> str:
             life: Math.max(0.01, maxLife - age),
             maxLife,
           });
+        }
+      }
+
+      function baseMineAlpha(ageSeconds) {
+        const ageMs = Math.max(0, numberValue(ageSeconds) * 1000);
+        if (ageMs <= MINE_FADE_START_MS) return 1;
+        return clamp(1 - (ageMs - MINE_FADE_START_MS) / MINE_FADE_DURATION_MS, 0, 1);
+      }
+
+      function syncRenderMines(state) {
+        const mineIds = new Set();
+        for (const mine of state.mines || []) {
+          const id = String(numberValue(mine.id));
+          if (!id || id === "0") continue;
+          mineIds.add(id);
+          const current = renderMines.get(id);
+          const nextAlpha = baseMineAlpha(mine.age);
+          if (!current) {
+            renderMines.set(id, { ...mine, visibleAlpha: nextAlpha });
+            continue;
+          }
+          current.x = numberValue(mine.x);
+          current.y = numberValue(mine.y);
+          current.radius = numberValue(mine.radius, MINE_RADIUS);
+          current.trigger_radius = numberValue(mine.trigger_radius, MINE_TRIGGER_RADIUS);
+          current.blast_radius = numberValue(mine.blast_radius, PLAYER_RADIUS * 4.95);
+          current.age = numberValue(mine.age);
+          current.armed = Boolean(mine.armed);
+          current.triggered = Boolean(mine.triggered);
+          current.color = String(mine.color || "green");
+          current.owner_id = String(mine.owner_id || "");
+        }
+        for (const id of Array.from(renderMines.keys())) {
+          if (!mineIds.has(id)) renderMines.delete(id);
         }
       }
 
@@ -4847,6 +6274,14 @@ def build_spectator_html() -> str:
             drawPowerupPngIcon("double_barrel", radius, () => drawCashPowerupIcon(radius, visual.symbol));
           } else if (String(powerup.kind || "") === "shield") {
             drawPowerupPngIcon("shield", radius, () => drawShieldPowerupIcon(radius));
+          } else if (String(powerup.kind || "") === "land_mine") {
+            drawPowerupPngIcon("land_mine", radius, () => drawLandMine({ id: 0, x: 0, y: 0, radius: radius * 0.66, trigger_radius: radius * 0.78, color: "green", armed: true, visibleAlpha: 1 }, true));
+          } else if (String(powerup.kind || "") === "heal") {
+            drawPowerupPngIcon("heal", radius, () => drawCashPowerupIcon(radius, "+"));
+          } else if (String(powerup.kind || "") === "guided_missile") {
+            drawPowerupPngIcon("guided_missile", radius, () => drawGuidedMissileIcon(radius * 1.9, radius * 1.9));
+          } else if (String(powerup.kind || "") === "tow_missile") {
+            drawPowerupPngIcon("tow_missile", radius, () => drawTowMissileIcon(radius * 1.75, radius * 1.35));
           } else {
             drawPowerupPngIcon("cash", radius, () => drawCashPowerupIcon(radius, visual.symbol));
           }
@@ -4987,6 +6422,352 @@ def build_spectator_html() -> str:
         ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.92)" : "rgba(241, 245, 249, 0.9)";
         ctx.fill();
         ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawGuidedMissileIcon(length, width, accent = "#38bdf8") {
+        const darkMode = spectatorTheme === "dark";
+        const halfLength = length / 2;
+        const halfWidth = width / 2;
+        const bodyGradient = ctx.createLinearGradient(-halfLength, 0, halfLength, 0);
+        bodyGradient.addColorStop(0, darkMode ? "#334155" : "#1f2937");
+        bodyGradient.addColorStop(0.42, darkMode ? "#94a3b8" : "#475569");
+        bodyGradient.addColorStop(1, darkMode ? "#e2e8f0" : "#64748b");
+
+        ctx.save();
+        ctx.shadowColor = hexToRgba(accent, darkMode ? 0.52 : 0.34);
+        ctx.shadowBlur = Math.max(6, width * 0.34);
+        ctx.fillStyle = darkMode ? "#64748b" : "#94a3b8";
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(-halfLength * 0.46, side * halfWidth * 0.72);
+          ctx.lineTo(-halfLength * 0.12, side * halfWidth * 1.42);
+          ctx.lineTo(halfLength * 0.04, side * halfWidth * 0.58);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(-halfLength * 0.82, side * halfWidth * 0.58);
+          ctx.lineTo(-halfLength * 0.62, side * halfWidth * 1.18);
+          ctx.lineTo(-halfLength * 0.38, side * halfWidth * 0.52);
+          ctx.closePath();
+          ctx.fill();
+        }
+        roundedRect(ctx, -halfLength * 0.8, -halfWidth * 0.42, length * 0.92, halfWidth * 0.84, halfWidth * 0.42);
+        ctx.fillStyle = bodyGradient;
+        ctx.fill();
+        ctx.lineWidth = Math.max(0.9, width * 0.07);
+        ctx.strokeStyle = darkMode ? "rgba(248, 250, 252, 0.42)" : "rgba(15, 23, 42, 0.34)";
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(halfLength * 0.08, -halfWidth * 0.42);
+        ctx.lineTo(halfLength * 0.86, 0);
+        ctx.lineTo(halfLength * 0.08, halfWidth * 0.42);
+        ctx.closePath();
+        ctx.fillStyle = darkMode ? "#cbd5e1" : "#334155";
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowBlur = Math.max(5, width * 0.24);
+        ctx.strokeStyle = hexToRgba(accent, darkMode ? 0.92 : 0.74);
+        ctx.lineWidth = Math.max(1.8, width * 0.12);
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-halfLength * 0.52, 0);
+        ctx.lineTo(-halfLength * 0.14, 0);
+        ctx.moveTo(halfLength * 0.2, 0);
+        ctx.lineTo(halfLength * 0.38, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawTowMissileIcon(length, width, accent = "#38bdf8") {
+        const darkMode = spectatorTheme === "dark";
+        const halfLength = length / 2;
+        const halfWidth = width / 2;
+        const bodyGradient = ctx.createLinearGradient(-halfLength, 0, halfLength, 0);
+        bodyGradient.addColorStop(0, darkMode ? "#1f2937" : "#334155");
+        bodyGradient.addColorStop(0.48, darkMode ? "#94a3b8" : "#64748b");
+        bodyGradient.addColorStop(1, darkMode ? "#e5e7eb" : "#cbd5e1");
+        ctx.save();
+        ctx.shadowColor = hexToRgba(accent, darkMode ? 0.42 : 0.26);
+        ctx.shadowBlur = Math.max(4, width * 0.24);
+        ctx.fillStyle = darkMode ? "#64748b" : "#94a3b8";
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(-halfLength * 0.2, side * halfWidth * 0.48);
+          ctx.lineTo(halfLength * 0.06, side * halfWidth * 1.68);
+          ctx.lineTo(halfLength * 0.28, side * halfWidth * 0.46);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(-halfLength * 0.68, side * halfWidth * 0.42);
+          ctx.lineTo(-halfLength * 0.5, side * halfWidth * 1.02);
+          ctx.lineTo(-halfLength * 0.32, side * halfWidth * 0.38);
+          ctx.closePath();
+          ctx.fill();
+        }
+        roundedRect(ctx, -halfLength * 0.72, -halfWidth * 0.38, length * 1.16, halfWidth * 0.76, halfWidth * 0.36);
+        ctx.fillStyle = bodyGradient;
+        ctx.fill();
+        ctx.lineWidth = Math.max(0.85, width * 0.065);
+        ctx.strokeStyle = darkMode ? "rgba(248, 250, 252, 0.44)" : "rgba(15, 23, 42, 0.3)";
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(halfLength * 0.42, -halfWidth * 0.38);
+        ctx.lineTo(halfLength * 0.78, 0);
+        ctx.lineTo(halfLength * 0.42, halfWidth * 0.38);
+        ctx.closePath();
+        ctx.fillStyle = darkMode ? "#f8fafc" : "#1f2937";
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = hexToRgba(accent, darkMode ? 0.68 : 0.48);
+        ctx.lineWidth = Math.max(1, width * 0.08);
+        ctx.lineCap = "round";
+        for (const x of [-0.34, -0.04, 0.24]) {
+          ctx.beginPath();
+          ctx.moveTo(halfLength * x, -halfWidth * 0.24);
+          ctx.lineTo(halfLength * x, halfWidth * 0.24);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawTankMissileLauncher(tankColor) {
+        const darkMode = spectatorTheme === "dark";
+        const p = getPlayerPalette(tankColor);
+        const pulse = 0.5 + Math.sin(renderTime * 6) * 0.5;
+        ctx.save();
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 5 + pulse * 3;
+        const tubeGradient = ctx.createLinearGradient(0, -20, 0, 15);
+        tubeGradient.addColorStop(0, darkMode ? "#dbeafe" : "#64748b");
+        tubeGradient.addColorStop(0.48, darkMode ? "#64748b" : "#475569");
+        tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#cbd5e1");
+        roundedRect(ctx, -7.8, -20, 15.6, 35, 5.8);
+        ctx.fillStyle = tubeGradient;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = hexToRgba(p.bright, darkMode ? 0.42 : 0.32);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(0, -2.5);
+        ctx.rotate(-Math.PI / 2);
+        drawGuidedMissileIcon(23, 8.6, p.bright);
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(0, -20, 5.1, 0, Math.PI * 2);
+        ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.82)" : "rgba(15, 23, 42, 0.5)";
+        ctx.fill();
+        ctx.strokeStyle = hexToRgba(p.bright, darkMode ? 0.62 : 0.42);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawTankTowLauncher(tankColor) {
+        const darkMode = spectatorTheme === "dark";
+        const p = getPlayerPalette(tankColor);
+        const pulse = 0.5 + Math.sin(renderTime * 4.8) * 0.5;
+        ctx.save();
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 4 + pulse * 2.2;
+        const mountGradient = ctx.createLinearGradient(-12, -6, 12, 10);
+        mountGradient.addColorStop(0, darkMode ? "#dbeafe" : "#f8fafc");
+        mountGradient.addColorStop(0.52, darkMode ? "#64748b" : "#94a3b8");
+        mountGradient.addColorStop(1, darkMode ? "#172033" : "#475569");
+        roundedRect(ctx, -12, -8, 24, 16, 5.4);
+        ctx.fillStyle = mountGradient;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = hexToRgba(p.bright, darkMode ? 0.38 : 0.28);
+        ctx.stroke();
+        const tubeGradient = ctx.createLinearGradient(0, -22, 0, 14);
+        tubeGradient.addColorStop(0, darkMode ? "#eef2ff" : "#dbeafe");
+        tubeGradient.addColorStop(0.45, darkMode ? "#94a3b8" : "#64748b");
+        tubeGradient.addColorStop(1, darkMode ? "#1e293b" : "#334155");
+        roundedRect(ctx, -6.4, -21, 12.8, 36, 4.2);
+        ctx.fillStyle = tubeGradient;
+        ctx.fill();
+        ctx.strokeStyle = hexToRgba(p.bright, darkMode ? 0.44 : 0.3);
+        ctx.stroke();
+        roundedRect(ctx, 7.2, -14, 6.8, 13, 3.2);
+        ctx.fillStyle = darkMode ? "rgba(15, 23, 42, 0.88)" : "rgba(241, 245, 249, 0.86)";
+        ctx.fill();
+        ctx.strokeStyle = hexToRgba(p.bright, darkMode ? 0.46 : 0.32);
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(0, -3.2);
+        ctx.rotate(-Math.PI / 2);
+        drawTowMissileIcon(22, 7.6, p.bright);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(0, -21, 4.3, 0, Math.PI * 2);
+        ctx.fillStyle = darkMode ? "rgba(2, 6, 23, 0.86)" : "rgba(15, 23, 42, 0.5)";
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawGuidedMissileProjectile(bullet, alpha = 1) {
+        const p = getPlayerPalette(bullet.color || "green");
+        const flameColor = bullet.flame_color || (bullet.locked && bullet.target_color ? resolveGameColor(bullet.target_color) : "#f8fafc");
+        const flamePalette = getPlayerPalette(flameColor);
+        const speed = Math.hypot(numberValue(bullet.vx), numberValue(bullet.vy)) || 1;
+        const angle = Math.atan2(numberValue(bullet.vy), numberValue(bullet.vx));
+        const length = Math.max(14, numberValue(bullet.radius, BULLET_RADIUS) * 3.05);
+        const width = Math.max(7.2, numberValue(bullet.radius, BULLET_RADIUS) * 1.18);
+        const flamePulse = 0.68 + Math.sin(renderTime * 24 + numberValue(bullet.x) * 0.03 + numberValue(bullet.y) * 0.02) * 0.22;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(numberValue(bullet.x), numberValue(bullet.y));
+        ctx.rotate(angle);
+        ctx.globalCompositeOperation = spectatorTheme === "dark" ? "lighter" : "source-over";
+        ctx.shadowColor = flamePalette.glow;
+        ctx.shadowBlur = 11;
+        const flameLength = length * (0.42 + flamePulse * 0.16);
+        const flameGradient = ctx.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.34, 0);
+        flameGradient.addColorStop(0, hexToRgba(flamePalette.base, 0));
+        flameGradient.addColorStop(0.45, hexToRgba(flamePalette.base, 0.54));
+        flameGradient.addColorStop(1, hexToRgba(flamePalette.bright, 0.9));
+        ctx.fillStyle = flameGradient;
+        ctx.beginPath();
+        ctx.moveTo(-length * 0.38, -width * 0.3);
+        ctx.lineTo(-length * 0.5 - flameLength, 0);
+        ctx.lineTo(-length * 0.38, width * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        drawGuidedMissileIcon(length, width, p.bright);
+        if (bullet.locked) {
+          ctx.globalCompositeOperation = spectatorTheme === "dark" ? "lighter" : "source-over";
+          ctx.strokeStyle = hexToRgba(flamePalette.bright, spectatorTheme === "dark" ? 0.72 : 0.48);
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(0, 0, width * 1.24 + flamePulse * 2.2, -Math.PI * 0.72, Math.PI * 0.72);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawTowMissileProjectile(bullet, alpha = 1) {
+        const p = getPlayerPalette(bullet.color || "green");
+        const angle = Math.atan2(numberValue(bullet.vy), numberValue(bullet.vx));
+        const length = Math.max(11, numberValue(bullet.radius, BULLET_RADIUS) * 2.12);
+        const width = Math.max(6.8, numberValue(bullet.radius, BULLET_RADIUS) * 1.08);
+        const flamePulse = 0.62 + Math.sin(renderTime * 26 + numberValue(bullet.x) * 0.02 + numberValue(bullet.y) * 0.025) * 0.2;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(numberValue(bullet.x), numberValue(bullet.y));
+        ctx.rotate(angle);
+        ctx.globalCompositeOperation = spectatorTheme === "dark" ? "lighter" : "source-over";
+        ctx.shadowColor = "rgba(248, 250, 252, 0.72)";
+        ctx.shadowBlur = 10;
+        const flameLength = length * (0.36 + flamePulse * 0.14);
+        const flameGradient = ctx.createLinearGradient(-length * 0.5 - flameLength, 0, -length * 0.32, 0);
+        flameGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+        flameGradient.addColorStop(0.45, "rgba(226, 232, 240, 0.46)");
+        flameGradient.addColorStop(1, "rgba(248, 250, 252, 0.92)");
+        ctx.fillStyle = flameGradient;
+        ctx.beginPath();
+        ctx.moveTo(-length * 0.38, -width * 0.26);
+        ctx.lineTo(-length * 0.5 - flameLength, 0);
+        ctx.lineTo(-length * 0.38, width * 0.26);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        drawTowMissileIcon(length, width, p.bright);
+        ctx.restore();
+      }
+
+      function drawGuidedMissileExpiryEffect(fade) {
+        const progress = clamp(1 - numberValue(fade.life) / Math.max(0.001, numberValue(fade.maxLife, 0.001)), 0, 1);
+        const alpha = 1 - smoothStep(progress);
+        const p = getPlayerPalette(fade.target_color || fade.targetColor || fade.color || "green");
+        const darkMode = spectatorTheme === "dark";
+        const radius = Math.max(16, numberValue(fade.radius, BULLET_RADIUS) * (2.35 + progress * 4.8));
+        const coreRadius = Math.max(5, numberValue(fade.radius, BULLET_RADIUS) * (0.9 + progress * 1.5));
+        const ringJitter = Math.sin(renderTime * 34 + numberValue(fade.x) * 0.02 + numberValue(fade.y) * 0.015) * 1.5;
+        ctx.save();
+        ctx.translate(numberValue(fade.x), numberValue(fade.y));
+        ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 16 * alpha;
+        const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+        coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.72 : 0.84));
+        coreGradient.addColorStop(0.44, hexToRgba(p.bright, darkMode ? 0.5 : 0.42));
+        coreGradient.addColorStop(1, hexToRgba(p.base, 0));
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineCap = "round";
+        for (let index = 0; index < 2; index += 1) {
+          ctx.setLineDash(index === 0 ? [7, 7] : [3, 10]);
+          ctx.lineDashOffset = -progress * (36 + index * 18);
+          ctx.lineWidth = 2.1 - index * 0.6;
+          ctx.strokeStyle = hexToRgba(p.bright, (darkMode ? 0.78 : 0.54) * alpha * (1 - index * 0.2));
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * (0.72 + index * 0.23) + ringJitter, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        for (let index = 0; index < 6; index += 1) {
+          const angle = (index / 6) * Math.PI * 2 + progress * 0.45;
+          const inner = numberValue(fade.radius, BULLET_RADIUS) * (1.05 + progress * 1.2);
+          const outer = radius * (0.72 + (index % 2) * 0.12);
+          ctx.strokeStyle = hexToRgba(p.bright, alpha * (darkMode ? 0.36 : 0.24));
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+          ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawTowMissileExpiryEffect(fade) {
+        const progress = clamp(1 - numberValue(fade.life) / Math.max(0.001, numberValue(fade.maxLife, 0.001)), 0, 1);
+        const alpha = 1 - smoothStep(progress);
+        const p = getPlayerPalette(fade.target_color || fade.targetColor || fade.color || "green");
+        const darkMode = spectatorTheme === "dark";
+        const baseRadius = numberValue(fade.radius, BULLET_RADIUS);
+        const radius = Math.max(12, baseRadius * (1.85 + progress * 2.65));
+        const coreRadius = Math.max(5, baseRadius * (0.75 + progress * 0.9));
+        const ringPulse = Math.sin(renderTime * 28 + numberValue(fade.x) * 0.017 + numberValue(fade.y) * 0.013) * 0.8;
+        ctx.save();
+        ctx.translate(numberValue(fade.x), numberValue(fade.y));
+        ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 10 * alpha;
+        const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        coreGradient.addColorStop(0, hexToRgba("#f8fafc", darkMode ? 0.64 : 0.72));
+        coreGradient.addColorStop(0.28, hexToRgba(p.bright, darkMode ? 0.42 : 0.34));
+        coreGradient.addColorStop(0.66, hexToRgba(p.base, darkMode ? 0.14 : 0.1));
+        coreGradient.addColorStop(1, hexToRgba(p.base, 0));
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineCap = "round";
+        ctx.setLineDash([6, 8]);
+        ctx.lineDashOffset = -progress * 30;
+        ctx.lineWidth = 1.7;
+        ctx.strokeStyle = hexToRgba(p.bright, (darkMode ? 0.66 : 0.46) * alpha);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.78 + ringPulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = hexToRgba("#f8fafc", (darkMode ? 0.38 : 0.26) * alpha);
+        ctx.beginPath();
+        ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       }
 
@@ -5182,7 +6963,19 @@ def build_spectator_html() -> str:
           cursorX += killerWidth + gap;
         }
         if (weapon === "suicide") drawSkullWeaponIcon(cursorX + iconSize / 2, y, iconSize);
-        else drawBulletWeaponIcon(cursorX + iconSize / 2, y, iconSize);
+        else if (weapon === "guided_missile") {
+          ctx.save();
+          ctx.translate(cursorX + iconSize / 2, y);
+          ctx.rotate(-Math.PI / 4);
+          drawGuidedMissileIcon(iconSize * 0.9, iconSize * 0.36);
+          ctx.restore();
+        } else if (weapon === "tow_missile") {
+          ctx.save();
+          ctx.translate(cursorX + iconSize / 2, y);
+          ctx.rotate(-Math.PI / 4);
+          drawTowMissileIcon(iconSize * 0.82, iconSize * 0.34);
+          ctx.restore();
+        } else drawBulletWeaponIcon(cursorX + iconSize / 2, y, iconSize);
         cursorX += iconSize + gap;
         ctx.fillStyle = victimPalette.bright;
         ctx.shadowColor = victimPalette.glow;
@@ -5199,6 +6992,19 @@ def build_spectator_html() -> str:
           const alpha = Math.max(0, 1 - progress);
           if (alpha <= 0) continue;
           const p = getPlayerPalette(explosion.color);
+          if (String(explosion.weapon || "").startsWith("hit:")) {
+            ctx.save();
+            ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+            ctx.shadowColor = p.glow;
+            ctx.shadowBlur = 10 * alpha;
+            ctx.beginPath();
+            ctx.arc(explosion.x, explosion.y, explosion.radius * (0.58 + progress * 1.25), 0, Math.PI * 2);
+            ctx.lineWidth = 2.4 - progress * 1.1;
+            ctx.strokeStyle = hexToRgba(p.bright, (darkMode ? 0.72 : 0.56) * alpha);
+            ctx.stroke();
+            ctx.restore();
+            continue;
+          }
           const shockRadius = explosion.radius * (1.15 + progress * 3.8);
           ctx.save();
           ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
@@ -5270,10 +7076,108 @@ def build_spectator_html() -> str:
         }
       }
 
+      function drawLandMine(mine, compact = false) {
+        const alpha = clamp(numberValue(mine.visibleAlpha, baseMineAlpha(mine.age)), 0, 1);
+        if (alpha <= 0.012) return;
+        const darkMode = spectatorTheme === "dark";
+        const p = getPlayerPalette(mine.color || "green");
+        const radius = Math.max(1, numberValue(mine.radius, MINE_RADIUS));
+        const triggerRadius = Math.max(radius, numberValue(mine.trigger_radius, MINE_TRIGGER_RADIUS));
+        const armed = Boolean(mine.armed);
+        const triggered = Boolean(mine.triggered);
+        const blinkFrequency = triggered ? 5 : armed ? 1 : 0;
+        const blink = blinkFrequency ? 0.28 + 0.72 * Math.max(0, Math.sin(renderTime * Math.PI * 2 * blinkFrequency)) : 0.2;
+        const lampAlpha = clamp((triggered ? 0.82 : armed ? 0.62 : 0.24) * blink + (triggered ? 0.18 : 0.08), 0, 1);
+
+        ctx.save();
+        ctx.translate(numberValue(mine.x), numberValue(mine.y));
+        ctx.globalAlpha = alpha;
+        if (!compact && (armed || triggered || alpha > 0.45)) {
+          ctx.save();
+          ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+          ctx.beginPath();
+          ctx.arc(0, 0, triggerRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = hexToRgba(p.bright, (triggered ? 0.24 : 0.08) * alpha * (0.65 + blink * 0.35));
+          ctx.lineWidth = triggered ? 2.6 : 1.1;
+          ctx.setLineDash(triggered ? [7, 7] : [3, 9]);
+          ctx.lineDashOffset = -renderTime * (triggered ? 50 : 15);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        const bodyGradient = ctx.createRadialGradient(-radius * 0.36, -radius * 0.42, radius * 0.12, 0, 0, radius * 1.15);
+        bodyGradient.addColorStop(0, darkMode ? "#d1d5db" : "#f1f5f9");
+        bodyGradient.addColorStop(0.48, darkMode ? "#64748b" : "#94a3b8");
+        bodyGradient.addColorStop(1, darkMode ? "#1f2937" : "#475569");
+        ctx.shadowColor = triggered ? p.glow : darkMode ? "rgba(148, 163, 184, 0.42)" : "rgba(15, 23, 42, 0.2)";
+        ctx.shadowBlur = triggered ? 18 : 8;
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = Math.max(1.1, radius * 0.12);
+        ctx.strokeStyle = darkMode ? "rgba(226, 232, 240, 0.44)" : "rgba(15, 23, 42, 0.2)";
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = darkMode ? "rgba(15, 23, 42, 0.68)" : "rgba(30, 41, 59, 0.34)";
+        ctx.lineWidth = Math.max(1, radius * 0.075);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let index = 0; index < 8; index += 1) {
+          const angle = (index / 8) * Math.PI * 2 + numberValue(mine.id) * 0.11;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * radius * 0.22, Math.sin(angle) * radius * 0.22);
+          ctx.lineTo(Math.cos(angle) * radius * 0.63, Math.sin(angle) * radius * 0.63);
+          ctx.stroke();
+        }
+
+        ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 12 * lampAlpha;
+        ctx.fillStyle = hexToRgba(p.bright, lampAlpha);
+        ctx.beginPath();
+        ctx.arc(0, -radius * 0.05, Math.max(2.2, radius * 0.21 + (triggered ? blink * 1.2 : 0)), 0, Math.PI * 2);
+        ctx.fill();
+        if (triggered) {
+          ctx.strokeStyle = hexToRgba(p.bright, 0.18 + blink * 0.28);
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * (1.3 + blink * 0.55), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function advanceRenderMines(players, dt) {
+        for (const mine of renderMines.values()) {
+          const nearTank = (players || []).some((player) =>
+            Boolean(player?.alive) &&
+            distance(numberValue(mine.x), numberValue(mine.y), numberValue(player.x), numberValue(player.y)) <=
+              numberValue(mine.trigger_radius, MINE_TRIGGER_RADIUS) + numberValue(player.radius, PLAYER_RADIUS),
+          );
+          const targetAlpha = nearTank || mine.triggered ? 1 : baseMineAlpha(mine.age);
+          const currentAlpha = clamp(numberValue(mine.visibleAlpha, targetAlpha), 0, 1);
+          mine.visibleAlpha =
+            targetAlpha > currentAlpha
+              ? Math.min(targetAlpha, currentAlpha + dt * MINE_REVEAL_RATE)
+              : Math.max(targetAlpha, currentAlpha - dt / (MINE_FADE_DURATION_MS / 1000));
+        }
+      }
+
       function drawBullet(bullet) {
         const projectileType = String(bullet.projectile_type || bullet.projectileType || "bullet");
         if (projectileType === "laser") {
           drawLaserProjectile(bullet, latest?.walls || []);
+          return;
+        }
+        if (projectileType === "guided_missile") {
+          drawGuidedMissileProjectile(bullet);
+          return;
+        }
+        if (projectileType === "tow_missile") {
+          drawTowMissileProjectile(bullet);
           return;
         }
         drawBulletSprite(bullet, bullet.color || "green");
@@ -5400,7 +7304,7 @@ def build_spectator_html() -> str:
               LASER_AIM_LENGTH,
               walls || [],
               12,
-              activeShieldColliders(players),
+              shieldCollidersForProjectileStart(players, player, spawn, LASER_RADIUS),
             ),
             player.color || "green",
           );
@@ -5456,10 +7360,77 @@ def build_spectator_html() -> str:
         ctx.restore();
       }
 
+      function drawShieldPulseEffects() {
+        const darkMode = spectatorTheme === "dark";
+        for (const effect of shieldPulseEffects) {
+          const maxLife = Math.max(0.01, numberValue(effect.maxLife, 0.36));
+          const progress = clamp(1 - numberValue(effect.life) / maxLife, 0, 1);
+          const eased = smoothStep(progress);
+          const alpha = Math.max(0, 1 - eased);
+          if (alpha <= 0.01) continue;
+          const p = getPlayerPalette(effect.color);
+          const radius = Math.max(PLAYER_RADIUS + 10, numberValue(effect.radius, SHIELD_RADIUS));
+          const impactAngle = Math.atan2(numberValue(effect.impactY) - numberValue(effect.y), numberValue(effect.impactX) - numberValue(effect.x));
+          const ringRadius = radius * (0.9 + eased * 0.24);
+
+          ctx.save();
+          ctx.translate(numberValue(effect.x), numberValue(effect.y));
+          ctx.globalCompositeOperation = darkMode ? "lighter" : "source-over";
+          ctx.shadowColor = p.glow;
+          ctx.shadowBlur = (effect.source === "blast" ? 16 : 12) * alpha;
+          const gradient = ctx.createRadialGradient(0, 0, radius * 0.42, 0, 0, radius * (1.08 + eased * 0.18));
+          gradient.addColorStop(0, hexToRgba(p.bright, 0));
+          gradient.addColorStop(0.78, hexToRgba(p.base, (darkMode ? 0.1 : 0.07) * alpha));
+          gradient.addColorStop(1, hexToRgba(p.bright, (darkMode ? 0.22 : 0.16) * alpha));
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * (1.04 + eased * 0.16), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.lineCap = "round";
+          ctx.lineWidth = (effect.source === "blast" ? 2.8 : 2.2) - eased * 1.1;
+          ctx.strokeStyle = hexToRgba(p.bright, (darkMode ? 0.7 : 0.52) * alpha);
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, impactAngle - Math.PI * 0.56, impactAngle + Math.PI * 0.56);
+          ctx.stroke();
+
+          ctx.lineWidth = 1.1;
+          ctx.strokeStyle = hexToRgba(darkMode ? "#e0f2fe" : p.base, (darkMode ? 0.34 : 0.22) * alpha);
+          ctx.setLineDash([6, 9]);
+          ctx.lineDashOffset = -progress * 24;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * (0.72 + eased * 0.12), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const flareCount = effect.source === "blast" ? 5 : 3;
+          for (let index = 0; index < flareCount; index += 1) {
+            const angle = impactAngle + (index - (flareCount - 1) / 2) * 0.34;
+            const inner = radius * (0.42 + eased * 0.2);
+            const outer = radius * (0.78 + eased * 0.28);
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+            ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+            ctx.lineWidth = 1.35 - eased * 0.35;
+            ctx.strokeStyle = hexToRgba(p.bright, (darkMode ? 0.44 : 0.32) * alpha);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
       function drawBulletFades() {
         for (const fade of bulletFades) {
           if (String(fade.projectile_type || fade.projectileType || "bullet") === "laser") continue;
           const progress = fade.life / fade.maxLife;
+          if (String(fade.projectile_type || fade.projectileType || "bullet") === "guided_missile") {
+            drawGuidedMissileExpiryEffect(fade);
+            continue;
+          }
+          if (String(fade.projectile_type || fade.projectileType || "bullet") === "tow_missile") {
+            drawTowMissileExpiryEffect(fade);
+            continue;
+          }
           drawBulletSprite(fade, fade.color || "green", progress, (1 - progress) * 1.6);
         }
       }
@@ -5592,10 +7563,10 @@ def build_spectator_html() -> str:
 
         ctx.save();
         ctx.shadowColor = tankPalette.glow;
-        ctx.shadowBlur = 18;
-        ctx.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.18 : 0.12);
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = hexToRgba(tankPalette.base, darkMode ? 0.13 : 0.09);
         ctx.beginPath();
-        ctx.arc(0, 0, radius + 9 + tankPulse * 2, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius + 5.5 + tankPulse * 1.4, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
@@ -5635,13 +7606,15 @@ def build_spectator_html() -> str:
           ctx.fillStyle = tankCoreGlow;
           ctx.fill();
         };
-        if (weapon === "double_barrel") {
-          for (const offset of [-DOUBLE_BARREL_BARREL_OFFSET, DOUBLE_BARREL_BARREL_OFFSET]) {
-            const recoil = Math.abs(offset - doubleBarrelRecoilOffset) < 0.1 ? doubleBarrelRecoil * 7.2 : 0;
-            drawSingleBarrel(offset, recoil, 4.1, 7.8);
+        if (weapon !== "land_mine" && weapon !== "guided_missile" && !isTowMissileWeapon(weapon)) {
+          if (weapon === "double_barrel") {
+            for (const offset of [-DOUBLE_BARREL_BARREL_OFFSET, DOUBLE_BARREL_BARREL_OFFSET]) {
+              const recoil = Math.abs(offset - doubleBarrelRecoilOffset) < 0.1 ? doubleBarrelRecoil * 7.2 : 0;
+              drawSingleBarrel(offset, recoil, 4.1, 7.8);
+            }
+          } else {
+            drawSingleBarrel(0, 0, weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2);
           }
-        } else {
-          drawSingleBarrel(0, 0, weapon === "shotgun" ? 7.4 : weapon === "laser" ? 9.2 : weapon === "minigun" ? 8.8 : 5.2);
         }
         if (weapon === "shotgun") {
           const pumpY = -9.5 + shotgunPump * 6.2;
@@ -5714,36 +7687,38 @@ def build_spectator_html() -> str:
           ctx.stroke();
           ctx.restore();
         }
-        ctx.beginPath();
-        ctx.moveTo(-8.5, -23);
-        ctx.lineTo(-11.5, -10);
-        ctx.lineTo(-8, 1);
-        ctx.lineTo(8, 1);
-        ctx.lineTo(11.5, -10);
-        ctx.lineTo(8.5, -23);
-        ctx.closePath();
-        ctx.fillStyle = barrelGradient;
-        ctx.shadowColor = tankNoseGlow;
-        ctx.shadowBlur = 7;
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, -20);
-        ctx.lineTo(-9, -7.5);
-        ctx.lineTo(9, -7.5);
-        ctx.closePath();
-        const noseGradient = ctx.createLinearGradient(0, -20, 0, -7.5);
-        noseGradient.addColorStop(0, tankGlassTop);
-        noseGradient.addColorStop(1, tankGlassBottom);
-        ctx.fillStyle = noseGradient;
-        ctx.shadowColor = tankNoseGlow;
-        ctx.shadowBlur = 9;
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
-        ctx.stroke();
+        if (weapon !== "guided_missile" && !isTowMissileWeapon(weapon)) {
+          ctx.beginPath();
+          ctx.moveTo(-8.5, -23);
+          ctx.lineTo(-11.5, -10);
+          ctx.lineTo(-8, 1);
+          ctx.lineTo(8, 1);
+          ctx.lineTo(11.5, -10);
+          ctx.lineTo(8.5, -23);
+          ctx.closePath();
+          ctx.fillStyle = barrelGradient;
+          ctx.shadowColor = tankNoseGlow;
+          ctx.shadowBlur = 7;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.4 : 0.32);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, -20);
+          ctx.lineTo(-9, -7.5);
+          ctx.lineTo(9, -7.5);
+          ctx.closePath();
+          const noseGradient = ctx.createLinearGradient(0, -20, 0, -7.5);
+          noseGradient.addColorStop(0, tankGlassTop);
+          noseGradient.addColorStop(1, tankGlassBottom);
+          ctx.fillStyle = noseGradient;
+          ctx.shadowColor = tankNoseGlow;
+          ctx.shadowBlur = 9;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = hexToRgba(tankPalette.bright, darkMode ? 0.44 : 0.34);
+          ctx.stroke();
+        }
         ctx.restore();
 
         ctx.save();
@@ -5843,7 +7818,30 @@ def build_spectator_html() -> str:
         ctx.fill();
         ctx.restore();
 
-        if (flash > 0) {
+        if (weapon === "land_mine") {
+          drawLandMine(
+            {
+              id: 0,
+              x: 0,
+              y: 0,
+              radius: Math.max(8, MINE_RADIUS * 0.72),
+              trigger_radius: Math.max(9, MINE_RADIUS * 0.78),
+              color: tank.color,
+              armed: true,
+              triggered: false,
+              visibleAlpha: 1,
+            },
+            true,
+          );
+        }
+        if (weapon === "guided_missile") {
+          drawTankMissileLauncher(tank.color);
+        }
+        if (isTowMissileWeapon(weapon)) {
+          drawTankTowLauncher(tank.color);
+        }
+
+        if (flash > 0 && weapon !== "land_mine") {
           ctx.fillStyle = tankPalette.flash.replace(/, ([0-9.]+)\)$/, `, ${clamp(flash * 5.8, 0, 0.95)})`);
           ctx.beginPath();
           ctx.arc(0, -(radius + 18), 8 + flash * 24, 0, Math.PI * 2);
@@ -5919,12 +7917,15 @@ def build_spectator_html() -> str:
         }
         syncRenderBulletsForSnapshot(state);
         syncEventEffects(state);
+        syncRenderMines(state);
         advanceEffectsAndBullets(walls, delta, players);
+        advanceRenderMines(players, delta);
 
         const staticScene = ensureStaticScene(state);
         ctx.drawImage(staticScene, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         drawTargets(state.targets || []);
         drawPowerups(state.powerups || []);
+        for (const mine of renderMines.values()) drawLandMine(mine);
         drawLaserAims(players, walls);
         drawWalls(walls);
         drawWallRipples();
@@ -5936,6 +7937,7 @@ def build_spectator_html() -> str:
         drawKillFeed();
         drawShellCasings();
         for (const player of players) drawTank(player);
+        drawShieldPulseEffects();
 
         empty.hidden = activePlayerCount > 0;
         statusDot.classList.toggle("warn", Boolean(stale || lastError));
@@ -5976,14 +7978,16 @@ def simulate_match(
     local_player_state = normalize_match_local_player(payload.get("local_player"))
     server_map_seed = int(room_state.get("map_seed") or 1)
     client_map_matches = client_map_seed <= 0 or client_map_seed == server_map_seed
-
     update_player(room_state, player_id, country_code, current_ms)
     player_meta = ensure_match_player(room_state, player_id, current_ms, preferred_color=preferred_color)
+    ensure_player_health(player_meta, room_state)
     player_meta["latency_ms"] = latency_ms
-    player_meta["input"] = input_state if client_map_matches else normalize_match_input({})
     player_meta["last_ack_input_seq"] = max(int(player_meta.get("last_ack_input_seq") or 0), input_seq)
     if not bool(player_meta.get("alive", True)) and int(player_meta.get("respawn_at_ms") or 0) <= current_ms:
+        if not is_same_place_respawn_enabled(room_state):
+            clear_player_death_spawn_state(player_meta)
         player_meta = spawn_match_player(room_state, player_id, current_ms, preserve_stats=True)
+        ensure_player_health(player_meta, room_state)
 
     walls = build_training_walls(server_map_seed)
     room_state["targets"] = []
@@ -5993,8 +7997,20 @@ def simulate_match(
     prune_death_events(room_state, current_ms)
     prune_powerup_effects(room_state, current_ms)
     advance_powerups(room_state, current_ms, walls, players)
+    reported_position_accepted = False
     if client_map_matches:
-        apply_reported_match_player_state(player_meta, local_player_state, walls)
+        reported_position_accepted = apply_reported_match_player_state(player_meta, local_player_state, walls, current_ms)
+    player_meta["input"] = (
+        input_state
+        if client_map_matches
+        and (reported_position_accepted or str(player_meta.get("weapon") or "default") == "tow_missile_active")
+        else normalize_match_input({})
+    )
+    if str(player_meta.get("weapon") or "default") == "tow_missile_active":
+        player_meta["input"]["forward"] = False
+        player_meta["input"]["backward"] = False
+        player_meta["input"]["fire_held"] = False
+        player_meta["input"]["fire_seq"] = 0
     last_tick_ms = int(room_state.get("last_tick_ms") or current_ms)
     elapsed_sec = max(0.0, min(0.2, (current_ms - last_tick_ms) / 1000.0))
     remaining = elapsed_sec
@@ -6005,7 +8021,8 @@ def simulate_match(
         remaining -= step
         simulated_ms += int(step * 1000)
 
-        for current_player in players.values():
+        for current_player in list(players.values()):
+            ensure_player_health(current_player, room_state)
             current_player["flash"] = max(0.0, float(current_player.get("flash") or 0.0) - step)
             if int(current_player.get("shield_visible_until_ms") or 0) <= simulated_ms:
                 current_player["shield_started_at_ms"] = 0
@@ -6014,7 +8031,10 @@ def simulate_match(
             if not bool(current_player.get("alive", True)):
                 respawn_at_ms = int(current_player.get("respawn_at_ms") or 0)
                 if respawn_at_ms > 0 and simulated_ms >= respawn_at_ms:
-                    spawn_match_player(room_state, str(current_player.get("player_id") or ""), simulated_ms, preserve_stats=True)
+                    if not is_same_place_respawn_enabled(room_state):
+                        clear_player_death_spawn_state(current_player)
+                    respawned_player = spawn_match_player(room_state, str(current_player.get("player_id") or ""), simulated_ms, preserve_stats=True)
+                    ensure_player_health(respawned_player, room_state)
                 continue
 
             current_player["cooldown"] = max(0.0, float(current_player.get("cooldown") or 0.0) - step)
@@ -6039,6 +8059,8 @@ def simulate_match(
                     and str(bullet.get("projectile_type") or "bullet") != "laser"
                     and str(bullet.get("projectile_type") or "bullet") != "minigun"
                     and str(bullet.get("projectile_type") or "bullet") != "double_barrel"
+                    and str(bullet.get("projectile_type") or "bullet") != "guided_missile"
+                    and str(bullet.get("projectile_type") or "bullet") != "tow_missile"
                 ):
                     active_bullet_count += 1
 
@@ -6062,7 +8084,7 @@ def simulate_match(
                             current_player["minigun_shot_accum"] >= 1.0
                             and int(current_player.get("minigun_ammo") or 0) > 0
                         ):
-                            bullets.append(spawn_minigun_bullet(room_state, current_player))
+                            bullets.append(spawn_minigun_bullet(room_state, current_player, simulated_ms))
                             current_player["minigun_ammo"] = max(0, int(current_player.get("minigun_ammo") or 0) - 1)
                             current_player["minigun_shot_accum"] = float(current_player.get("minigun_shot_accum") or 0.0) - 1.0
                             current_player["flash"] = 0.1
@@ -6083,31 +8105,61 @@ def simulate_match(
                 requested_fire_seq > 0
                 and float(current_player.get("cooldown") or 0.0) <= 0.0
             ):
+                should_flash_on_fire = True
                 if str(current_player.get("weapon") or "default") == "laser":
-                    bullets.append(spawn_laser_bullet(room_state, current_player, simulated_ms))
+                    bullets.append(spawn_laser_bullet(room_state, current_player, simulated_ms, fire_seq=requested_fire_seq))
                     current_player["weapon"] = "default"
                     current_player["shotgun_ammo"] = 0
                     current_player["minigun_ammo"] = 0
                     current_player["double_barrel_ammo"] = 0
+                    current_player["mine_ammo"] = 0
+                    current_player["missile_ammo"] = 0
                     current_player["cooldown"] = LASER_COOLDOWN
                 elif str(current_player.get("weapon") or "default") == "shotgun" and int(current_player.get("shotgun_ammo") or 0) > 0:
-                    bullets.extend(spawn_shotgun_pellets(room_state, current_player, simulated_ms))
+                    bullets.extend(spawn_shotgun_pellets(room_state, current_player, simulated_ms, fire_seq=requested_fire_seq))
                     current_player["shotgun_ammo"] = max(0, int(current_player.get("shotgun_ammo") or 0) - 1)
                     if int(current_player.get("shotgun_ammo") or 0) <= 0:
                         current_player["weapon"] = "default"
                     current_player["cooldown"] = SHOTGUN_COOLDOWN
                 elif str(current_player.get("weapon") or "default") == "double_barrel" and int(current_player.get("double_barrel_ammo") or 0) > 0:
-                    bullets.append(spawn_double_barrel_bullet(room_state, current_player))
+                    bullets.append(spawn_double_barrel_bullet(room_state, current_player, simulated_ms))
                     current_player["double_barrel_ammo"] = max(0, int(current_player.get("double_barrel_ammo") or 0) - 1)
                     if int(current_player.get("double_barrel_ammo") or 0) <= 0:
                         current_player["weapon"] = "default"
                     current_player["cooldown"] = DOUBLE_BARREL_COOLDOWN
+                elif str(current_player.get("weapon") or "default") == "land_mine" and int(current_player.get("mine_ammo") or 0) > 0:
+                    plant_land_mine(room_state, current_player, simulated_ms)
+                    should_flash_on_fire = False
+                    current_player["mine_ammo"] = max(0, int(current_player.get("mine_ammo") or 0) - 1)
+                    if int(current_player.get("mine_ammo") or 0) <= 0:
+                        current_player["weapon"] = "default"
+                    current_player["cooldown"] = MINE_COOLDOWN
+                elif str(current_player.get("weapon") or "default") == "guided_missile" and int(current_player.get("missile_ammo") or 0) > 0:
+                    bullets.append(spawn_guided_missile_bullet(room_state, current_player, fire_seq=requested_fire_seq, current_ms=simulated_ms))
+                    current_player["missile_ammo"] = max(0, int(current_player.get("missile_ammo") or 0) - 1)
+                    if int(current_player.get("missile_ammo") or 0) <= 0:
+                        current_player["weapon"] = "default"
+                    current_player["cooldown"] = GUIDED_MISSILE_COOLDOWN
+                elif str(current_player.get("weapon") or "default") == "tow_missile" and int(current_player.get("missile_ammo") or 0) > 0:
+                    bullets.append(spawn_tow_missile_bullet(room_state, current_player, fire_seq=requested_fire_seq, current_ms=simulated_ms))
+                    current_player["missile_ammo"] = 0
+                    current_player["weapon"] = "tow_missile_active"
+                    current_player["cooldown"] = TOW_MISSILE_COOLDOWN
                 elif active_bullet_count < MAX_BULLETS:
-                    bullets.append(spawn_match_bullet(room_state, current_player, float(current_player.get("angle") or 0.0)))
+                    bullets.append(
+                        spawn_match_bullet(
+                            room_state,
+                            current_player,
+                            float(current_player.get("angle") or 0.0),
+                            fire_seq=requested_fire_seq,
+                            current_ms=simulated_ms,
+                        )
+                    )
                     current_player["cooldown"] = SHOOT_COOLDOWN
                 else:
                     continue
-                current_player["flash"] = 0.13
+                if should_flash_on_fire:
+                    current_player["flash"] = 0.13
                 current_player["shots"] = int(current_player.get("shots") or 0) + 1
 
         next_bullets: list[dict[str, object]] = []
@@ -6134,6 +8186,15 @@ def simulate_match(
                 "age": float(bullet.get("age") or 0.0) + step,
                 "has_bounced": bool(bullet.get("has_bounced", False)),
                 "owner_shield_released": bool(bullet.get("owner_shield_released", False)),
+                "ignore_owner_shield": bool(bullet.get("ignore_owner_shield", False)),
+                "fire_seq": max(0, int(bullet.get("fire_seq") or 0)),
+                "target_id": str(bullet.get("target_id") or ""),
+                "target_color": normalize_color(bullet.get("target_color")) if bullet.get("target_color") else "",
+                "locked": bool(bullet.get("locked", False)),
+                "steer_locked_until_age": float(bullet.get("steer_locked_until_age") or 0.0),
+                "wall_hit_seq": int(bullet.get("wall_hit_seq") or 0),
+                "wall_hit_x": float(bullet.get("wall_hit_x") or 0.0),
+                "wall_hit_y": float(bullet.get("wall_hit_y") or 0.0),
             }
             shield_reflected = False
             if projectile_type == "laser":
@@ -6164,6 +8225,10 @@ def simulate_match(
                     head = next_bullet["segments"][-1]
                     next_bullet["x"] = float(head.get("x2") or next_bullet["x"])
                     next_bullet["y"] = float(head.get("y2") or next_bullet["y"])
+            elif projectile_type == "guided_missile":
+                steer_guided_missile(next_bullet, players, step)
+            elif projectile_type == "tow_missile":
+                steer_tow_missile(next_bullet, players.get(str(next_bullet.get("owner_id") or "")), step)
 
             if projectile_type != "laser":
                 shield_reflected = reflect_bullet_from_shields(next_bullet, previous_x, previous_y, players, simulated_ms)
@@ -6201,8 +8266,9 @@ def simulate_match(
                         next_bullet["vy"] *= -1
                     next_bullet["bouncesLeft"] -= 1
                     next_bullet["has_bounced"] = True
-                    next_bullet["x"] = previous_x + next_bullet["vx"] * step * 0.4
-                    next_bullet["y"] = previous_y + next_bullet["vy"] * step * 0.4
+                    if projectile_type == "tow_missile":
+                        record_bullet_wall_hit(next_bullet, wall)
+                    place_bullet_after_wall_bounce(next_bullet, expanded, previous_x, previous_y, step, flip_x, flip_y)
                     break
 
             if (
@@ -6213,6 +8279,8 @@ def simulate_match(
                 or next_bullet["y"] < ARENA_Y - 64
                 or next_bullet["y"] > ARENA_Y + ARENA_HEIGHT + 64
             ):
+                if projectile_type == "tow_missile":
+                    release_tow_controller(players, next_bullet)
                 continue
 
             next_bullet["_previous_x"] = previous_x
@@ -6227,13 +8295,14 @@ def simulate_match(
                 for candidate_id, candidate_meta in players.items():
                     if not bool(candidate_meta.get("alive", True)):
                         continue
-                    if player_has_visible_shield(candidate_meta, simulated_ms):
-                        continue
                     is_owner_candidate = candidate_id == str(next_bullet["owner_id"])
                     same_owner_session = int(candidate_meta.get("revision") or 0) == int(next_bullet.get("owner_revision") or 0)
                     if is_owner_candidate and not same_owner_session:
                         continue
-                    if (
+                    if is_owner_candidate and projectile_type in ("guided_missile", "tow_missile"):
+                        if float(next_bullet.get("age") or 0.0) < SELF_HIT_ARM_DELAY:
+                            continue
+                    elif (
                         is_owner_candidate
                         and projectile_type != "laser"
                         and not bool(next_bullet.get("has_bounced", False))
@@ -6251,38 +8320,37 @@ def simulate_match(
             next_bullet.pop("_previous_segments", None)
 
             if hit_player_id is not None:
+                if projectile_type == "tow_missile":
+                    release_tow_controller(players, next_bullet)
                 victim_meta = players.get(hit_player_id)
                 owner_meta = players.get(str(next_bullet["owner_id"]))
                 if isinstance(victim_meta, dict):
-                    if (
-                        isinstance(owner_meta, dict)
-                        and hit_player_id != str(next_bullet["owner_id"])
+                    valid_owner = (
+                        owner_meta
+                        if isinstance(owner_meta, dict)
                         and int(owner_meta.get("revision") or 0) == int(next_bullet.get("owner_revision") or 0)
-                    ):
-                        owner_meta["hits"] = int(owner_meta.get("hits") or 0) + 1
-                        owner_meta["score"] = int(owner_meta.get("score") or 0) + 250
-                    victim_meta["deaths"] = int(victim_meta.get("deaths") or 0) + 1
-                    victim_meta["score"] = max(0, int(victim_meta.get("score") or 0) - 120)
-                    victim_meta["alive"] = False
-                    victim_meta["respawn_at_ms"] = simulated_ms + int(PLAYER_RESPAWN_SECONDS * 1000)
-                    victim_meta["cooldown"] = 0.0
-                    victim_meta["flash"] = 0.18
-                    reset_player_weapon_state(victim_meta)
-                    push_death_event(
+                        else None
+                    )
+                    died = apply_damage_to_player(
                         room_state,
                         victim_meta,
                         simulated_ms,
-                        killer_meta=owner_meta if isinstance(owner_meta, dict) else None,
+                        damage=projectile_damage(str(next_bullet.get("projectile_type") or "bullet")),
+                        killer_meta=valid_owner,
                         weapon=str(next_bullet.get("projectile_type") or "bullet"),
                         bullet_id=int(next_bullet.get("id") or 0),
                     )
+                    if not died and valid_owner is not None and hit_player_id != str(next_bullet.get("owner_id") or ""):
+                        valid_owner["hits"] = int(valid_owner.get("hits") or 0) + 1
                 continue
 
             next_bullets.append(next_bullet)
 
         bullets = next_bullets
         room_state["bullets"] = bullets
+        advance_mines(room_state, simulated_ms, players)
     room_state["bullets"] = bullets
+    advance_mines(room_state, current_ms, players)
     room_state["targets"] = []
     advance_powerups(room_state, current_ms, walls, players)
     handle_powerup_pickups(room_state, current_ms, players)
@@ -6599,6 +8667,7 @@ def simulate_latency_test(
             "age": float(bullet.get("age") or 0.0),
             "has_bounced": bool(bullet.get("has_bounced", False)),
             "owner_shield_released": True,
+            "ignore_owner_shield": False,
         }
         for bullet in test_state.get("bullets", [])
         if isinstance(bullet, dict)
@@ -6651,7 +8720,11 @@ def apply_action(state: dict[str, object], payload: dict[str, object], current_m
     player_id = normalize_player_id(payload.get("player_id"))
     country_code = normalize_country_code(payload.get("country_code"))
     preferred_color = normalize_optional_color(payload.get("preferred_color"))
-
+    if action in {"match_sync", "sync"}:
+        requested_mode = MATCH_MODE_CUSTOM if action == "match_sync" else MATCH_MODE_DEFAULT
+        if action == "match_sync":
+            requested_mode = normalize_match_mode(payload.get("match_mode"))
+        apply_match_mode_request(state, player_id, requested_mode, payload.get("custom_options"))
     update_player(state, player_id, country_code, current_ms)
 
     votes = state.setdefault("votes", {})
@@ -6672,6 +8745,7 @@ def apply_action(state: dict[str, object], payload: dict[str, object], current_m
         votes.pop(player_id, None)
         latency_tests = ensure_latency_tests(state)
         latency_tests.pop(player_id, None)
+        reset_match_mode_if_empty(state)
         state["countdown_deadline_ms"] = 0
         state["updated_at_ms"] = current_ms
     elif action == "toggle_vote":
@@ -6693,6 +8767,7 @@ def apply_action(state: dict[str, object], payload: dict[str, object], current_m
         votes.pop(player_id, None)
         latency_tests = ensure_latency_tests(state)
         latency_tests.pop(player_id, None)
+        reset_match_mode_if_empty(state)
         state["targets"] = []
         state["bullets"] = []
         state["countdown_deadline_ms"] = 0
@@ -6700,6 +8775,8 @@ def apply_action(state: dict[str, object], payload: dict[str, object], current_m
     elif action == "latency_sync":
         state["updated_at_ms"] = current_ms
     elif action == "match_sync":
+        if normalize_match_mode(payload.get("match_mode")) != get_match_mode(state):
+            raise RuntimeError("Requested match mode does not match the active room mode.")
         if preferred_color:
             ensure_player_color(state, player_id, preferred_color)
         state["updated_at_ms"] = current_ms
@@ -6833,7 +8910,22 @@ def _make_handler(base_dir: Path, idle_timeout: int):
             parsed = urlparse(self.path)
             path = parsed.path.rstrip("/") or "/"
             if path == "/health":
-                self._send_json(200, {"ok": True, "idle_timeout": idle_timeout})
+                manifest_payload = {}
+                manifest_path = base_dir / "bundle-manifest.json"
+                if manifest_path.is_file():
+                    try:
+                        manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8") or "{}")
+                    except Exception:
+                        manifest_payload = {}
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "idle_timeout": idle_timeout,
+                        "features": list(RUNTIME_FEATURES),
+                        "bundle_hash": str(manifest_payload.get("bundle_hash") or ""),
+                    },
+                )
             elif path.startswith("/assets/"):
                 asset_path = (base_dir / "www" / path.removeprefix("/assets/")).resolve()
                 asset_root = (base_dir / "www").resolve()

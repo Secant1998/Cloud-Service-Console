@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRTC Local Publisher</title>
+  <script src="https://web.sdk.qcloud.com/trtc/webrtc/v5/npm-package/trtc.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #10151d;
+      --panel: rgba(255, 255, 255, 0.07);
+      --panel-strong: rgba(255, 255, 255, 0.1);
+      --line: rgba(255, 255, 255, 0.14);
+      --text: #f3f7fb;
+      --muted: #9ba8b8;
+      --accent: #2a9d8f;
+      --danger: #dc5f5f;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #eef3f8;
+        --panel: rgba(255, 255, 255, 0.84);
+        --panel-strong: #ffffff;
+        --line: rgba(21, 31, 46, 0.12);
+        --text: #162033;
+        --muted: #627083;
+        --accent: #157f73;
+        --danger: #be4141;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel,
+    .preview,
+    .log {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.12);
+    }
+
+    .panel {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      user-select: text;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 9px 10px;
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+      user-select: text;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    button {
+      min-height: 40px;
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 150ms ease, opacity 150ms ease, filter 150ms ease;
+      white-space: nowrap;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: minmax(280px, 1fr) 170px;
+      gap: 14px;
+      min-width: 0;
+      min-height: calc(100vh - 28px);
+    }
+
+    .preview {
+      position: relative;
+      min-height: 280px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #local-preview {
+      width: 100%;
+      height: 100%;
+      min-height: 280px;
+    }
+
+    #local-preview video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .status {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.54);
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .log {
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      white-space: pre-wrap;
+      color: var(--muted);
+      font: 12px/1.55 Consolas, "Courier New", monospace;
+      user-select: text;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <h1>TRTC 本地推流</h1>
+    <p class="hint">用浏览器直接推摄像头、麦克风或屏幕到 TRTC 房间。正式使用时，UserSig 应由后端临时生成。</p>
+
+    <div class="row">
+      <label>
+        SDKAppID
+        <input id="sdkAppId" value="20041284" inputmode="numeric" />
+      </label>
+      <label>
+        字符串房间号
+        <input id="roomId" value="robot" />
+      </label>
+    </div>
+
+    <label>
+      推流 UserID
+      <input id="userId" value="robot_web" />
+    </label>
+
+    <label>
+      UserSig
+      <textarea id="userSig" rows="4" placeholder="粘贴推流端 UserSig"></textarea>
+    </label>
+
+    <div class="row">
+      <label>
+        视频源
+        <select id="sourceType">
+          <option value="camera">摄像头</option>
+          <option value="screen">屏幕/窗口</option>
+        </select>
+      </label>
+      <label>
+        音频
+        <select id="audioType">
+          <option value="mic">麦克风</option>
+          <option value="none">关闭</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="start">开始推流</button>
+      <button id="stop" class="danger" disabled>停止</button>
+    </div>
+  </section>
+
+  <main class="stage">
+    <section class="preview">
+      <div class="status" id="status">未推流</div>
+      <div id="local-preview"></div>
+    </section>
+    <pre class="log" id="log"></pre>
+  </main>
+
+  <script>
+    const trtc = TRTC.create();
+    const startButton = document.querySelector('#start');
+    const stopButton = document.querySelector('#stop');
+    const statusEl = document.querySelector('#status');
+    const logEl = document.querySelector('#log');
+    let publishing = false;
+
+    function log(message, data) {
+      const detail = data ? ` ${JSON.stringify(data)}` : '';
+      logEl.textContent += `[${new Date().toLocaleTimeString()}] ${message}${detail}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+      log(text);
+    }
+
+    function getConfig() {
+      const sdkAppId = Number(document.querySelector('#sdkAppId').value.trim());
+      const strRoomId = document.querySelector('#roomId').value.trim();
+      const userId = document.querySelector('#userId').value.trim();
+      const userSig = document.querySelector('#userSig').value.trim();
+      const sourceType = document.querySelector('#sourceType').value;
+      const audioType = document.querySelector('#audioType').value;
+
+      if (!sdkAppId || !strRoomId || !userId || !userSig) {
+        throw new Error('SDKAppID、房间号、UserID、UserSig 都需要填写');
+      }
+
+      return { sdkAppId, strRoomId, userId, userSig, sourceType, audioType };
+    }
+
+    trtc.on(TRTC.EVENT.ERROR, (error) => {
+      setStatus('TRTC 错误');
+      log('ERROR', { message: error.message, code: error.code });
+    });
+
+    startButton.addEventListener('click', async () => {
+      if (publishing) return;
+      startButton.disabled = true;
+
+      try {
+        const config = getConfig();
+        setStatus('进入房间中');
+
+        await trtc.enterRoom({
+          sdkAppId: config.sdkAppId,
+          strRoomId: config.strRoomId,
+          userId: config.userId,
+          userSig: config.userSig,
+        });
+
+        if (config.sourceType === 'screen') {
+          setStatus('选择屏幕/窗口');
+          await trtc.startScreenShare({ view: 'local-preview' });
+        } else {
+          setStatus('打开摄像头');
+          await trtc.startLocalVideo({ view: 'local-preview' });
+        }
+
+        if (config.audioType === 'mic') {
+          setStatus('打开麦克风');
+          await trtc.startLocalAudio();
+        }
+
+        publishing = true;
+        stopButton.disabled = false;
+        setStatus(`正在推流：${config.strRoomId} / ${config.userId}`);
+      } catch (error) {
+        await cleanupAfterFailure();
+        startButton.disabled = false;
+        setStatus('推流失败');
+        log('start error', { message: error.message, code: error.code });
+      }
+    });
+
+    stopButton.addEventListener('click', async () => {
+      stopButton.disabled = true;
+      setStatus('停止推流中');
+      await stopPublishing();
+      startButton.disabled = false;
+      setStatus('已停止');
+    });
+
+    async function cleanupAfterFailure() {
+      try {
+        await stopPublishing();
+      } catch (error) {
+        log('cleanup error', { message: error.message, code: error.code });
+      }
+    }
+
+    async function stopPublishing() {
+      try { await trtc.stopScreenShare(); } catch (_) {}
+      try { await trtc.stopLocalVideo(); } catch (_) {}
+      try { await trtc.stopLocalAudio(); } catch (_) {}
+      try { await trtc.exitRoom(); } catch (_) {}
+      document.querySelector('#local-preview').innerHTML = '';
+      publishing = false;
+      stopButton.disabled = true;
+    }
+
+    window.addEventListener('beforeunload', () => {
+      stopPublishing();
+    });
+
+    log('页面已加载。推流 UserID 不能和观看端或 OBS 的 UserID 重复。');
+  </script>
+</body>
+</html>

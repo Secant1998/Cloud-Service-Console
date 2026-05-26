@@ -6,6 +6,7 @@ Thumbs.db
 # Logs
 *.log
 build-logs/
+runtime_logs/
 
 # Python
 __pycache__/
@@ -14,6 +15,7 @@ __pycache__/
 .mypy_cache/
 
 # Backend build outputs
+build/
 backend/build/
 backend/dist/
 backend/*.spec
@@ -26,12 +28,16 @@ frontend/vite.config.js
 frontend/vite.config.d.ts
 
 # Tauri / Rust build outputs
+*.exe
 src-tauri/target/
 src-tauri/binaries/*.exe
 src-tauri/binaries/*.pdb
 
 # Runtime data
 data/
+
+# Generated reports / local handoff files
+*.pptx
 
 # Local env / secrets
 .env

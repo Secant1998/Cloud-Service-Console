@@ -4,6 +4,7 @@ import base64
 import hashlib
 import http.client
 import json
+import os
 import posixpath
 import shlex
 import threading
@@ -31,6 +32,10 @@ NGINX_FALLBACK_CONF_PATH = "/etc/nginx/conf.d/cloud-service-console-tank-trouble
 _SERVER_STARTUP_WAIT = 3.0
 _SERVER_STARTUP_POLL = 0.3
 _SERVER_RETRY_COOLDOWN = 60.0
+_SERVER_HEALTH_CACHE_SECONDS = 8.0
+RUNTIME_RULESET_FEATURE = "custom_mode_rules_v30"
+CLEAN_DEPLOY_FEATURE = "clean_deploy"
+REQUIRED_RUNTIME_FEATURES = ("land_mine", "custom_mode", "tank_health", "heal_powerup", "guided_missile", "tow_missile", RUNTIME_RULESET_FEATURE)
 
 
 class TankTroubleCloudBridge:
@@ -43,10 +48,12 @@ class TankTroubleCloudBridge:
         self.remote_manifest_path = posixpath.join(self.remote_base, REMOTE_BUNDLE_MANIFEST_NAME)
         self._server_base_url: str | None = None
         self._server_confirmed_reachable = False
+        self._server_health_checked_at = 0.0
         self._server_last_fail_time: float = 0.0
         self._script_uploaded = False
-        self._latency_http_connection: http.client.HTTPConnection | None = None
-        self._latency_http_lock = threading.Lock()
+        self._latency_http_local = threading.local()
+        self._latency_http_generation = 0
+        self._latency_http_generation_lock = threading.Lock()
 
     def sync_room(
         self,
@@ -127,12 +134,16 @@ curl -fsS --max-time 3 http://127.0.0.1:{self.config.api_port}{PUBLIC_PATH_PREFI
             return False, str(exc) or "Tank Trouble server is not ready."
 
     def setup_server(self, client: CloudRemoteClient, *, force: bool = False) -> bool:
-        ready, _ = self.check_setup_ready(client)
-        if ready and not force:
-            return False
+        if not force:
+            ready, _ = self.check_setup_ready(client)
+            if ready:
+                return False
 
         self._script_uploaded = False
+        if force:
+            self._clean_remote_game_bundle(client)
         self.ensure_remote_script(client, force=True)
+        self._ensure_nginx_installed(client)
         self._install_public_proxy(client)
         service_body = self._systemd_service()
         client.put_text(f"/tmp/{REMOTE_SERVICE_NAME}.service", service_body, encoding="ascii")
@@ -150,6 +161,10 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
         self._close_latency_http_connection()
         self._wait_for_latency_server()
         return True
+
+    def local_runtime_summary(self) -> str:
+        bundle_hash = str(self._local_bundle_manifest()["bundle_hash"])
+        return f"{RUNTIME_RULESET_FEATURE}, {CLEAN_DEPLOY_FEATURE}, bundle {bundle_hash[:12]}"
 
     def toggle_vote(
         self,
@@ -266,6 +281,23 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
         client.run(f"bash -lc {shlex.quote(chmod_command)}", timeout=20)
         self._script_uploaded = True
 
+    def _clean_remote_game_bundle(self, client: CloudRemoteClient) -> None:
+        script = f"""
+set -e
+REMOTE_BASE={shlex.quote(self.remote_base)}
+case "$REMOTE_BASE" in
+  /home/*/{REMOTE_BASE_DIRNAME}/{REMOTE_ROOM_DIRNAME}) ;;
+  *) echo "Refusing to clean unexpected Tank Trouble path: $REMOTE_BASE" >&2; exit 1 ;;
+esac
+sudo systemctl stop {shlex.quote(REMOTE_SERVICE_NAME)} 2>/dev/null || true
+{self._stop_orphan_listener_script()}
+rm -rf "$REMOTE_BASE"
+mkdir -p "$REMOTE_BASE"
+chmod 700 "$REMOTE_BASE"
+"""
+        client.run(f"bash -lc {shlex.quote(script)}", timeout=30)
+        self._script_uploaded = False
+
     def _local_bundle_manifest(self) -> dict[str, object]:
         if not self.local_script_path.exists():
             raise RuntimeError(f"Tank Trouble cloud script not found: {self.local_script_path}")
@@ -368,10 +400,20 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
     ) -> dict[str, object]:
         if self._server_confirmed_reachable:
             try:
+                if time.time() - self._server_health_checked_at > _SERVER_HEALTH_CACHE_SECONDS:
+                    self._get_latency_server_health(timeout=0.8)
                 return self._post_latency_server(path, payload)
-            except Exception:
+            except Exception as exc:
                 self._server_confirmed_reachable = False
+                self._server_health_checked_at = 0.0
                 self._server_base_url = None
+                self._close_latency_http_connection()
+                if "older game runtime" in str(exc):
+                    self._sync_current_bundle_and_restart(client)
+                    result = self._post_latency_server(path, payload)
+                    self._server_confirmed_reachable = True
+                    self._server_health_checked_at = time.time()
+                    return result
 
         if time.time() - self._server_last_fail_time < _SERVER_RETRY_COOLDOWN:
             return self._run_payload(client, payload)
@@ -380,9 +422,11 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
             self._ensure_latency_server(client)
             result = self._post_latency_server(path, payload)
             self._server_confirmed_reachable = True
+            self._server_health_checked_at = time.time()
             return result
         except Exception:
             self._server_base_url = None
+            self._server_health_checked_at = 0.0
             self._server_last_fail_time = time.time()
             return self._run_payload(client, payload)
 
@@ -395,8 +439,10 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
         try:
             self._get_latency_server_health(timeout=0.8)
             return
-        except Exception:
-            pass
+        except Exception as exc:
+            if "older game runtime" in str(exc):
+                self._sync_current_bundle_and_restart(client)
+                return
 
         self._start_latency_server(client)
         self._wait_for_latency_server()
@@ -408,12 +454,16 @@ sudo systemctl restart {REMOTE_SERVICE_NAME}
         log_path = posixpath.join(self.remote_base, "tank-trouble-server.log")
         command = (
             f"cd {shlex.quote(self.remote_base)} && "
+            f"{self._stop_orphan_listener_script()} && "
             f"nohup python3 {shlex.quote(self.remote_script_path)} "
             f"--serve --port {TANK_GAME_SERVER_PORT} "
             f"--idle-timeout {TANK_GAME_SERVER_IDLE_TIMEOUT} "
             f"> {shlex.quote(log_path)} 2>&1 < /dev/null &"
         )
         client.run(f"bash -lc {shlex.quote(command)}", timeout=10)
+        self._server_confirmed_reachable = False
+        self._server_base_url = None
+        self._close_latency_http_connection()
 
     def _start_systemd_service_if_present(self, client: CloudRemoteClient) -> bool:
         command = (
@@ -449,8 +499,30 @@ RestartSec=1
 WantedBy=multi-user.target
 """
 
+    def _ensure_nginx_installed(self, client: CloudRemoteClient) -> None:
+        script = """
+set -e
+if ! command -v nginx >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get update
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y nginx
+  elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y nginx
+  else
+    echo "nginx is not installed and no supported package manager was found." >&2
+    exit 1
+  fi
+fi
+sudo mkdir -p /etc/nginx/conf.d
+sudo systemctl enable --now nginx
+"""
+        client.run(f"bash -lc {shlex.quote(script)}", timeout=180)
+
     def _install_public_proxy(self, client: CloudRemoteClient) -> None:
         block = f"""
+    # BEGIN Cloud Service Console Tank Trouble
     location = {PUBLIC_PATH_PREFIX} {{
         return 301 {PUBLIC_PATH_PREFIX}/;
     }}
@@ -469,6 +541,7 @@ WantedBy=multi-user.target
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
     }}
+    # END Cloud Service Console Tank Trouble
 """
         fallback = f"""
 server {{
@@ -501,15 +574,63 @@ path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 block = base64.b64decode(os.environ["BLOCK_B64"]).decode("utf-8")
 prefix = os.environ["PREFIX"]
-needle = "    location / {{"
-if f"location {{prefix}}/" not in text:
-    if needle in text:
-        text = text.replace(needle, block + "\\n" + needle, 1)
+start_marker = "    # BEGIN Cloud Service Console Tank Trouble"
+end_marker = "    # END Cloud Service Console Tank Trouble"
+
+def remove_marked_block(payload):
+    start = payload.find(start_marker)
+    if start < 0:
+        return payload
+    end = payload.find(end_marker, start)
+    if end < 0:
+        return payload
+    line_end = payload.find("\\n", end)
+    if line_end < 0:
+        line_end = len(payload)
     else:
-        insert_at = text.rfind("\\n}}")
-        if insert_at < 0:
-            raise SystemExit("could not find nginx server block end")
-        text = text[:insert_at] + "\\n" + block + text[insert_at:]
+        line_end += 1
+    return payload[:start].rstrip() + "\\n" + payload[line_end:].lstrip("\\n")
+
+def remove_nginx_block(payload, start):
+    brace = payload.find("{{", start)
+    if brace < 0:
+        return payload
+    depth = 0
+    end = brace
+    while end < len(payload):
+        char = payload[end]
+        if char == "{{":
+            depth += 1
+        elif char == "}}":
+            depth -= 1
+            if depth == 0:
+                end += 1
+                break
+        end += 1
+    line_start = payload.rfind("\\n", 0, start) + 1
+    line_end = payload.find("\\n", end)
+    if line_end < 0:
+        line_end = len(payload)
+    else:
+        line_end += 1
+    return payload[:line_start].rstrip() + "\\n" + payload[line_end:].lstrip("\\n")
+
+text = remove_marked_block(text)
+for needle in (f"location = {{prefix}}", f"location {{prefix}}/"):
+    while True:
+        index = text.find(needle)
+        if index < 0:
+            break
+        text = remove_nginx_block(text, index)
+
+needle = "    location / {{"
+if needle in text:
+    text = text.replace(needle, block.rstrip() + "\\n\\n" + needle, 1)
+else:
+    insert_at = text.rfind("\\n}}")
+    if insert_at < 0:
+        raise SystemExit("could not find nginx server block end")
+    text = text[:insert_at].rstrip() + "\\n" + block.rstrip() + text[insert_at:]
 path.write_text(text, encoding="utf-8")
 PY
     sudo cp "$tmp_conf" "$MAIN_CONF"
@@ -544,8 +665,34 @@ sudo systemctl reload nginx
                 time.sleep(_SERVER_STARTUP_POLL)
         raise RuntimeError(f"Tank Trouble latency server did not become ready: {last_error}")
 
+    def _expected_bundle_hash(self) -> str:
+        return str(self._local_bundle_manifest()["bundle_hash"])
+
+    def _sync_current_bundle_and_restart(self, client: CloudRemoteClient) -> None:
+        self.ensure_remote_script(client, force=True)
+        if self._start_systemd_service_if_present(client):
+            self._wait_for_latency_server()
+            return
+        self._start_latency_server(client)
+        self._wait_for_latency_server()
+
     def _get_latency_server_health(self, *, timeout: float) -> dict[str, object]:
-        return self._request_latency_server("GET", "/health", None, timeout=timeout)
+        payload = self._request_latency_server("GET", "/health", None, timeout=timeout)
+        features = payload.get("features")
+        feature_set = {str(feature) for feature in features} if isinstance(features, list) else set()
+        missing_features = [feature for feature in REQUIRED_RUNTIME_FEATURES if feature not in feature_set]
+        if missing_features:
+            raise RuntimeError(
+                "Tank Trouble server is running an older game runtime; missing features: "
+                + ", ".join(missing_features)
+            )
+        server_bundle_hash = str(payload.get("bundle_hash") or "")
+        expected_bundle_hash = self._expected_bundle_hash()
+        if not server_bundle_hash or server_bundle_hash != expected_bundle_hash:
+            raise RuntimeError("Tank Trouble server is running an older game runtime bundle.")
+        self._server_confirmed_reachable = True
+        self._server_health_checked_at = time.time()
+        return payload
 
     def _post_latency_server(
         self,
@@ -571,8 +718,7 @@ sudo systemctl reload nginx
             data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             headers["Content-Type"] = "application/json; charset=utf-8"
 
-        with self._latency_http_lock:
-            response_body = self._perform_latency_http_request(method, path, data, headers, timeout=timeout)
+        response_body = self._perform_latency_http_request(method, path, data, headers, timeout=timeout)
 
         try:
             parsed = json.loads(response_body or "{}")
@@ -608,28 +754,58 @@ sudo systemctl reload nginx
                 return response_body
             except Exception as exc:
                 last_error = exc
-                self._close_latency_http_connection()
+                self._close_latency_http_connection(reset_all=False)
         raise RuntimeError(str(last_error or "Tank Trouble latency server request failed."))
 
-    @staticmethod
-    def _public_request_path(path: str) -> str:
+    def _public_request_path(self, path: str) -> str:
         clean_path = "/" + str(path or "").lstrip("/")
-        return f"{PUBLIC_PATH_PREFIX}{clean_path}"
+        prefix = "" if self._use_local_tank_server() else PUBLIC_PATH_PREFIX
+        return f"{prefix}{clean_path}"
 
     def _get_latency_http_connection(self, *, timeout: float, reset: bool = False) -> http.client.HTTPConnection:
         if reset:
-            self._close_latency_http_connection()
-        if self._latency_http_connection is None:
-            connection_cls = http.client.HTTPSConnection if self.config.public_scheme == "https" else http.client.HTTPConnection
-            self._latency_http_connection = connection_cls(self.config.public_host, self.config.api_port, timeout=timeout)
+            self._close_latency_http_connection(reset_all=False)
+        target = self._latency_http_target()
+        generation = self._latency_http_generation
+        connection = getattr(self._latency_http_local, "connection", None)
+        connection_target = getattr(self._latency_http_local, "target", None)
+        connection_generation = getattr(self._latency_http_local, "generation", -1)
+        if connection is None or connection_target != target or connection_generation != generation:
+            self._close_latency_http_connection(reset_all=False)
+            scheme, host, port = target
+            connection_cls = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
+            connection = connection_cls(host, port, timeout=timeout)
+            self._latency_http_local.connection = connection
+            self._latency_http_local.target = target
+            self._latency_http_local.generation = generation
         else:
-            self._latency_http_connection.timeout = timeout
-        return self._latency_http_connection
+            connection.timeout = timeout
+        return connection
 
-    def _close_latency_http_connection(self) -> None:
-        if self._latency_http_connection is None:
+    def _close_latency_http_connection(self, *, reset_all: bool = True) -> None:
+        if reset_all:
+            with self._latency_http_generation_lock:
+                self._latency_http_generation += 1
+        connection = getattr(self._latency_http_local, "connection", None)
+        if connection is None:
             return
         try:
-            self._latency_http_connection.close()
+            connection.close()
         finally:
-            self._latency_http_connection = None
+            self._latency_http_local.connection = None
+            self._latency_http_local.target = None
+            self._latency_http_local.generation = -1
+
+    def _latency_http_target(self) -> tuple[str, str, int]:
+        if self._use_local_tank_server():
+            return ("http", "127.0.0.1", TANK_GAME_SERVER_PORT)
+        return (self.config.public_scheme, self.config.public_host, self.config.api_port)
+
+    def _use_local_tank_server(self) -> bool:
+        if str(os.environ.get("CLOUD_CONSOLE_TANK_LOCAL_DIRECT") or "").strip().lower() in {"0", "false", "no", "off"}:
+            return False
+        if str(os.environ.get("CLOUD_CONSOLE_WEB_MODE") or "").strip().lower() not in {"1", "true", "yes", "on"}:
+            return False
+        target_host = str(self.config.ssh_host or self.config.public_host or "").strip().lower()
+        default_host = str(os.environ.get("CLOUD_CONSOLE_DEFAULT_HOST") or "").strip().lower()
+        return target_host in {"127.0.0.1", "localhost"} or bool(default_host and target_host == default_host)
