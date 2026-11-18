@@ -58,10 +58,10 @@ Last updated: 2026-11-18
 - Production build, icon format/size checks, light/dark screenshots, mobile layout and the public login page passed verification.
 - Desktop icon resources are ready for the next build. No executable/installer build, version bump, commit, tag or GitHub release was performed for this change.
 
-## Current Version
+## Desktop Release Baseline
 
 - App version: 0.3.68
-- Latest commit: fe8cf0a
+- Packaged release commit: fe8cf0a (source updates are listed above).
 - Latest tag: v0.3.68
 - Latest installer: `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
 - Latest copied EXEs: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`
