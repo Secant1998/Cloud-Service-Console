@@ -6,6 +6,132 @@ export type LoginRequest = {
   auto_login: boolean;
 };
 
+export type AccountAuthRequest = {
+  username: string;
+  password: string;
+  remember_device: boolean;
+};
+
+export type AccountRegisterRequest = AccountAuthRequest;
+
+export type AccountSession = {
+  success: boolean;
+  session_token: string;
+  device_token: string;
+  username: string;
+  role: "admin" | "user";
+  admin: boolean;
+  avatar_data_url: string;
+};
+
+export type AccountAvatar = {
+  success: boolean;
+  avatar_data_url: string;
+};
+
+export type AdminUser = {
+  username: string;
+  role: "admin" | "user";
+  status: "active";
+  created_at: string;
+  online: boolean;
+  last_seen_at: string;
+  active_sessions: number;
+  avatar_data_url: string;
+};
+
+export type AdminUserList = {
+  users: AdminUser[];
+  total: number;
+  online: number;
+  updated_at: string;
+};
+
+export type AgentSettings = {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  api_key_configured: boolean;
+  api_key_hint: string;
+  updated_at: string;
+  updated_by: string;
+};
+
+export type AgentSettingsRequest = {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  api_key: string;
+  clear_api_key?: boolean;
+};
+
+export type CaptureFileEntry = {
+  id: string;
+  filename: string;
+  stored_filename: string;
+  kind: string;
+  source: string;
+  session_id: string;
+  room_id: string;
+  node_id: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  uploaded_at: string;
+  started_at_server_ms?: number | null;
+  stopped_at_server_ms?: number | null;
+  authoritative_started_at_server_ms?: number | null;
+  authoritative_stopped_at_server_ms?: number | null;
+  stop_requested_at_server_ms?: number | null;
+  stop_received_at_server_ms?: number | null;
+  stop_authority?: string | null;
+  sample_count?: number | null;
+  sample_hz?: number | null;
+  metadata: Record<string, unknown>;
+};
+
+export type CaptureFileList = {
+  files: CaptureFileEntry[];
+  total: number;
+  total_bytes: number;
+  updated_at: string;
+};
+
+export type CaptureTask = {
+  id: string;
+  room_id: string;
+  session_id: string;
+  uploaded_at: string;
+  started_at_server_ms: number | null;
+  stopped_at_server_ms: number | null;
+  authoritative_started_at_server_ms?: number | null;
+  authoritative_stopped_at_server_ms?: number | null;
+  effective_duration_ms?: number | null;
+  stop_authority?: string;
+  files: CaptureFileEntry[];
+  missing_kinds: string[];
+  ambiguous_kinds: string[];
+  size_bytes: number;
+  output_bytes: number;
+  status: "incomplete" | "ready" | "queued" | "running" | "completed" | "failed";
+  progress: number;
+  phase: string;
+  error: string;
+  can_synthesize: boolean;
+  can_repair: boolean;
+  completed_at: string | null;
+  report: { alignment: string; warnings: string[]; state_sample_count: number; frames_without_state: number } | null;
+};
+
+export type CaptureRecoveryKind = "operator-video" | "operator-input" | "edge-state";
+
+export type CaptureTaskList = {
+  tasks: CaptureTask[];
+  total: number;
+  total_bytes: number;
+  updated_at: string;
+};
+
 export type SavedLoginAccount = {
   host: string;
   username: string;
@@ -61,6 +187,7 @@ export type ControlMonitorOffer = {
   createdAt: string;
   clientId?: string;
   frontendClientId?: string;
+  computeClientId?: string;
   robotClientId?: string;
   offer: ControlSessionDescription;
 };
@@ -100,6 +227,8 @@ export type ControlMonitorLinkStatus = {
   internalPendingOffers?: number;
   browserPosts: number;
   robotPolls: number;
+  frontendPosts?: number;
+  computePolls?: number;
   answersPosted: number;
   activeClientCount: number;
   dialingClientCount: number;
@@ -111,6 +240,7 @@ export type ControlMonitorLinkStatus = {
   signalPaired?: boolean;
   inferredDirectConnected?: boolean;
   robotListenerClientId?: string;
+  computeListenerClientId?: string;
   robotListenerFreshMs?: number;
   robotListenerAgeMs?: number | null;
   robotListenerLatencyMs?: number | null;
@@ -120,6 +250,8 @@ export type ControlMonitorLinkStatus = {
   lastRobotListenerAt?: string | null;
   lastBrowserOfferAt?: string | null;
   lastRobotPollAt?: string | null;
+  lastFrontendOfferAt?: string | null;
+  lastComputePollAt?: string | null;
   lastAnswerAt?: string | null;
   source?: string;
 };
@@ -922,6 +1054,20 @@ export type LocalStreamStatus = {
   push_note: string;
   pull_reachable: boolean;
   pull_note: string;
+  log_tail: string;
+  message: string;
+  updated_at: string;
+};
+
+export type P2PLocalPusherStatus = {
+  available: boolean;
+  running: boolean;
+  pid?: number | null;
+  project_path: string;
+  config_path: string;
+  room_id: string;
+  watch_url: string;
+  active_profile: Record<string, unknown>;
   log_tail: string;
   message: string;
   updated_at: string;

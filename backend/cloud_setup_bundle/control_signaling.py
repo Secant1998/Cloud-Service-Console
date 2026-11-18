@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hmac
 import json
 import math
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -215,7 +217,7 @@ class ControlSignalingBroker:
         except asyncio.TimeoutError as exc:
             if pending in state.browser_waiters:
                 state.browser_waiters.remove(pending)
-            raise web.HTTPGatewayTimeout(text="Timed out waiting for robot answer") from exc
+            raise web.HTTPGatewayTimeout(text="Timed out waiting for receiver answer") from exc
         except asyncio.CancelledError:
             if pending in state.browser_waiters:
                 state.browser_waiters.remove(pending)
@@ -719,6 +721,8 @@ class ControlSignalingBroker:
             "internalPendingOffers": max(0, pending_offers - user_pending_offers),
             "browserPosts": session_state.browser_posts,
             "robotPolls": session_state.robot_polls,
+            "frontendPosts": session_state.browser_posts,
+            "computePolls": session_state.robot_polls,
             "answersPosted": session_state.answers_posted,
             "activeClientCount": effective_active_client_count,
             "dialingClientCount": dialing_client_count,
@@ -730,6 +734,7 @@ class ControlSignalingBroker:
             "signalPaired": signal_paired,
             "inferredDirectConnected": inferred_active_pair,
             "robotListenerClientId": session_state.robot_listener_client_id or "",
+            "computeListenerClientId": session_state.robot_listener_client_id or "",
             "robotListenerInstanceId": session_state.robot_listener_instance_id or "",
             "robotListenerFreshMs": round(self.robot_listener_ttl_sec * 1000),
             "robotListenerAgeMs": robot_listener_age_ms,
@@ -740,6 +745,8 @@ class ControlSignalingBroker:
             "lastRobotListenerAt": session_state.robot_listener_last_seen_at,
             "lastBrowserOfferAt": session_state.last_browser_offer_at,
             "lastRobotPollAt": last_robot_poll_at,
+            "lastFrontendOfferAt": session_state.last_browser_offer_at,
+            "lastComputePollAt": last_robot_poll_at,
             "lastAnswerAt": last_answer_at,
             "source": "control-signaling",
         }
@@ -769,8 +776,11 @@ class ControlSignalingBroker:
                     ],
                     "browserPosts": state.browser_posts,
                     "robotPolls": state.robot_polls,
+                    "frontendPosts": state.browser_posts,
+                    "computePolls": state.robot_polls,
                     "answersPosted": state.answers_posted,
                     "robotListenerClientId": state.robot_listener_client_id,
+                    "computeListenerClientId": state.robot_listener_client_id,
                     "robotListenerInstanceId": state.robot_listener_instance_id,
                     "robotListenerFirstSeenAt": state.robot_listener_first_seen_at,
                     "robotListenerLastSeenAt": state.robot_listener_last_seen_at,
@@ -781,6 +791,8 @@ class ControlSignalingBroker:
                     "robotListenerConflictCount": state.robot_listener_conflicts,
                     "lastBrowserOfferAt": state.last_browser_offer_at,
                     "lastRobotPollAt": state.last_robot_poll_at,
+                    "lastFrontendOfferAt": state.last_browser_offer_at,
+                    "lastComputePollAt": state.last_robot_poll_at,
                     "lastAnswerAt": state.last_answer_at,
                 }
                 for name, state in self.sessions.items()
@@ -831,6 +843,28 @@ def read_robot_client_id(request: web.Request) -> str:
     if not robot_client_id:
         raise web.HTTPBadRequest(text="Missing query parameter: robot_client_id")
     return robot_client_id
+
+
+def read_edge_client_id(request: web.Request) -> str:
+    edge_client_id = (
+        request.query.get("edge_client_id")
+        or request.query.get("edgeClientId")
+        or ""
+    ).strip()
+    if not edge_client_id:
+        raise web.HTTPBadRequest(text="Missing query parameter: edge_client_id")
+    return edge_client_id
+
+
+def read_compute_client_id(request: web.Request) -> str:
+    compute_client_id = (
+        request.query.get("compute_client_id")
+        or request.query.get("computeClientId")
+        or ""
+    ).strip()
+    if not compute_client_id:
+        raise web.HTTPBadRequest(text="Missing query parameter: compute_client_id")
+    return compute_client_id
 
 
 def read_robot_listener_id(request: web.Request) -> str | None:
@@ -884,12 +918,76 @@ def validate_offer_answer_payload(payload: dict[str, Any]) -> None:
 
 
 async def api_health(request: web.Request) -> web.Response:
-    return web.json_response({"ok": True, "serverTime": utc_now_iso()})
+    return web.json_response(
+        {
+            "ok": True,
+            "protocolVersion": "telebot-control-v2",
+            "authRequired": bool(request.app["auth_token"]),
+            "serverTime": utc_now_iso(),
+        }
+    )
 
 
 async def api_status(request: web.Request) -> web.Response:
     broker: ControlSignalingBroker = request.app["broker"]
-    return web.json_response(broker.snapshot())
+    payload = broker.snapshot()
+    payload["authRequired"] = bool(request.app["auth_token"])
+    payload["protocolVersion"] = "telebot-control-v2"
+    return web.json_response(payload)
+
+
+async def api_frontend_offer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    client_id = read_client_id(request)
+    payload = await read_json_body(request)
+    validate_offer_answer_payload(payload)
+    if broker._read_client_role(payload) != "frontend_control_uplink":
+        raise web.HTTPBadRequest(text="Field 'role' must be 'frontend_control_uplink'")
+    answer = await broker.post_browser_offer(session_id, client_id, payload)
+    return web.json_response(answer)
+
+
+async def api_compute_next_offer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    compute_client_id = read_compute_client_id(request)
+    listener_id = read_robot_listener_id(request)
+    next_offer = broker.pop_next_offer(
+        session_id,
+        compute_client_id,
+        listener_id,
+        read_optional_request_latency_ms(request),
+    )
+    if next_offer is None:
+        return web.Response(status=204)
+    next_offer["computeClientId"] = compute_client_id
+    return web.json_response(next_offer)
+
+
+async def api_compute_answer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    compute_client_id = read_compute_client_id(request)
+    listener_id = read_robot_listener_id(request)
+    offer_id = (request.query.get("offer_id") or "").strip()
+    if not offer_id:
+        raise web.HTTPBadRequest(text="Missing query parameter: offer_id")
+    payload = await read_json_body(request)
+    validate_offer_answer_payload(payload)
+    if broker._read_client_role(payload) != "compute_control_receiver":
+        raise web.HTTPBadRequest(text="Field 'role' must be 'compute_control_receiver'")
+    payload.setdefault("computeClientId", compute_client_id)
+    result = broker.post_robot_answer(
+        session_id,
+        compute_client_id,
+        offer_id,
+        payload,
+        listener_id,
+        read_optional_request_latency_ms(request),
+    )
+    result["computeClientId"] = compute_client_id
+    return web.json_response(result)
 
 
 async def api_browser_offer(request: web.Request) -> web.Response:
@@ -958,6 +1056,60 @@ async def api_robot_answer(request: web.Request) -> web.Response:
     return web.json_response(result)
 
 
+async def api_compute_command_offer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    client_id = read_client_id(request)
+    payload = await read_json_body(request)
+    validate_offer_answer_payload(payload)
+    if broker._read_client_role(payload) != "compute_command_sender":
+        raise web.HTTPBadRequest(text="Field 'role' must be 'compute_command_sender'")
+    answer = await broker.post_browser_offer(session_id, client_id, payload)
+    return web.json_response(answer)
+
+
+async def api_edge_next_command_offer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    edge_client_id = read_edge_client_id(request)
+    listener_id = read_robot_listener_id(request)
+    next_offer = broker.pop_next_offer(
+        session_id,
+        edge_client_id,
+        listener_id,
+        read_optional_request_latency_ms(request),
+    )
+    if next_offer is None:
+        return web.Response(status=204)
+    next_offer["edgeClientId"] = edge_client_id
+    return web.json_response(next_offer)
+
+
+async def api_edge_command_answer(request: web.Request) -> web.Response:
+    broker: ControlSignalingBroker = request.app["broker"]
+    session_id = read_session(request)
+    edge_client_id = read_edge_client_id(request)
+    listener_id = read_robot_listener_id(request)
+    offer_id = (request.query.get("offer_id") or "").strip()
+    if not offer_id:
+        raise web.HTTPBadRequest(text="Missing query parameter: offer_id")
+    payload = await read_json_body(request)
+    validate_offer_answer_payload(payload)
+    if broker._read_client_role(payload) != "edge_command_receiver":
+        raise web.HTTPBadRequest(text="Field 'role' must be 'edge_command_receiver'")
+    payload.setdefault("edgeClientId", edge_client_id)
+    result = broker.post_robot_answer(
+        session_id,
+        edge_client_id,
+        offer_id,
+        payload,
+        listener_id,
+        read_optional_request_latency_ms(request),
+    )
+    result["edgeClientId"] = edge_client_id
+    return web.json_response(result)
+
+
 async def api_monitor_key_state_post(request: web.Request) -> web.Response:
     broker: ControlSignalingBroker = request.app["broker"]
     session_id = read_session(request)
@@ -979,13 +1131,18 @@ async def cors_middleware(request: web.Request, handler) -> web.StreamResponse:
         response: web.StreamResponse = web.Response(status=204)
     else:
         try:
+            expected_token = str(request.app["auth_token"] or "")
+            if expected_token and request.path != "/control/webrtc/health":
+                supplied = request.headers.get("Authorization", "")
+                if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], expected_token):
+                    raise web.HTTPUnauthorized(text="Valid signaling bearer token required")
             response = await handler(request)
         except web.HTTPException as exc:
             response = exc
 
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Cache-Control"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Cache-Control"
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -994,8 +1151,10 @@ def create_app(
     offer_timeout_sec: float | None,
     monitor_ttl_sec: float,
     robot_listener_ttl_sec: float,
+    auth_token: str = "",
 ) -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
+    app["auth_token"] = auth_token.strip()
     app["broker"] = ControlSignalingBroker(
         offer_timeout_sec=offer_timeout_sec,
         monitor_ttl_sec=monitor_ttl_sec,
@@ -1003,11 +1162,18 @@ def create_app(
     )
     app.router.add_get("/control/webrtc/health", api_health)
     app.router.add_get("/control/webrtc/status", api_status)
+    app.router.add_post("/control/webrtc/frontend-offer", api_frontend_offer)
+    app.router.add_get("/control/webrtc/compute-next-offer", api_compute_next_offer)
+    app.router.add_post("/control/webrtc/compute-answer", api_compute_answer)
+    # Temporary aliases for devices that have not migrated to the v2 names yet.
     app.router.add_post("/control/webrtc/browser-offer", api_browser_offer)
     app.router.add_get("/control/webrtc/robot-next-offer", api_robot_next_offer)
     app.router.add_get("/control/webrtc/robot-listener-heartbeat", api_robot_listener_heartbeat)
     app.router.add_post("/control/webrtc/robot-listener-heartbeat", api_robot_listener_heartbeat)
     app.router.add_post("/control/webrtc/robot-answer", api_robot_answer)
+    app.router.add_post("/command/webrtc/compute-offer", api_compute_command_offer)
+    app.router.add_get("/command/webrtc/edge-next-offer", api_edge_next_command_offer)
+    app.router.add_post("/command/webrtc/edge-answer", api_edge_command_answer)
     app.router.add_post("/control/monitor/key-state", api_monitor_key_state_post)
     app.router.add_get("/control/monitor/key-state", api_monitor_key_state_get)
     app.router.add_route("OPTIONS", "/{tail:.*}", lambda request: web.Response(status=204))
@@ -1015,7 +1181,7 @@ def create_app(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="HTTP signaling broker for browser<->robot control WebRTC pairing.")
+    parser = argparse.ArgumentParser(description="HTTP signaling broker for frontend<->compute and compute<->edge WebRTC pairing.")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind")
     parser.add_argument("--port", default=18085, type=int, help="Port to bind")
     parser.add_argument(
@@ -1031,17 +1197,20 @@ def parse_args() -> argparse.Namespace:
         type=float,
         help="How long a robot_client_id keeps the exclusive listener slot after its latest poll",
     )
+    parser.add_argument("--auth-token-env", default="TELEBOT_CONTROL_SIGNAL_TOKEN")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     offer_timeout_sec = None if float(args.offer_timeout_sec) <= 0 else max(1.0, float(args.offer_timeout_sec))
+    auth_token = os.getenv(str(args.auth_token_env), "").strip()
     web.run_app(
         create_app(
             offer_timeout_sec=offer_timeout_sec,
             monitor_ttl_sec=max(0.5, float(args.monitor_ttl_sec)),
             robot_listener_ttl_sec=max(1.0, float(args.robot_listener_ttl_sec)),
+            auth_token=auth_token,
         ),
         host=args.host,
         port=args.port,

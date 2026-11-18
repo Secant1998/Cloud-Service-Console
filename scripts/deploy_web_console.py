@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import shlex
 import shutil
 import subprocess
@@ -20,11 +19,15 @@ PACKAGE_DIR = ROOT / "build" / "cloud-service-console-web"
 ARCHIVE_PATH = ROOT / "build" / "cloud-service-console-web.tar.gz"
 LOGIN_SETTINGS_PATH = Path(os.environ.get("LOCALAPPDATA", "")) / "CloudServiceConsole" / "cloud-console-login.json"
 
-REMOTE_HOST = os.environ.get("CLOUD_CONSOLE_DEPLOY_HOST", "150.109.100.30")
+REMOTE_HOST = os.environ.get("CLOUD_CONSOLE_DEPLOY_HOST", "43.154.250.82")
 REMOTE_USER = os.environ.get("CLOUD_CONSOLE_DEPLOY_USER", "ubuntu")
 REMOTE_BASE = os.environ.get("CLOUD_CONSOLE_WEB_REMOTE_BASE", "/opt/cloud-service-console-web")
 REMOTE_PORT = int(os.environ.get("CLOUD_CONSOLE_WEB_PORT", "18080"))
 SERVICE_NAME = os.environ.get("CLOUD_CONSOLE_WEB_SERVICE", "cloud-service-console-web")
+CONTROL_SIGNAL_ENV = os.environ.get(
+    "CLOUD_CONSOLE_CONTROL_SIGNAL_ENV",
+    "/opt/go2rtc-cloud/control-signaling.env",
+)
 
 
 def run(command: list[str], cwd: Path | None = None) -> None:
@@ -55,10 +58,7 @@ def copy_tree(source: Path, destination: Path, ignore: set[str] | None = None) -
     )
 
 
-def build_package(saved: dict[str, str]) -> tuple[str, str]:
-    admin_token = os.environ.get("CLOUD_CONSOLE_ADMIN_TOKEN") or secrets.token_urlsafe(32)
-    user_token = os.environ.get("CLOUD_CONSOLE_USER_TOKEN") or secrets.token_urlsafe(32)
-
+def build_package(saved: dict[str, str]) -> None:
     run(["cmd", "/c", "npm.cmd", "run", "build"], cwd=FRONTEND_DIR)
 
     if PACKAGE_DIR.exists():
@@ -67,7 +67,7 @@ def build_package(saved: dict[str, str]) -> tuple[str, str]:
     copy_tree(BACKEND_DIR, PACKAGE_DIR / "backend", ignore={"build", "dist", "*.spec"})
     copy_tree(DIST_DIR, PACKAGE_DIR / "frontend" / "dist")
 
-    storage_dir = PACKAGE_DIR / "storage"
+    storage_dir = PACKAGE_DIR / "bootstrap-storage"
     storage_dir.mkdir(parents=True)
     login_payload = {
         "host": saved["host"],
@@ -96,8 +96,9 @@ def build_package(saved: dict[str, str]) -> tuple[str, str]:
             f"CLOUD_CONSOLE_FRONTEND_DIST={REMOTE_BASE}/frontend/dist",
             f"CLOUD_CONSOLE_DEFAULT_HOST={saved['host']}",
             f"CLOUD_CONSOLE_DEFAULT_SSH_USER={saved['username']}",
-            f"CLOUD_CONSOLE_ADMIN_TOKEN={admin_token}",
-            f"CLOUD_CONSOLE_USER_TOKEN={user_token}",
+            "# Optional dedicated machine-to-cloud capture token. Existing Frontend/Compute signal tokens are also accepted.",
+            "TELEBOT_CAPTURE_UPLOAD_TOKEN=",
+            "TELEBOT_FRONTEND_SIGNAL_TOKEN=",
             "",
         ]
     )
@@ -112,7 +113,6 @@ def build_package(saved: dict[str, str]) -> tuple[str, str]:
         ARCHIVE_PATH.unlink()
     with tarfile.open(ARCHIVE_PATH, "w:gz") as archive:
         archive.add(PACKAGE_DIR, arcname="cloud-service-console-web")
-    return admin_token, user_token
 
 
 def connect(saved: dict[str, str]) -> paramiko.SSHClient:
@@ -173,14 +173,39 @@ if ss -ltn | awk '{{print $4}}' | grep -Eq '(^|:)'"$PORT"'$'; then
 fi
 sudo mkdir -p "$BASE"
 TMP_DIR="$(mktemp -d)"
+PRESERVED_SIGNAL_ENV="$(mktemp)"
 tar -xzf {quoted_archive} -C "$TMP_DIR"
-sudo rm -rf "$BASE/backend" "$BASE/frontend" "$BASE/storage" "$BASE/cloud-console-web.env" "$BASE/README.web-deploy.txt"
-sudo cp -a "$TMP_DIR/cloud-service-console-web/." "$BASE/"
-rm -rf "$TMP_DIR"
+sudo mkdir -p "$BASE/storage"
+if [ -d "$BASE/backend" ] && [ -d "$BASE/frontend" ]; then
+  sudo mkdir -p "$BASE/backups"
+  sudo tar -czf "$BASE/backups/console-before-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" -C "$BASE" backend frontend cloud-console-web.env
+  sudo chmod 0600 "$BASE"/backups/*.tar.gz
+fi
+if [ -f "$BASE/cloud-console-web.env" ]; then
+  grep -E '^(TELEBOT_CONTROL_SIGNAL_BASE_URL|TELEBOT_SIGNAL_ADMIN_TOKEN|TELEBOT_FRONTEND_SIGNAL_TOKEN|TELEBOT_COMPUTE_SIGNAL_TOKEN|TELEBOT_CAPTURE_UPLOAD_TOKEN)=' \
+    "$BASE/cloud-console-web.env" > "$PRESERVED_SIGNAL_ENV" || true
+fi
+sudo rm -rf "$BASE/backend" "$BASE/frontend" "$BASE/bootstrap-storage" "$BASE/cloud-console-web.env" "$BASE/README.web-deploy.txt"
+sudo cp -a "$TMP_DIR/cloud-service-console-web/backend" "$BASE/backend"
+sudo cp -a "$TMP_DIR/cloud-service-console-web/frontend" "$BASE/frontend"
+sudo cp -a "$TMP_DIR/cloud-service-console-web/cloud-console-web.env" "$BASE/cloud-console-web.env"
+if [ -s "$PRESERVED_SIGNAL_ENV" ]; then
+  sudo tee -a "$BASE/cloud-console-web.env" < "$PRESERVED_SIGNAL_ENV" >/dev/null
+fi
+sudo chmod 0600 "$BASE/cloud-console-web.env"
+sudo cp -a "$TMP_DIR/cloud-service-console-web/README.web-deploy.txt" "$BASE/README.web-deploy.txt"
+if [ ! -f "$BASE/storage/cloud-console-login.json" ]; then
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/bootstrap-storage/cloud-console-login.json" "$BASE/storage/cloud-console-login.json"
+fi
+rm -rf "$TMP_DIR" "$PRESERVED_SIGNAL_ENV"
 sudo chown -R {shlex.quote(REMOTE_USER)}:{shlex.quote(REMOTE_USER)} "$BASE"
 python3 -m venv "$BASE/.venv"
 "$BASE/.venv/bin/python" -m pip install --upgrade pip >/dev/null
 "$BASE/.venv/bin/python" -m pip install -r "$BASE/backend/requirements.txt" >/dev/null
+sudo "$BASE/.venv/bin/python" -m playwright install-deps chromium >/dev/null
+"$BASE/.venv/bin/python" -m playwright install chromium >/dev/null
+command -v ffmpeg >/dev/null
+command -v ffprobe >/dev/null
 sudo tee /etc/systemd/system/{SERVICE_NAME}.service >/dev/null <<UNIT
 [Unit]
 Description=Cloud Service Console Web
@@ -192,6 +217,8 @@ Type=simple
 User={REMOTE_USER}
 WorkingDirectory=$BASE/backend
 EnvironmentFile=$BASE/cloud-console-web.env
+EnvironmentFile=-{CONTROL_SIGNAL_ENV}
+EnvironmentFile=-/opt/webrtc-p2p-video/p2p-v2-auth.env
 ExecStart=$BASE/.venv/bin/python launcher.py
 Restart=always
 RestartSec=2
@@ -207,7 +234,7 @@ systemctl is-active {SERVICE_NAME}.service
 set -a
 . "$BASE/cloud-console-web.env"
 set +a
-curl -fsS -H "Authorization: Bearer $CLOUD_CONSOLE_ADMIN_TOKEN" "http://127.0.0.1:$PORT/api/health" >/dev/null
+curl -fsS "http://127.0.0.1:$PORT/api/health" >/dev/null
 """
     remote_run(client, script, timeout=420)
 
@@ -216,7 +243,7 @@ def main() -> None:
     saved = read_saved_login()
     if saved["host"] != REMOTE_HOST:
         raise RuntimeError(f"Saved host {saved['host']} does not match deploy host {REMOTE_HOST}.")
-    admin_token, user_token = build_package(saved)
+    build_package(saved)
     client = connect(saved)
     try:
         before = remote_run(
@@ -238,10 +265,8 @@ def main() -> None:
     print(before)
     print("\nExisting chain services after:")
     print(after)
-    print("\nAdmin URL:")
-    print(f"http://{REMOTE_HOST}:{REMOTE_PORT}/?access_token={admin_token}")
-    print("\nUser URL:")
-    print(f"http://{REMOTE_HOST}:{REMOTE_PORT}/?access_token={user_token}")
+    print("\nWeb console URL:")
+    print("https://console.cityulive.com/")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4242 @@
-﻿# Cloud Service Console Implementation Log
+# Cloud Service Console Implementation Log
+
+## 2026-11-18 - RoboCasa completion and source handoff
+
+- Supplemented 60 pinned v0.2 fixtures on the server, preserving all 5,971 older
+  catalog rows. The active index now contains 6,031 entries, including 22 new
+  articulated models with 76 movable joints.
+- Added the staged import/activation worker and documented the paired simulator's
+  native multi-joint and visual-inertia compatibility. Button contact regions are
+  metadata; device-state runtime adapters remain outstanding.
+- Updated the master handoff, shared status and model-library documentation.
+  Bulk assets and diagnostic reports stay outside the source publication.
+- Existing sink/stove preview sliders rendered joint motion, but complete browser
+  automation remains unpassed because of page waits/closure and drag targeting.
+  This batch changes the data catalog, not the frontend interaction implementation.
+
+## 2026-11-05 - Black model-card hover with Dark Reader
+
+- Reproduced the reported black card using the installed Dark Reader extension in an isolated test profile: its rewrite made the transparent reflection layer opaque.
+- Moved lighting behind thumbnail content and removed the full-card overlay and previous speculative preview compositor workaround. Pointer tilt/shadows and image crossfades remain.
+- Updated existing hover checks for background lighting; added real dishwasher pixel checks with an optional disposable Dark Reader profile. User browser settings remain unchanged.
+- Build and card layout/tilt/lifecycle checks passed, covering desktop/mobile, both themes and individual/category thumbnail paint. Published static files only, with rollback at `/opt/cloud-service-console-web/backups/web-assets-20261104T181244Z`; no backend/service restart, version bump, installer build or GitHub push.
+
+## 2026-11-05 - Joint marker placement
+
+- Replaced straight rotation arrows with a curved arrow around the extended rotation axis, beyond the moving part. A faint dashed line identifies the axis.
+- Sliding arrows start at the moving assembly's center and move with it. Optional URDF mass/center data is retained by the view API; missing inertia falls back to geometry center.
+- Validation includes transformed-axis and moving-center checks, optional-inertia API cases, build and real microwave/cabinet screenshots with marker-pixel movement checks on desktop/mobile in both themes.
+
+## 2026-11-05 - Interactive articulated model previews
+
+- Extended the model view API with native URDF axes, motion limits and mimic relationships; fixed joints remain static and malformed controls show their reason.
+- Added selectable joint buttons, moving-part tint, axis indicator, degree/mm sliders, numeric editing, direct visible-part dragging and reset controls. Background camera gestures and full-screen controls remain available.
+- Preserved source textures and original thumbnails; reserved camera framing for opened doors and drawers. Added independent motion transforms for correct nested-joint behavior.
+- Verification: backend manifest/source-validation tests, Node kinematics tests, production build and Playwright checks using real cloud microwave, cabinet/drawer and rigid models. Screenshots cover both themes and desktop/mobile; thumbnail regression included.
+- Deployed the scoped model-library backend and built frontend with backup/rollback. All 2,347 articulated source models were audited: 11,971 moving joints, including 22 invalid axes and one zero-range joint that are disabled. No model data, robot services, installers or GitHub state were changed.
+
+## 2026-11-05 - User-supplied console icon
+
+- Replaced the login badge and sidebar V3 badge with the supplied photograph.
+- Added a versioned favicon and a hashed touch-icon asset accessible before login.
+- Regenerated the desktop PNG and multi-resolution ICO from the same retained source image; future desktop builds no longer redraw the old icon.
+- Validation: production build passed; Playwright checked login/sidebar images in light and dark themes, mobile login layout, favicon responses, and the public login page without runtime errors.
+- Deployment: updated hosted frontend assets and atomically replaced its HTML entry. Previous entry/icon files were backed up under the console's `backups/icon-update-*` directory. Backend and robot services were not restarted. Windows executables/installers were not rebuilt.
+
+## 2026-08-13 14:53 - External frontend VS Code terminal auto-activation
+
+Scope:
+- Configured both the external Telebot root workspace and its `apps/frontend` sub-workspace so every new VS Code PowerShell terminal activates the root `.venv` automatically.
+- Added a workspace-only `Telebot PowerShell` default profile with process-level execution-policy bypass, because the system policy blocks `Activate.ps1`.
+- No global PowerShell policy was changed.
+
+Validation:
+- Both settings files parse as JSON.
+- Root and frontend-only terminal simulations both resolved Python to the root `.venv`, reported Python 3.11.9, and found editable `telebot 0.2.0a0`.
+
+Build / deployment:
+- IDE-only external configuration; no application build, EXE, cloud deployment, GitHub push, or tag changed.
+
+## 2026-08-11 17:19 - P2P QoE export human report and field guide
+
+Scope:
+- Added an embedded Chinese `fieldGuide` to every newly downloaded standalone P2P viewer QoE JSON file.
+- The top of `fieldGuide` now contains the actual measurement values as a Chinese report: session/environment, connection and transport, video and playback, automatic interpretation, and per-sample key metrics.
+- The guide explains measurement conventions, units, enum values, summary statistics, and every exported session/sample field while preserving valid machine-readable JSON.
+- Raised the top-level export schema to version `3`; existing `session`, `summary`, and `samples` structures are unchanged.
+
+Changed files / deployment:
+- External `E:/Desktop/123/webrtc-p2p-video/public/qoe-collector.js`.
+- Hong Kong `/opt/webrtc-p2p-video/public/qoe-collector.js`.
+- Guangzhou `/opt/webrtc-p2p-video-gz/public/qoe-collector.js`.
+- Deployed only the static collector file with timestamped backups; both P2P services remained active and were not restarted.
+
+Validation:
+- `node --check public/qoe-collector.js` passed.
+- Existing sample coverage and JSON round-trip checks passed.
+- Successful-video and no-video records both generated the expected distinct human-readable reports and conclusions.
+- Hong Kong and Guangzhou public collector scripts returned HTTP 200 with schema v3; both configuration APIs returned `ok: true`.
+
+Build / release:
+- No Cloud Service Console source/runtime behavior, EXE, installer, GitHub push, or tag changed.
+
+## 2026-08-07 17:20 - Frontend-only VS Code interpreter fallback
+
+Scope:
+- Added an external `apps/frontend/.vscode/settings.json` so opening only that subfolder still selects the root Windows `.venv` and resolves shared Telebot packages.
+- Reopened the frontend folder in a new VS Code window; existing terminals must be replaced with a new terminal for activation.
+
+Validation:
+- The configured root interpreter exists and imports `telebot_common` successfully.
+
+Build / deployment:
+- IDE-only external configuration; no application source, EXE, cloud deployment, GitHub push, or tag changed.
+
+## 2026-08-06 10:31 - P2P viewer local QoE collection
+
+Scope:
+- Added an opt-in bottom-right collection button to the external P2P watch page.
+- The viewer browser samples receiver-side WebRTC, decoding, rendering, stall, freeze, visual-black-frame, route, and environment metrics once per second.
+- Stopping the session downloads a structured JSON result to the viewing machine; IndexedDB keeps a browser-local backup. No QoE sample is uploaded to the signaling server.
+
+Files / deployment:
+- External `E:/Desktop/123/webrtc-p2p-video/public/watch.html`
+- External `E:/Desktop/123/webrtc-p2p-video/public/shared.js`
+- External `E:/Desktop/123/webrtc-p2p-video/public/style.css`
+- External `E:/Desktop/123/webrtc-p2p-video/public/qoe-collector.js`
+- Hong Kong `/opt/webrtc-p2p-video/public`
+- Guangzhou `/opt/webrtc-p2p-video-gz/public`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- JavaScript syntax checks passed for `shared.js` and `qoe-collector.js`.
+- Desktop and 390x844 browser smoke passed with no overflow; start, per-second accumulation, stop, and save confirmation behaved correctly.
+- Hong Kong public browser smoke completed without console errors.
+- Both public domains returned HTTP 200 for the watch page, collector script, configuration API, and room API.
+
+Build / deployment:
+- Static watch assets deployed to Hong Kong and Guangzhou with timestamped remote backups.
+- Both P2P signaling services remained active and were not restarted.
+- No EXE/package build, hosted-console deployment, GitHub push, or tag update was performed.
+
+Cross-lane note:
+- No control signal, Tank Trouble, Tencent Cloud Live, legacy go2rtc, port, or service-name behavior changed.
+
+## 2026-08-03 13:03 - External Telebot VS Code environment
+
+Scope:
+- Explicit cross-project development-environment setup for the teammate `telebot-main_new0.2-0803` workspace.
+- Created a Windows Python 3.11 `.venv`, installed runtime/development dependencies, installed the workspace editable, and configured VS Code to use it from the project root.
+- Added frontend and public-cloud Compute debug launch entries without changing either service's behavior.
+
+Files / runtime:
+- External `telebot-main_new0.2-0803/.venv`
+- External `telebot-main_new0.2-0803/.vscode/settings.json`
+- External `telebot-main_new0.2-0803/.vscode/launch.json`
+- External `telebot-main_new0.2-0803/.vscode/extensions.json`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Runtime imports passed for Telebot packages and all major frontend/compute dependencies.
+- Frontend and Compute configs validated.
+- Frontend startup smoke test listened on HTTPS `8445`; the temporary frontend and spawned video worker were then stopped, leaving no Telebot Python process running.
+
+Build / deployment:
+- No Cloud Service Console source behavior, EXE, cloud runtime, GitHub tag, or deployed service changed.
+
+## 2026-07-29 10:15 - Local desktop target migration
+
+Scope:
+- Video Link Agent local runtime update.
+- Changed the installed desktop console's saved local-stream host and UI draft from `150.109.100.30` to `43.154.250.82`.
+- Kept P2P tools on `https://p2p.cityulive.com`, which now resolves to the new Hong Kong server.
+
+Files:
+- `%LOCALAPPDATA%/CloudServiceConsole/local-stream-config.json`
+- `%LOCALAPPDATA%/CloudServiceConsole/local-stream-ui-draft.json`
+- `%LOCALAPPDATA%/CloudServiceConsole/local-stream/camera-push-command.json`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Parsed the remembered login, local-stream config, local-stream UI draft, and cached camera push command successfully; every active local target uses `43.154.250.82`.
+- Confirmed the desktop app was not running during the update.
+
+Build / deployment:
+- No EXE rebuild was needed because only external runtime settings changed.
+- No cloud service restart, GitHub push, or tag update was performed.
+
+Cross-lane note:
+- Control signal and Tank Trouble files were not changed.
+
+## 2026-07-29 02:48 - Hong Kong server IP migration
+
+Scope:
+- Video Link Agent cloud migration update from `150.109.100.30` to `43.154.250.82`.
+- Corrected the migrated server's go2rtc WebRTC candidate, SRT/viewer endpoint metadata, telemetry TURN host, coturn NAT mapping, and hosted-console default/login host.
+- Updated the hosted web-console deployment script's default Hong Kong target.
+
+Files:
+- `scripts/deploy_web_console.py`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- Local `%LOCALAPPDATA%/CloudServiceConsole/cloud-console-login.json`
+- Video/console configuration files on `43.154.250.82` listed in `docs/VIDEO_LINK_AGENT.md` section 107.
+
+Validation:
+- Direct new-IP video status and endpoint metadata requests returned HTTP 200.
+- The deployment script default target and local remembered login target both resolve to `43.154.250.82`.
+- Host-pinned HTTPS checks confirmed the new server is ready for `console.cityulive.com` and `p2p.cityulive.com` with valid certificates.
+- Public UDP probes reached SRT ingest `19091` and TURN relay port `20000`; coturn returned a valid STUN response on UDP `3478`.
+- `19090/TCP` is reachable, but UDP `19090` is still blocked before reaching the server and must be allowed in the new cloud security group.
+- All nine inspected cloud services were `active` after the scoped restarts.
+- Active-session checks showed no legacy/Tencent push, P2P room, or control session during migration.
+
+Build / deployment:
+- Restarted only `coturn`, `go2rtc-cloud`, `go2rtc-telemetry-relay`, and `cloud-service-console-web` on `43.154.250.82`.
+- No desktop EXE build, GitHub push, or tag update was performed.
+- DNS still resolves `console.cityulive.com` and `p2p.cityulive.com` to the old IP; both A records must be changed to `43.154.250.82` before normal domain traffic reaches the new server.
+
+Cross-lane note:
+- Control broker and Tank Trouble files/services were not changed or restarted. Coturn is shared infrastructure, so Control Signal Agent should verify direct control WebRTC after DNS cutover.
+
+## 2026-07-08 21:37 - Console P2P region auto selection
+
+Scope:
+- Video Link Agent UI update.
+- The local-stream P2P panel now auto-selects the P2P signal/watch domain based on the currently logged-in server.
+- Guangzhou server identity (`111.230.62.106`, `p2p-gz.dlcourse.online`, or `p2p-gz.cityulive.com`) maps known/default P2P links to `https://p2p-gz.dlcourse.online/watch.html?room=<room>`.
+- Other known/default P2P links map to Hong Kong `https://p2p.cityulive.com/watch.html?room=<room>`.
+- Custom non-default P2P domains are preserved.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `python scripts/deploy_web_console.py`
+- Hosted web console health check passed on `http://127.0.0.1:18080/api/health`.
+- Deployment script confirmed `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn` stayed `active` before and after deployment.
+
+Build / deployment:
+- Hosted web console redeployed to `150.109.100.30:/opt/cloud-service-console-web`.
+- Restarted only `cloud-service-console-web.service`.
+- Desktop EXE rebuild was attempted with `cmd /c npm run installer:build`, but the Tauri/Cargo build stalled for 20 minutes and was stopped; `E:\Cloud-Service-Console` EXEs were not replaced.
+- No GitHub push and no tag update were performed.
+
+Cloud deployment note:
+- This is hosted-console UI behavior only. P2P signaling services, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, nginx, and coturn were not changed by this update.
+
+## 2026-07-08 20:59 - Guangzhou P2P dlcourse deployment
+
+Scope:
+- Video Link Agent Guangzhou P2P video deployment.
+- Redeployed the Guangzhou P2P video signaling service using `https://p2p-gz.dlcourse.online` as the current public Guangzhou P2P push/watch domain.
+- Synced local `E:\Desktop\123\webrtc-p2p-video` `server.py`, `public/*`, and `config.guangzhou.json` to remote `111.230.62.106:/opt/webrtc-p2p-video-gz`.
+- Installed `config.guangzhou.json` as remote `config.json`, so `/api/config` returns `p2p-gz.dlcourse.online` STUN/TURN entries.
+- Updated the master handoff index to mark `p2p-gz.dlcourse.online` as the current Guangzhou public P2P entry and keep `p2p-gz.cityulive.com` as blocked/not-for-use until its Tencent webblock/ICP issue is resolved.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+- External `E:\Desktop\123\webrtc-p2p-video\public\index.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\push.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+- External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/server.py`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/public/*`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Remote `systemctl is-active webrtc-p2p-video-gz.service nginx coturn` returned `active`, `active`, `active`.
+- Remote `curl -s http://127.0.0.1:8099/api/config` returned `p2p-gz.dlcourse.online` STUN/TURN entries.
+- Public `https://p2p-gz.dlcourse.online/api/config` returned HTTP 200 with `p2p-gz.dlcourse.online` STUN/TURN entries.
+- Public `https://p2p-gz.dlcourse.online/api/rooms` returned HTTP 200 and `rooms: []`.
+- Public `https://p2p-gz.dlcourse.online/watch.html?room=robot` returned HTTP 200.
+- Public `https://p2p-gz.dlcourse.online/shared.js` contains `VIEWER_FRAME_STALL_MS = 4000`, `VIEWER_RECONNECT_COOLDOWN_MS = 2000`, and `viewer-reconnect`.
+
+Build / deployment:
+- Restarted only `webrtc-p2p-video-gz.service`.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- Guangzhou P2P public entry is `https://p2p-gz.dlcourse.online/`.
+- Hong Kong P2P, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, hosted console UI, desktop EXE, public `18081` routing, and service names were not changed.
+
+## 2026-07-08 20:32 - P2P new server deployment guide
+
+Scope:
+- Video Link Agent documentation update.
+- Added a step-by-step Markdown guide for deploying the current P2P video service on another server.
+- The guide covers DNS, security group ports, package installation, uploading `webrtc-p2p-video`, `config.json`, systemd, nginx HTTPS, coturn STUN/TURN, service validation, `p2p-local-pusher` configuration, watch URL validation, room status APIs, and troubleshooting.
+- The document uses placeholders such as `p2p-new.example.com` and `SERVER_PUBLIC_IP` for teammate reuse.
+
+Files:
+- `docs/P2P_VIDEO_NEW_SERVER_DEPLOYMENT_GUIDE.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Reviewed external `E:\Desktop\123\webrtc-p2p-video` structure and `config.json`.
+- Reviewed external `E:\Desktop\123\p2p-local-pusher\config\pusher.config.json` shape.
+- Verified the new guide contains key deployment topics: `p2p-new.example.com`, `SERVER_PUBLIC_IP`, `webrtc-p2p-video.service`, `coturn`, `p2p-local-pusher`, `/api/config`, `watch.html`, and TURN relay port range `49152-49200`.
+
+Build / deployment:
+- Documentation-only change.
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- No public port, domain, cloud service name, P2P signaling server code, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, or Tank Trouble behavior changed.
+
+## 2026-07-07 12:25 - P2P file transfer room auto reset
+
+Scope:
+- Video Link Agent external P2P file-transfer lifecycle cleanup.
+- Sender or receiver waiting alone now times out after `advanced.peerWaitTimeoutSeconds`, default 60 seconds.
+- On single-side wait timeout, the script requests `/api/rooms/<room>/reset` before exiting.
+- After successful transfer and receiver verification, both sides request room reset before exiting.
+- README now recommends a dedicated file-transfer room such as `robot-file`.
+- Recreated `file_transfer.config.json` as a compatible shared-config template with the same 60-second wait timeout.
+
+Files:
+- External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- Loaded sender, receiver, and shared template configs successfully; all use `peerWaitTimeoutSeconds: 60`.
+- Receiver-only timeout smoke test in room `codex-timeout-reset-8d21e68b` with a 3-second temporary timeout exited with error and logged `Room reset requested`; public status returned `peers: []` and `messageCount: 0`.
+- End-to-end completion smoke test in room `codex-complete-reset-4420cf24` transferred a 40.0 KB file; both processes exited `0`; SHA-256 matched; both logged room reset; public status returned `peers: []` and `messageCount: 0`.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- The scripts call the existing P2P signaling reset API at runtime for their file-transfer room.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- This is external-script-only.
+- P2P signaling server code, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-07-07 12:19 - P2P file transfer Windows path config fix
+
+Scope:
+- Video Link Agent external P2P file-transfer config usability fix.
+- Fixed `Invalid \escape` errors caused by pasted Windows paths with single backslashes in JSON config.
+- Current sender and receiver configs now use forward-slash Windows paths.
+- Added tolerant config parsing for `sendPath`, `sendFile`, and `saveDir`, so values such as `E:\Desktop\123` are accepted in those path fields.
+- Updated README path guidance.
+
+Files:
+- External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- Loaded `sender.config.json` and `receiver.config.json` successfully.
+- Loaded a temporary config containing single-backslash Windows paths such as `D:\test\abc.txt` and `E:\Desktop\123` successfully.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- This is external-script-only.
+- P2P signaling server, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-07-07 12:03 - P2P file transfer split configs
+
+Scope:
+- Video Link Agent external P2P file-transfer tool update.
+- Split config into `sender.config.json` and `receiver.config.json`.
+- `send_file.cmd` / `send_file.sh` now default to `config/sender.config.json`.
+- `receive_file.cmd` / `receive_file.sh` now default to `config/receiver.config.json`.
+- Python CLI defaults now also use sender config for `send` and receiver config for `receive` when `--config` is omitted.
+- Kept `file_transfer.config.json` as a compatible shared-config template only.
+
+Files:
+- External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\send_file.cmd`
+- External `E:\Desktop\123\p2p-file-transfer\send_file.sh`
+- External `E:\Desktop\123\p2p-file-transfer\receive_file.cmd`
+- External `E:\Desktop\123\p2p-file-transfer\receive_file.sh`
+- External `E:\Desktop\123\p2p-file-transfer\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py send --help`
+- `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py receive --help`
+- Local end-to-end smoke test with separate sender/receiver configs in room `codex-split-config-32237724`.
+- Smoke test transferred a 36.0 KB file; both processes exited `0`; received SHA-256 matched source SHA-256.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- This is external-script-only.
+- P2P signaling server, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-07-07 11:47 - P2P file transfer folder packaging
+
+Scope:
+- Video Link Agent external P2P file-transfer tool update.
+- Sender can now send either a file or a folder.
+- Added `sendPath` as the primary sender config field while keeping old `sendFile` compatibility.
+- Added `packFolder`; when true, folder send paths are packed into a temporary zip before transfer.
+- Receiver saves folder transfers as `folder-name.zip` and does not auto-extract them.
+- Sender and receiver can share one config file; sender-only fields are ignored by the receiver and receiver-only fields are ignored by the sender.
+
+Files:
+- External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py send --help`
+- `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py receive --help`
+- Local end-to-end folder smoke test in room `codex-folder-smoke-6bc2197c`.
+- Smoke test packed a folder with nested files and an empty directory, transferred `source_folder.zip`, both processes exited `0`, and received zip contents matched source folder contents.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- This is external-script-only.
+- P2P signaling server, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-07-07 11:32 - Standalone P2P file transfer scripts
+
+Scope:
+- Video Link Agent external P2P file-transfer tool.
+- Added `E:\Desktop\123\p2p-file-transfer` with sender and receiver scripts for a dedicated WebRTC `file-transfer` DataChannel.
+- Sender and receiver use the same signaling room and can start in either order; the sender creates the offer and the receiver answers.
+- Sender displays hashing, connection status, speed, percentage, ETA, and a progress bar.
+- Receiver displays waiting status, incoming file metadata, speed, percentage, ETA, output path, progress bar, and SHA-256 verification result.
+- File transfer uses its own WebRTC peer connection and does not share the video/control DataChannel queue.
+
+Files:
+- External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+- External `E:\Desktop\123\p2p-file-transfer\setup_local.cmd`
+- External `E:\Desktop\123\p2p-file-transfer\setup_local.sh`
+- External `E:\Desktop\123\p2p-file-transfer\send_file.cmd`
+- External `E:\Desktop\123\p2p-file-transfer\send_file.sh`
+- External `E:\Desktop\123\p2p-file-transfer\receive_file.cmd`
+- External `E:\Desktop\123\p2p-file-transfer\receive_file.sh`
+- External `E:\Desktop\123\p2p-file-transfer\README.md`
+- External `E:\Desktop\123\p2p-file-transfer\requirements.txt`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+- `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py --help`
+- Local end-to-end smoke test with one receiver process and one sender process in room `codex-file-smoke-4b3299f4`.
+- Smoke test transferred a 48.8 KB file; both processes exited `0`; received SHA-256 matched source SHA-256.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- This is external-script-only.
+- P2P signaling server, WebRTC video media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-07-02 11:55 - P2P signaling peer auto-expire
+
+Scope:
+- Video Link Agent P2P signaling status cleanup.
+- Added `peerTtlSeconds` with a default of 60 seconds so stale viewer/pusher peer records expire automatically when they stop sending heartbeats.
+- Active pusher freshness still uses the existing 15-second `pusherTtlSeconds`.
+- Room peer pruning now runs during `/api/rooms`, `/api/rooms/<room>/status`, message publish, and long-poll message heartbeat handling.
+- This fixes stale watcher counts such as old `robot111` peers remaining visible after viewers were already closed.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- Remote `150.109.100.30:/opt/webrtc-p2p-video/server.py`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/server.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- Deployed to Hong Kong P2P signaling and restarted only `webrtc-p2p-video.service`; service returned `active`.
+- Deployed to Guangzhou P2P signaling and restarted only `webrtc-p2p-video-gz.service`; service returned `active`.
+- `https://p2p.cityulive.com/api/rooms/robot111/status` returned `peers: []`, `messageCount: 0`, inactive pusher.
+- `https://p2p.cityulive.com/api/rooms` returned `rooms: []`.
+- `https://p2p-gz.dlcourse.online/api/config` and `/api/rooms` returned HTTP 200 with valid JSON.
+
+Build / deployment:
+- Restarted only the Hong Kong and Guangzhou P2P signaling services.
+- No desktop EXE rebuild, no hosted console redeploy, no GitHub push, and no tag update were performed.
+
+Cloud deployment note:
+- P2P signaling/status behavior changed only.
+- WebRTC media transport, legacy go2rtc ingest, Tencent Cloud Live, control signaling, Tank Trouble, public ports, domains, and service names were not changed.
+
+## 2026-06-05 12:56 - P2P script live relay no-backlog fix
+
+Scope:
+- Video Link Agent standalone P2P script reliability fix.
+- User observed that script `h264` starts a new viewer several seconds behind and catches up, while `h264_amf` can start more than 30 seconds behind and freeze before catching up.
+- Identified aiortc `MediaRelay.subscribe(...)` default buffered mode as the likely backlog source.
+- Changed viewer track relay to `buffered=False`, so new viewers receive the newest live frame instead of draining an old per-viewer queue.
+- Synced the fix to `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` and `E:\Desktop\123\p2p-local-pusher`.
+
+Files:
+- External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- Confirmed both script trees now use `buffered=False` for viewer track relay.
+- Rebuilt `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Build / deployment:
+- No cloud runtime changed or restarted.
+- No desktop EXE rebuild and no hosted console redeploy were performed.
+- Already-running standalone P2P pushers must be stopped and started again to load the no-backlog relay fix.
+
+## 2026-06-05 12:44 - P2P script periodic keyframe and faster viewer recovery
+
+Scope:
+- Video Link Agent P2P script/watch-page reliability follow-up based on the provided freeze recording.
+- The recording shows the real wall clock moving while the monitor's P2P video frame freezes, then recovers after reconnect.
+- Added a one-second periodic keyframe interval in the standalone script pusher H.264 encoder path.
+- Preserved frame timestamps after reformatting/scaling before encoding.
+- Set encoder GOP size to about one second and disabled B-frames when PyAV exposes those codec fields.
+- Shortened the P2P watch-page frozen-frame watchdog from about 12 seconds to about 4 seconds and reconnect cooldown from about 6 seconds to about 2 seconds.
+- Synced the fix to the active `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` tree and the maintained `E:\Desktop\123\p2p-local-pusher` package.
+
+Files:
+- External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Rebuilt `E:\Desktop\123\p2p-local-pusher.zip`.
+- Public `https://p2p.cityulive.com/shared.js` and `https://p2p-gz.dlcourse.online/shared.js` contain `VIEWER_FRAME_STALL_MS = 4000` and `VIEWER_RECONNECT_COOLDOWN_MS = 2000`.
+
+Build / deployment:
+- Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+- Restarted only `webrtc-p2p-video.service` and `webrtc-p2p-video-gz.service`; both returned `active`.
+- No desktop EXE rebuild and no hosted console redeploy were performed.
+
+Cloud deployment note:
+- No legacy go2rtc ingest, Tencent Cloud Live protocol, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+- Already-running standalone P2P pushers must be stopped and started again to load the periodic-keyframe fix.
+
+## 2026-06-05 12:08 - P2P script keyframe startup fix
+
+Scope:
+- Video Link Agent P2P script/watch-page reliability fix.
+- Fixed the viewer freeze detector so received bytes alone no longer count as a moving picture; only video time or decoded frame growth keeps the viewer healthy.
+- Updated the active standalone pusher at `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` to request keyframes from the aiortc `RTCRtpSender`.
+- Added a short keyframe burst for every new viewer connection to reduce first-frame freeze / black-screen startup.
+- Synced the same script fix to `E:\Desktop\123\p2p-local-pusher` and refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Public `https://p2p.cityulive.com/api/rooms` and `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+
+Build / deployment:
+- Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- No desktop EXE rebuild and no hosted console redeploy were performed.
+
+Cloud deployment note:
+- Restarted only `webrtc-p2p-video.service` and `webrtc-p2p-video-gz.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No legacy go2rtc ingest, Tencent Cloud Live protocol, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+- Already-running standalone P2P pushers must be stopped and started again to load the keyframe burst fix.
+
+## 2026-06-05 01:46 - P2P viewer freeze auto-reconnect
+
+Scope:
+- Video Link Agent P2P watch-page reliability fix.
+- Added automatic viewer reconnect when the WebRTC connection still says `connected` but video time / decoded frames / received bytes stop advancing for about 12 seconds.
+- Added a visible-tab recheck so browser background throttling / idle-tab stalls can recover without manual refresh.
+- Added `viewer-reconnect` handling for browser P2P pushers and standalone local script pushers.
+- Refreshed the standalone P2P local pusher folder and zip package.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\pusher.py`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `python -m py_compile E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\pusher.py`
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://p2p.cityulive.com/shared.js` and `https://p2p-gz.dlcourse.online/shared.js` returned `200` and contained `VIEWER_FRAME_STALL_MS`.
+- Public `https://p2p.cityulive.com/api/rooms` and `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+- Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+- Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+
+Cloud deployment note:
+- Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No legacy go2rtc ingest, Tencent Cloud Live protocol, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+- Already-running standalone P2P pushers need a stop/start to load the new script-side reconnect handling.
+
+## 2026-06-05 01:19 - Overview P2P room status
+
+Scope:
+- Video Link Agent overview status update.
+- Added a third `P2P` row to the overview `视频推流状态` card beside `旧链路` and `腾讯云`.
+- P2P status counts active rooms from the current P2P signaling domain's `/api/rooms`.
+- P2P lamp turns green when any room is streaming and blue when this console / local app is one of the active pushers.
+- Existing 5-second video status polling and manual refresh now also refresh the P2P room summary.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+- Public `https://p2p.cityulive.com/api/rooms` returned `ok: true` with the active `robot` room.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc video service, Tencent Cloud Live protocol behavior, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+
+## 2026-06-05 01:09 - Web push panel mutual exclusion
+
+Scope:
+- Video Link Agent local-stream UI fix.
+- Tencent Cloud push and P2P push panels are now mutually exclusive.
+- Opening Tencent Cloud closes P2P first; opening P2P closes Tencent Cloud first.
+- If one web push mode is busy or actively pushing, the other entry button is disabled so a second push panel cannot be opened underneath/above it.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+- Public fallback `http://150.109.100.30:18080/api/health` with admin bearer token returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc video service, Tencent Cloud Live protocol behavior, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+
+## 2026-06-04 22:57 - Viewer resolution single input
+
+Scope:
+- Video Link Agent local-stream UI fix.
+- Changed `观看分辨率` from two adjacent number inputs into one `WIDTHxHEIGHT` input to avoid drag-select focus moving from height to width.
+- The input accepts common separators such as `x`, `×`, `*`, or whitespace, then normalizes to `WIDTHxHEIGHT` on blur.
+- The single value still writes both `video_size` and `output_video_size`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Local built JS contains `观看分辨率`; old `观看宽度` / `观看高度` inputs are absent.
+- Public fallback health `http://150.109.100.30:18080/api/health` with admin bearer token returned `backend-ready`.
+- Public HTTPS domain check from this machine could not resolve `console.cityulive.com`; server-side deploy health check passed.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc video service, Tencent Cloud Live protocol behavior, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+
+## 2026-06-04 22:41 - Viewer-facing local push parameters
+
+Scope:
+- Video Link Agent local-stream UI simplification.
+- Replaced separate capture/output resolution controls with one `观看分辨率`.
+- Replaced separate capture/target frame-rate controls with one `观看帧率`.
+- The single viewer resolution now writes both `video_size` and `output_video_size`; the single viewer frame rate writes both `input_framerate` and `target_framerate`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts/deploy_web_console.py`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx docs\VIDEO_LINK_AGENT.md frontend\IMPLEMENTATION_LOG.md docs\SHARED_AGENT_STATUS.md`
+- Public console asset contains `观看分辨率` / `观看帧率` and no longer contains the old capture/output labels.
+- Public `https://console.cityulive.com/api/health?access_token=xhfang` returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc video service, Tencent Cloud Live protocol behavior, control broker, Tank Trouble logic, public port, domain, or cloud service name changed.
+
+## 2026-06-02 21:35 - P2P local pusher compatibility sync
+
+Scope:
+- Video Link Agent external-script maintenance.
+- Synced the useful classmate-tested `p2p-local-pusher-0602` fixes into the maintained P2P local pusher script.
+- Linux camera enumeration now deprioritizes loopback / virtual devices.
+- Setup now recreates a copied but unusable Python virtual environment.
+- Kept the generic config instead of copying machine-specific Linux paths.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\setup_local.py`
+- External `E:\Desktop\123\p2p-local-pusher.zip`
+- Backup `E:\Desktop\123\p2p-local-pusher.zip.bak-20260602213522`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile` on all external P2P local pusher Python scripts.
+- Confirmed the clean zip contains 14 user-facing files and the updated scripts.
+- Compared against the classmate-tested 0602 copy.
+
+Build / deployment:
+- No EXE rebuild.
+- No hosted web console deployment.
+- No cloud service restart.
+
+## 2026-06-02 01:11 - P2P room picker for web viewing
+
+Scope:
+- Video Link Agent P2P viewing update.
+- Added `GET /api/rooms` to the standalone P2P signaling service so clients can list currently active rooms by domain.
+- Changed P2P "网页端观看" from manual link entry to a clickable room list for the current P2P domain.
+- Empty domains now show `当前没有正在推流的房间`.
+
+Files / external paths:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- Remote `150.109.100.30:/opt/webrtc-p2p-video`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+
+Validation:
+- `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- Local Node smoke test for `GET /api/rooms`.
+- Remote `python3 -m py_compile` on HK/GZ P2P `server.py`.
+- Public `https://p2p.cityulive.com/api/rooms` returned active rooms during validation.
+- Public `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public console asset check found the new room picker strings and `/api/rooms`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+- Deployed P2P signaling files to HK and GZ.
+
+Cloud deployment note:
+- Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No go2rtc legacy video service, Tencent Cloud Live behavior, control broker, Tank Trouble logic, public port, domain, or service name changed.
+
+## 2026-05-29 17:41 - P2P viewer card cleanup
+
+Scope:
+- Video Link Agent UI cleanup for the P2P panel.
+- Removed the top "房间观看端" viewer-count card.
+- Removed the lower inline refresh button.
+- The lower P2P status strip now only shows the status lamp and current push message, including the automatically maintained connected-viewer count when pushing from the page.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public console asset check confirmed no `房间观看端` text and no `p2p-viewer-refresh` class remain.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc legacy video service, Tencent Cloud Live behavior, control broker, or Tank Trouble service changed.
+
+## 2026-05-29 17:03 - P2P refresh button placement
+
+Scope:
+- Video Link Agent UI adjustment for the P2P panel.
+- Removed the large refresh button from the "房间观看端" stat card.
+- Added a compact refresh button inside the lower P2P status strip, aligned with the status lamp and message.
+- The top stat card now only displays room viewer count and refresh time.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public console asset check found `p2p-push-status-row` and `p2p-viewer-refresh-button-inline`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No P2P signaling service, go2rtc legacy video service, Tencent Cloud Live behavior, control broker, or Tank Trouble service changed.
+
+## 2026-05-29 16:20 - P2P viewer offline cleanup
+
+Scope:
+- Video Link Agent fix for stale P2P room viewer counts.
+- P2P watch pages now send `viewer-offline` on manual stop, `pagehide`, and `beforeunload`.
+- P2P signaling servers remove peers from room status on `viewer-offline` / `pusher-offline`.
+- Console P2P pusher closes and removes a peer connection when it receives `viewer-offline`.
+- Manual room viewer count fallback freshness window changed from 45 seconds to 12 seconds.
+
+Files / external paths:
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Remote `150.109.100.30:/opt/webrtc-p2p-video`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public P2P watch JS on HK/GZ contains `viewer-offline`, `notifyViewerOffline`, and `pagehide`.
+- Temporary room API tests on HK and GZ verified `viewer-ready` adds a peer and `viewer-offline` removes it immediately.
+- Current `robot` room checks showed `freshViewers=0` on both HK and GZ.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+- Deployed P2P signaling/static-page files to HK and GZ.
+
+Cloud deployment note:
+- Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+- No public port/domain/service-name change.
+- No go2rtc legacy video service, Tencent Cloud Live behavior, control broker, or Tank Trouble service changed.
+
+## 2026-05-29 15:51 - P2P manual viewer count refresh
+
+Scope:
+- Video Link Agent P2P console update for desktop app and hosted web console.
+- Added a manual "房间观看端" refresh card to the P2P push panel.
+- The refresh button parses the current P2P full link and queries that link's signal domain at `/api/rooms/{room}/status`.
+- Counts only fresh `viewer` peers from the current room using a 45 second freshness window.
+- Renamed the existing current-page peer count to "本页连接" so it is not confused with room-wide watchers.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `Invoke-RestMethod https://p2p.cityulive.com/api/rooms/robot/status`
+- `Invoke-RestMethod https://p2p-gz.dlcourse.online/api/rooms/robot/status`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public admin token check passed for `https://console.cityulive.com/api/access?access_token=xhfang`.
+- Public user token check passed for `https://console.cityulive.com/api/access?access_token=cmc5006`.
+- Public health check passed for `https://console.cityulive.com/api/health?access_token=xhfang`.
+- Deployed JS contains `房间观看端`, `手动刷新后显示当前房间观看人数`, and `本页连接`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No go2rtc legacy video service, Tencent Cloud Live behavior, control broker, Tank Trouble service, public port, domain, or cloud video protocol changed.
+
+## 2026-05-29 13:24 - P2P console full watch-link input
+
+Scope:
+- Video Link Agent P2P console update for desktop app and hosted web console.
+- Replaced the P2P room-only input with a full watch-link input.
+- Default P2P link is `https://p2p.cityulive.com/watch.html?room=robot`.
+- Browser P2P push now parses signal domain and room from the link.
+- P2P viewer dialog now asks for a full link and defaults to the current push link.
+- Desktop local-script P2P start now sends `watch_url` to the backend, and the backend writes both `signalBaseUrl` and `roomId` into the standalone pusher config.
+- Web deploy script defaults to fixed tokens `xhfang` / `cmc5006`.
+
+Files:
+- `backend/p2p_local_pusher.py`
+- `backend/main.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `scripts/deploy_web_console.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\p2p_local_pusher.py backend\main.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public admin token check passed for `https://console.cityulive.com/api/access?access_token=xhfang`.
+- Public user token check passed for `https://console.cityulive.com/api/access?access_token=cmc5006`.
+- Public health check passed for `https://console.cityulive.com/api/health?access_token=xhfang`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Redeployed hosted web console to `150.109.100.30`.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- No go2rtc legacy video service, Tencent Cloud Live behavior, control broker, Tank Trouble service, public port, domain, or cloud video protocol changed.
+
+## 2026-05-29 12:59 - Standalone P2P start guard for existing background processes
+
+Scope:
+- Video Link Agent standalone local P2P pusher update.
+- `start_local` now refuses to start when existing pusher background process(es) are detected.
+- The existing-process guard runs before printing requested config, avoiding confusion when a user changed config but an old process is still running.
+- The prompt now lists existing PID(s), says no new push was started, and instructs users to run `stop_local` before `start_local`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `$env:P2P_NO_PAUSE='1'; cmd /c E:\wsl\p2p-local-pusher\start_local.cmd`
+- Verified existing background processes block startup and no new pusher starts.
+
+Runtime / deployment:
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- No cloud service restart.
+- No public port/domain change.
+- No EXE rebuild.
+- No hosted web console deployment.
+
+## 2026-05-29 12:22 - Standalone P2P pusher fallback output alignment
+
+Scope:
+- Video Link Agent standalone local P2P pusher update.
+- Automatic fallback now tries same-resolution lower-FPS profiles before larger resolutions.
+- After fallback, actual capture, WebRTC encoding output, and browser viewing all use the same selected mode.
+- `config/pusher.config.json` keeps the user-requested preferred target for the next start; runtime files record the active fallback mode.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `$env:P2P_NO_PAUSE='1'; cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd; cmd /c E:\wsl\p2p-local-pusher\start_local.cmd`
+- Verified fallback from requested `640x480 @ 60 fps` to active `640x480 @ 30 fps`.
+
+Runtime / deployment:
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- No cloud service restart.
+- No public port/domain change.
+- No EXE rebuild.
+- No hosted web console deployment.
+
+## 2026-05-29 11:39 - Guangzhou P2P dlcourse.online public entry
+
+Scope:
+- Video Link Agent Guangzhou P2P public-entry update.
+- Added `p2p-gz.dlcourse.online` as the working Guangzhou P2P HTTPS entry.
+- Issued a Let's Encrypt certificate and added an Nginx host config for the new domain.
+- Switched Guangzhou P2P ICE/TURN config to `p2p-gz.dlcourse.online`.
+
+Files / external paths:
+- External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+- Remote `111.230.62.106:/etc/nginx/conf.d/webrtc-p2p-video-gz-dlcourse.conf`
+- Remote `111.230.62.106:/etc/letsencrypt/live/p2p-gz.dlcourse.online/fullchain.pem`
+- Remote `111.230.62.106:/etc/letsencrypt/live/p2p-gz.dlcourse.online/privkey.pem`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `Resolve-DnsName p2p-gz.dlcourse.online -Type A` returned `111.230.62.106`.
+- `Test-NetConnection p2p-gz.dlcourse.online -Port 80`, `443`, and `3478` succeeded.
+- Remote `nginx -t` passed.
+- Public `https://p2p-gz.dlcourse.online/api/config` returned STUN + TURN.
+- Public `https://p2p-gz.dlcourse.online/watch.html?room=robot` returned `200 OK`.
+- Public HTTP watch URL returned `301` to HTTPS.
+- Existing Guangzhou services remained active.
+
+Runtime / deployment:
+- Cloud restart: only `webrtc-p2p-video-gz.service`.
+- Nginx reload: yes.
+- No coturn config change or coturn restart.
+- No EXE rebuild.
+- No hosted web console deployment.
+
+## 2026-05-29 10:50 - Guangzhou P2P TURN fallback sync
+
+Scope:
+- Video Link Agent Guangzhou P2P signaling config update.
+- Synced Guangzhou `webrtc-p2p-video-gz` with TURN fallback.
+- Added Guangzhou-local STUN/TURN entries using `p2p-gz.cityulive.com:3478`.
+- Restarted only `webrtc-p2p-video-gz.service`.
+
+Files / external paths:
+- External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+- Remote backup `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json.bak-before-turn-*`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m json.tool E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+- Remote `python3 -m json.tool /opt/webrtc-p2p-video-gz/config.json`
+- Remote `curl -fsS http://127.0.0.1:8099/api/config` returned STUN + TURN.
+- Server-local HTTPS Host-header check returned STUN + TURN through Nginx.
+- `Test-NetConnection p2p-gz.cityulive.com -Port 3478` succeeded for TCP.
+- Existing Guangzhou services remained active.
+
+Runtime / deployment:
+- Cloud restart: only `webrtc-p2p-video-gz.service`.
+- No coturn config change or coturn restart.
+- No EXE rebuild.
+- No hosted web console deployment.
+- Public caveat: external HTTP returned Tencent DNSPod `webblock.html`, and external HTTPS handshakes were reset. Guangzhou domain access likely needs domain/ICP/access-block resolution before public browser viewing is reliable.
+
+## 2026-05-29 10:28 - P2P TURN fallback for remote viewing
+
+Scope:
+- Video Link Agent Hong Kong P2P signaling config update.
+- Fixed remote-city P2P viewing failures caused by `/api/config` returning only STUN.
+- Added existing coturn relay entries to P2P `iceServers`.
+- Restarted only `webrtc-p2p-video.service`.
+- Restarted the local standalone P2P pusher once so it loaded the new TURN config.
+
+Files / external paths:
+- External `E:\Desktop\123\webrtc-p2p-video\config.json`
+- Remote `150.109.100.30:/opt/webrtc-p2p-video/config.json`
+- Remote backup `150.109.100.30:/opt/webrtc-p2p-video/config.json.bak-before-turn-*`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m json.tool E:\Desktop\123\webrtc-p2p-video\config.json`
+- Remote `python3 -m json.tool /opt/webrtc-p2p-video/config.json`
+- Public `https://p2p.cityulive.com/api/config` returned STUN + TURN.
+- `Test-NetConnection p2p.cityulive.com -Port 3478` succeeded for TCP.
+- Existing services remained active: `webrtc-p2p-video`, `coturn`, `nginx`, `go2rtc-control-signaling`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`, `cloud-service-console-web`.
+- Local pusher log showed `Loaded signal config: 2 ICE server(s)`.
+
+Runtime / deployment:
+- Cloud restart: only `webrtc-p2p-video.service`.
+- No EXE rebuild.
+- No hosted web console deployment.
+- No coturn config change or coturn restart.
+- No GitHub push or tag update.
+
+## 2026-05-29 10:05 - P2P local pusher H.264 crash fix
+
+Scope:
+- Video Link Agent standalone P2P local pusher stability fix.
+- Fixed repeated camera on/off cycling caused by the Windows pusher child crashing with access violation in PyAV/libx264 H.264 encoding.
+- Added a process-wide H.264 encode lock to serialize concurrent viewer sender encoding.
+- Increased supervisor stable-runtime threshold from `20s` to `60s`.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+- External archive `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`
+- Observed over one minute with two connected viewers; no supervisor restart, empty `pusher.err.log`, continuous sender stats.
+
+Runtime / deployment:
+- Local standalone P2P test pusher was restarted and left running in room `robot`.
+- No EXE rebuild.
+- No hosted web console deployment.
+- No cloud service restart.
+- No GitHub push or tag update.
+
+## 2026-05-29 09:47 - P2P local pusher setup defaults
+
+Scope:
+- Video Link Agent standalone P2P local pusher default-profile update.
+- Changed fresh `setup_local` defaults in `E:\wsl\p2p-local-pusher` to software `h264`, `1920x1080`, and `30fps`.
+- Updated the current config to the same default profile.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip` from a clean staging copy.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External archive `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\setup_local.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+- `python E:\wsl\p2p-local-pusher\scripts\setup_local.py --skip-pip`
+- Confirmed config values: `preferredEncoder=h264`, `width=1920`, `height=1080`, `fps=30`.
+
+Runtime / deployment:
+- No EXE rebuild.
+- No hosted web console deployment.
+- No cloud service restart.
+- No GitHub push or tag update.
+
+## 2026-05-29 09:20 - Guangzhou P2P signaling test service
+
+Scope:
+- Video Link Agent cloud-side P2P test deployment.
+- Deployed an isolated P2P WebRTC signaling service to Guangzhou server `111.230.62.106`.
+- Added `/opt/webrtc-p2p-video-gz`, `webrtc-p2p-video-gz.service`, and Nginx host config for `p2p-gz.cityulive.com`.
+- The service listens only on `127.0.0.1:8099`; public access currently goes through HTTP port `80` with host `p2p-gz.cityulive.com`.
+- Did not change legacy go2rtc video, Tencent Cloud Live, control signaling, Tank Trouble, hosted console, or shared `18081` routing.
+
+Files / external paths:
+- Remote `111.230.62.106:/opt/webrtc-p2p-video-gz`
+- Remote `111.230.62.106:/etc/systemd/system/webrtc-p2p-video-gz.service`
+- Remote `111.230.62.106:/etc/nginx/conf.d/webrtc-p2p-video-gz.conf`
+- Local `E:\Desktop\123\webrtc-p2p-video-gz-deploy.tar.gz`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+
+Validation:
+- `systemctl is-active webrtc-p2p-video-gz.service` returned `active`.
+- Remote `curl -fsS http://127.0.0.1:8099/api/config` returned `ok: true`.
+- Public Host-header check `curl.exe -fsS -H "Host: p2p-gz.cityulive.com" http://111.230.62.106/api/config` returned `ok: true`.
+- Public Host-header check `curl.exe -I -H "Host: p2p-gz.cityulive.com" http://111.230.62.106/watch.html?room=robot` returned `200 OK`.
+- Existing `http://111.230.62.106:18086/health` returned Tank Trouble health JSON.
+- Existing `http://111.230.62.106:18081/` returned `200 OK`.
+- Existing services checked as `active`: `nginx`, `cloud-service-console-tank-trouble`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`.
+
+Build / deployment:
+- No EXE rebuild.
+- No hosted web console deployment.
+- No GitHub push or tag update.
+
+Cloud deployment note:
+- Add DNS: `p2p-gz.cityulive.com A 111.230.62.106`.
+- HTTPS is not enabled yet; TCP `443` is currently not reachable on the Guangzhou server.
+
+HTTPS follow-up at 2026-05-29 09:38:
+- DNS resolved and TCP `443` was opened.
+- Installed `certbot` on Guangzhou server.
+- Issued Let's Encrypt certificate for `p2p-gz.cityulive.com`, expiring `2026-08-27`.
+- Updated only `/etc/nginx/conf.d/webrtc-p2p-video-gz.conf` so HTTP redirects to HTTPS and HTTPS proxies to `127.0.0.1:8099`.
+- Public `https://p2p-gz.cityulive.com/api/config` returned `ok: true`.
+- Public `http://p2p-gz.cityulive.com/watch.html?room=robot` returned `301` to HTTPS.
+- Public `https://p2p-gz.cityulive.com/watch.html?room=robot` returned `200 OK`.
+- Existing services remained `active`: `webrtc-p2p-video-gz`, `nginx`, `cloud-service-console-tank-trouble`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`.
+
+## 2026-05-29 02:50 - P2P local pusher supervisor stability fix
+
+Scope:
+- Video Link Agent standalone P2P local pusher stability fix.
+- Added a background supervisor for `E:\wsl\p2p-local-pusher`, so `start_local` launches a supervised pusher and can return while the push keeps running.
+- The supervisor records child exits, keeps separate supervisor/child PID files, and tries safer encoder/profile fallbacks when the pusher dies shortly after startup.
+- Added stronger pusher diagnostics with process-start/normal-exit/error logs, traceback output, and `faulthandler`.
+- `stop_local` now cleans stale supervisor/pusher processes from this script project.
+- Aligned config mirror fields with the user section and refreshed the clean zip package without runtime logs, venv, or cache files.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\scripts\stop_local.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\stop_local.py`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`
+- Observed supervised pusher for 35 seconds with connected viewer stats still increasing around `1.5 Mbps`.
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+- Confirmed no `p2p-local-pusher` supervisor/pusher process remained after stop.
+- `tar -tf E:\Desktop\123\p2p-local-pusher.zip`
+
+Build / deployment:
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- No EXE rebuild.
+- No hosted web console deployment.
+- No cloud service restart.
+
+Cloud deployment note:
+- No P2P signaling service, go2rtc legacy service, Tencent status API, control signal service, Tank Trouble service, public port, or Nginx config changed.
+
+## 2026-05-29 02:00 - P2P repeated viewer-ready black-screen fix
+
+Scope:
+- Video Link Agent standalone P2P pusher fix.
+- Root cause found: the public watch page repeatedly sent `viewer-ready`, causing the pusher to create repeated offers for the same viewer. The watch page then recreated its PeerConnection before RTP arrived, producing a live but muted track with zero received packets and a black video surface.
+- Added pusher-side duplicate `viewer-ready` suppression for 12 seconds after a recent offer to the same viewer, so existing public watch pages can connect without requiring an immediate server page deployment.
+- Kept local P2P watch-page debug/guard edits for next deployment.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`
+- Minimal Chrome WebRTC receiver decoded current room `robot` at `1920x1080` with `framesDecoded=960`.
+- Current public `https://p2p.cityulive.com/watch.html?room=robot` reached `readyState=4`, `videoWidth=1920`, `videoHeight=1080`, `muted=false`, and about `5.08 Mbps`.
+
+Build / deployment:
+- No EXE rebuild.
+- No hosted web console deployment.
+- No cloud service restart; attempted P2P static-page sync was blocked by SSH password authentication failure.
+
+Cloud deployment note:
+- No P2P signaling service, go2rtc legacy service, Tencent status API, control signal service, Tank Trouble service, public port, or Nginx config changed.
+
+## 2026-05-29 01:26 - P2P H264 and ICE black-screen fix
+
+Scope:
+- Video Link Agent standalone P2P pusher fix.
+- Buffered browser ICE candidates until the viewer answer is applied, avoiding early-candidate `remote_password` failures in `aioice`.
+- Matched H.264 encoder level and SDP `profile-level-id` to the configured output size/FPS, so `1920x1080 @ 60 fps` is no longer signaled as level 3.1.
+- Added sender stats logging for connected viewers: packets, bytes, delta packets, and bitrate.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`
+- Clean room `robot-fix-1779988751` connected and logged increasing sender stats.
+- Restored room to `robot`; current viewer reached `connected` and sender stats increased around `0.8-1.7 Mbps`.
+
+Build / deployment:
+- No EXE rebuild and no hosted web console deployment.
+- No cloud service restart.
+
+Cloud deployment note:
+- No P2P signaling service, go2rtc legacy service, Tencent status API, control signal service, Tank Trouble service, public port, or Nginx config changed.
+
+## 2026-05-29 00:50 - P2P pusher restart and viewer reconnect fix
+
+Scope:
+- Video Link Agent standalone P2P pusher and watch page fix.
+- Fixed stale runtime state causing `start_local` to report success from an old `pusher.state.json`.
+- Moved runtime state writing until after `pusher-online` succeeds, so failed room claims no longer overwrite the peer id used by `stop_local`.
+- Added retry while the room is still releasing a previous pusher.
+- Added viewer offer retry/rebuild behavior when a viewer keeps sending `viewer-ready` but never answers.
+- Updated watch page offer error handling so failed offers are retried instead of silently skipped.
+- `read_config()` now accepts UTF-8 files with BOM.
+- Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Remote `/opt/webrtc-p2p-video/public/shared.js`
+- External package `E:\Desktop\123\p2p-local-pusher.zip`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\stop_local.py E:\wsl\p2p-local-pusher\scripts\common.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Deployed updated watch JS and restarted only `webrtc-p2p-video.service`.
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` and `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`.
+- New public watch page opened with cache-busting query; pusher log showed `Viewer answered` and `connection state: connected`.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+- Updated `/opt/webrtc-p2p-video/public/shared.js` and restarted only `webrtc-p2p-video.service`.
+
+Cloud deployment note:
+- Public P2P entry, port, Nginx config, and certificate did not change.
+- No go2rtc legacy video service, Tencent status API, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-29 00:20 - P2P viewer first-frame signaling cleanup
+
+Scope:
+- Video Link Agent P2P signaling and standalone local pusher fix.
+- Filtered stale P2P `viewer-ready` messages so old watch pages no longer make the pusher send offers to dead viewers before the current viewer.
+- Reduced P2P long-poll timeout from 25 seconds to 5 seconds.
+- Added transient signaling pruning: normal messages keep about 20 seconds; `viewer-ready` to pusher keeps about 8 seconds.
+- Updated the standalone P2P local pusher to ignore stale `viewer-ready` messages and use the shorter poll timeout with old configs.
+
+Files / external paths:
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- External `E:\Desktop\123\webrtc-p2p-video\config.json`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- Remote `/opt/webrtc-p2p-video`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\common.py`
+- Local and public remote smoke tests confirmed a 10-second-old `viewer-ready` is filtered while a fresh viewer reaches the pusher.
+- Remote `python3 -m py_compile /opt/webrtc-p2p-video/server.py` passed.
+- Remote `systemctl is-active webrtc-p2p-video.service` returned `active`.
+- `curl.exe -fsS https://p2p.cityulive.com/api/rooms/robot/status` returned `ok: true`.
+
+Build / deployment:
+- Deployed `/opt/webrtc-p2p-video` and restarted only `webrtc-p2p-video.service`.
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- Public P2P entry, port, Nginx config, and certificate did not change.
+- No go2rtc legacy video service, Tencent status API, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 23:54 - Windows P2P full-screen capture scaling
+
+Scope:
+- Video Link Agent standalone pusher screen-capture fix.
+- Config `width` / `height` now mean final output resolution, not the top-left screen capture rectangle.
+- Windows screen mode captures the full virtual desktop using Windows system metrics, then scales/stretches frames to the configured output size before H.264 encoding.
+- No aspect-ratio preservation or letterboxing is applied, matching the requested adaptive stretch behavior.
+- Startup status now reports both actual capture size and output size.
+- Fixed `profile_payload()` so runtime state no longer writes `profile: null`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+- Startup output reported `Capture: 2560x1440` and `Output: 1920x1080 @ 60 fps`.
+- Encoder selected `h264_amf`; err log was empty.
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 23:33 - Windows P2P hidden background process
+
+Scope:
+- Video Link Agent standalone pusher Windows behavior fix.
+- Fixed `start_local.cmd` opening a second empty terminal window for the background pusher process.
+- `start_local.py` now creates the Windows background pusher process with no-window process creation and hidden startup info.
+- The foreground `start_local.cmd` result window still remains visible for success/failure output.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 23:26 - Windows P2P CMD visibility and screen format guard
+
+Scope:
+- Video Link Agent standalone pusher Windows fix.
+- Windows `.cmd` entry scripts now pause when launched by double-click so output/errors remain visible.
+- Added cross-OS screen input/format guards so Windows does not reuse Linux `x11grab`, and Linux does not reuse Windows `desktop`.
+- Refreshed Windows config via setup; screen capture now uses `desktop + gdigrab`.
+- Verified Windows screen push starts successfully with `screenCaptureEnabled = true`, `1920x1080 @ 60 fps`, and `h264_amf`.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\setup_local.cmd`
+- External `E:\wsl\p2p-local-pusher\start_local.cmd`
+- External `E:\wsl\p2p-local-pusher\stop_local.cmd`
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `cmd /c E:\wsl\p2p-local-pusher\setup_local.cmd --skip-pip`
+- `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+- `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 23:18 - Standalone P2P user-friendly screen toggle
+
+Scope:
+- Video Link Agent standalone pusher config cleanup.
+- Replaced user-facing `user.sourceMode` with `user.screenCaptureEnabled`.
+- `screenCaptureEnabled: false` means camera push; `true` means screen capture push.
+- Kept `sourceMode` internally/backward-compatible so older configs still work.
+- Updated start output to show `Screen capture: enabled/disabled`.
+- Preserved the user's current `1920x1080 @ 60 fps` and bitrate/encoder settings.
+- Updated the standalone pusher README with the boolean switch.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External `E:\wsl\p2p-local-pusher\docs\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/start_local.py scripts/pusher.py scripts/setup_local.py && python3 - <<'PY' ..."`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started screen push successfully with `user.screenCaptureEnabled = true`.
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 23:02 - WSL P2P screen input auto detection
+
+Scope:
+- Video Link Agent standalone pusher usability update.
+- Screen mode now works with only `user.sourceMode = screen`; `user.screenInput` can stay empty.
+- Linux/WSL screen input detection now tries `$DISPLAY`, `/tmp/.X11-unix/X*`, and `/mnt/wslg/.X11-unix/X*`.
+- The local WSL test config was changed to leave `screenInput` empty while still using `sourceMode = screen`.
+- Rewrote the standalone pusher README in readable Chinese and documented the simpler screen-mode usage.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External `E:\wsl\p2p-local-pusher\docs\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/start_local.py scripts/pusher.py scripts/setup_local.py && python3 - <<'PY' ..."`
+- Auto-detection returned `:0` with empty `user.screenInput`.
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started screen push successfully.
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 22:54 - WSL P2P screen capture dependency install
+
+Scope:
+- Video Link Agent WSL standalone pusher setup.
+- Installed WSL packages `ffmpeg` and `v4l-utils`.
+- Verified WSLg/X11 screen capture works from `:0` with FFmpeg `x11grab`.
+- Updated `start_local.py` so Linux/WSL screen mode injects `DISPLAY` from `user.screenInput` when the shell environment lacks `DISPLAY`.
+- Switched the local WSL test config to `user.sourceMode = screen` and `user.screenInput = :0`.
+- Started a real P2P screen push once, then stopped it.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `wsl -e bash -lc "command -v ffmpeg; ffmpeg -version | head -n 1; command -v v4l2-ctl; v4l2-ctl --version | head -n 1"`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"`
+- `wsl -e bash -lc "DISPLAY=:0 ffmpeg -hide_banner -f x11grab -video_size 640x480 -framerate 15 -i :0 -t 2 -f null -"`
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/start_local.py && DISPLAY=:0 ffmpeg -hide_banner -loglevel error -f x11grab -video_size 640x480 -framerate 15 -i :0 -t 1 -f null - && echo screen-capture-ok"`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started a background P2P screen pusher in room `robot`.
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 22:35 - Standalone P2P screen source mode
+
+Scope:
+- Video Link Agent standalone pusher update.
+- Added `user.sourceMode` to `E:\wsl\p2p-local-pusher`; `camera` remains default, `screen` pushes display content.
+- Added `user.screenInput` and internal `screen` defaults for Windows `gdigrab desktop` and Linux/WSL `x11grab`.
+- Start output and runtime state now show whether the active source is camera or screen.
+- `start_local` skips the Linux camera requirement when `sourceMode` is `screen` and reports a clear missing-screen-input message when needed.
+- Rewrote the standalone pusher README in readable Chinese.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- External `E:\wsl\p2p-local-pusher\docs\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/pusher.py scripts/start_local.py scripts/setup_local.py"`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` returned the intended default camera-mode no-Linux-camera message.
+- Verified Linux/WSL screen-mode config maps to `x11grab` and preserves `screenInput`.
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"` regenerated config with `user.sourceMode` and `screen` fields.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 21:58 - WSL P2P Windows camera guard
+
+Scope:
+- Video Link Agent local WSL standalone pusher fix.
+- Updated `E:\wsl\p2p-local-pusher` so Linux/WSL no longer reuses Windows DirectShow camera inputs such as `video=UGREEN Camera 4K`.
+- Linux profile building now uses real `/dev/video*` devices only and reports a clear WSL/no-camera message when none exist.
+- `start_local` now truncates pusher logs per run, avoiding stale success logs mixed with current failures.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\common.py`
+- External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+- External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/pusher.py scripts/start_local.py"`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"`
+- `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` returned the intended clear failure because current WSL has no `/dev/video*`.
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 21:39 - WSL P2P setup venv guard
+
+Scope:
+- Video Link Agent local WSL standalone pusher setup fix.
+- Updated `E:\wsl\p2p-local-pusher` so `setup_local.sh` handles Ubuntu/WSL missing `python3-venv` more clearly.
+- Setup now detects `ensurepip is not available`, attempts to install `python3-venv` and `python3-pip` with `apt-get`, and rebuilds incomplete `.venv` folders where pip is missing.
+- Rewrote the WSL copy README in readable Chinese and documented the manual fix command.
+
+Files / external paths:
+- External `E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+- External `E:\wsl\p2p-local-pusher\docs\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+- `wsl -e bash -lc "python3 -m py_compile /mnt/e/wsl/p2p-local-pusher/scripts/setup_local.py"`
+
+Build / deployment:
+- No EXE rebuild; Cloud Service Console app code was not changed.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 17:58 - Standalone P2P config user section
+
+Scope:
+- Video Link Agent standalone pusher and desktop mini app P2P local-script sync update.
+- `E:\Desktop\123\p2p-local-pusher\config\pusher.config.json` now exposes a compact top-level `user` section for normal edits.
+- P2P script readers now prefer `user` fields over older root / `camera` / `video` fields.
+- Program-maintained camera detection, encoder probes, fallback profiles, and last selected runtime data stay below the user section.
+- Desktop mini app P2P start now writes the same `user` section before calling the standalone local pusher.
+- Rewrote the standalone pusher README to tell users to edit only the `user` section.
+
+Files / external paths:
+- External `E:\Desktop\123\p2p-local-pusher\config\pusher.config.json`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\common.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\p2p-local-pusher\docs\README.md`
+- `backend/p2p_local_pusher.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c setup_local.cmd --skip-pip`
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py E:\Desktop\123\p2p-local-pusher\scripts\pusher.py E:\Desktop\123\cloud-service-console\backend\p2p_local_pusher.py`
+- Effective config smoke test confirmed `user` values override legacy fields.
+- `cmd /c npm.cmd run build --prefix frontend`
+- `git diff --check -- backend\p2p_local_pusher.py`
+- `cmd /c npm.cmd run installer:build`
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, Tencent status API, P2P signaling service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 08:24 - Desktop P2P push switched to local script mode
+
+Scope:
+- Video Link Agent desktop mini app update.
+- Desktop P2P push now calls the standalone local pusher at `E:\Desktop\123\p2p-local-pusher` through new local backend APIs.
+- Hosted web console P2P remains browser-based and cannot start the server-side local script.
+- The P2P panel now shows local script process/profile/watch URL in desktop mode; browser preview remains only for web mode.
+- Desktop P2P uses the current camera, resolution, frame rate, bitrate, encoder, and room settings from the local-stream form.
+- Added `hevc_nvenc` to encoder options and left encoder selection usable for desktop P2P script mode.
+
+Files:
+- `backend/p2p_local_pusher.py`
+- `backend/models.py`
+- `backend/main.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\p2p_local_pusher.py backend\models.py backend\main.py`
+- `cmd /c npm.cmd run build --prefix frontend`
+- Local manager smoke test detected `E:\Desktop\123\p2p-local-pusher` and returned `https://p2p.cityulive.com/watch.html?room=robot`.
+- `git diff --check -- backend\main.py backend\models.py backend\p2p_local_pusher.py frontend\src\api\cloudApi.ts frontend\src\types\cloud.ts frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css frontend\src\styles\theme.css`
+- `cmd /c npm.cmd run installer:build`
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud service was deployed or restarted.
+- No public port, cloud service name, go2rtc service, control signal service, Tank Trouble service, or hosted web console service changed.
+
+## 2026-05-28 07:54 - Standalone P2P start output and config guidance
+
+Scope:
+- Improved `E:\Desktop\123\p2p-local-pusher\start_local` terminal output.
+- `start_local` now prints requested signal server, room, watch URL, camera, input, capture size/FPS, bitrate, encoder preference, fallback chain, runtime-probed encoders, FFmpeg path, and config path before starting.
+- After online state, `start_local` prints the actual selected room, watch URL, camera, output size/FPS, bitrate, and encoder.
+- Rewrote standalone pusher README in readable Chinese and documented which config fields are safe to edit manually.
+
+Files / external paths:
+- External `E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\docs\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+- `E:\Desktop\123\p2p-local-pusher\start_local.cmd`
+- `E:\Desktop\123\p2p-local-pusher\stop_local.cmd`
+- Verified terminal output includes `https://p2p.cityulive.com/watch.html?room=robot` and actual encoder `h264_amf`.
+- Confirmed no leftover `p2p-local-pusher` Python process after validation.
+
+Runtime/cloud impact:
+- No Cloud Service Console app/runtime code changed.
+- No cloud runtime, public port, Nginx rule, go2rtc service, Tencent Cloud status API, control signal, or Tank Trouble change.
+
+## 2026-05-28 01:03 - Standalone cross-platform P2P local pusher
+
+Scope:
+- Added a new standalone P2P local camera pusher at `E:\Desktop\123\p2p-local-pusher`.
+- Top-level user scripts are only `setup_local`, `start_local`, and `stop_local` for Windows and Linux/macOS.
+- `setup_local` creates a local Python venv, installs `aiortc`/`av`, enumerates cameras, probes encoder runtime availability, and writes `config\pusher.config.json`.
+- `start_local` runs the pusher in the background so the terminal can be closed.
+- `stop_local` stops the background process and sends `pusher-offline` when possible.
+- Config defaults to `https://p2p.cityulive.com` room `robot` and includes camera, resolution, FPS, bitrate, room, and encoder fallback settings.
+
+Files / external paths:
+- External `E:\Desktop\123\p2p-local-pusher\setup_local.cmd`
+- External `E:\Desktop\123\p2p-local-pusher\start_local.cmd`
+- External `E:\Desktop\123\p2p-local-pusher\stop_local.cmd`
+- External `E:\Desktop\123\p2p-local-pusher\setup_local.sh`
+- External `E:\Desktop\123\p2p-local-pusher\start_local.sh`
+- External `E:\Desktop\123\p2p-local-pusher\stop_local.sh`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\common.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py`
+- External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- External `E:\Desktop\123\p2p-local-pusher\docs\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+- `E:\Desktop\123\p2p-local-pusher\setup_local.cmd --skip-pip`
+- `E:\Desktop\123\p2p-local-pusher\setup_local.cmd`
+- `E:\Desktop\123\p2p-local-pusher\start_local.cmd`
+- `E:\Desktop\123\p2p-local-pusher\stop_local.cmd`
+- Windows validation detected `UGREEN Camera 4K`, skipped unavailable NVENC at runtime, selected working `h264_amf`, reached online state, and stopped cleanly.
+
+Runtime/cloud impact:
+- No Cloud Service Console frontend/backend code changed.
+- No cloud runtime, public port, Nginx rule, go2rtc service, Tencent Cloud status API, control signal, or Tank Trouble change.
+- The script uses the existing P2P signaling service at `https://p2p.cityulive.com`.
+
+## 2026-05-28 00:03 - Viewer address confirmation dialogs
+
+Scope:
+- Changed Tencent Cloud `网页端观看` to open the play-address dialog first instead of directly opening the player page.
+- Tencent Cloud play dialog defaults to current status play URL, saved play URL, or derived `webrtc://.../live/robot_control` fallback.
+- Added a P2P viewer room dialog before opening `网页端观看`.
+- P2P viewer dialog defaults to the current P2P push room and can enter another room to watch another P2P stream.
+- P2P viewer-room selection does not overwrite the push-room field.
+
+Files / deployed paths:
+- `frontend\src\pages\DashboardPage.tsx`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+- Remote `/opt/cloud-service-console-web/frontend/dist`
+- `E:\Cloud-Service-Console\Cloud Service Console.exe`
+- `E:\Cloud-Service-Console\cloud-console-backend.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+
+Validation:
+- `cmd /c npm.cmd run build --prefix frontend`
+- Hosted console static sync confirmed `cloud-service-console-web.service`, `webrtc-p2p-video.service`, and `nginx` were `active`.
+- Public console asset check confirmed `P2P 观看房间`, `腾讯云播放地址`, and `进入房间` are present.
+- `python scripts\build_installer.py`
+
+Runtime/cloud impact:
+- Static console frontend was replaced under `/opt/cloud-service-console-web/frontend/dist`; web console service stayed active.
+- No P2P signaling service code, legacy go2rtc video, Tencent status API, control signal, or Tank Trouble change.
+- Desktop EXE and sidecar were rebuilt and copied to `E:\Cloud-Service-Console`.
+
+## 2026-05-27 23:44 - P2P room lock and video-only viewer
+
+Scope:
+- Added room ownership to the P2P signaling service: one room can have only one active pusher.
+- A second same-room pusher now receives `HTTP 409`; a different room can still host a separate P2P stream.
+- P2P pushers now heartbeat and send `pusher-offline` on stop; abnormal close is released after `pusherTtlSeconds` (`15` seconds by default).
+- Added an editable/saved P2P room field in the console P2P panel; both push and web viewer use that room.
+- Changed the P2P watch page to a video-only page that auto-starts viewer mode and renders only the remote video surface.
+
+Files / deployed paths:
+- `frontend\src\pages\DashboardPage.tsx`
+- `frontend\src\styles\globals.css`
+- External `E:\Desktop\123\webrtc-p2p-video\server.py`
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- External `E:\Desktop\123\webrtc-p2p-video\config.json`
+- External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- Remote `/opt/webrtc-p2p-video`
+- Remote `/opt/cloud-service-console-web/frontend/dist`
+- `E:\Cloud-Service-Console\Cloud Service Console.exe`
+- `E:\Cloud-Service-Console\cloud-console-backend.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+
+Validation:
+- `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+- `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+- `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- `cmd /c npm.cmd run build --prefix frontend`
+- Public room-lock smoke: first pusher returned `200`, second same-room pusher returned `409`, `pusher-offline` released the room, and the next pusher returned `200`.
+- Public watch page check confirmed `video-only-page` and `remote-video` are present and old viewer UI text is absent.
+- Remote `webrtc-p2p-video.service`, `cloud-service-console-web.service`, and `nginx` returned `active`.
+- `python scripts\build_installer.py`
+
+Runtime/cloud impact:
+- Restarted only `webrtc-p2p-video.service`.
+- Static console frontend was replaced under `/opt/cloud-service-console-web/frontend/dist`; web console service stayed active.
+- No legacy go2rtc video, Tencent Cloud status API, control signal, or Tank Trouble change.
+- Desktop EXE and sidecar were rebuilt and copied to `E:\Cloud-Service-Console`.
+
+## 2026-05-27 23:08 - Inline console P2P push
+
+Scope:
+- Replaced the previous external-page P2P push button with an inline local-stream P2P push panel.
+- Added local preview, status lamp, `开始P2P推流` / `停止P2P推流`, viewer count, room signal reset, and `网页端观看`.
+- P2P uses `https://p2p.cityulive.com` room `robot` and browser WebRTC peer connections; media remains peer-to-peer.
+- P2P applies camera, capture/output resolution, capture/target FPS, and video bitrate from the local-stream parameter area.
+- Legacy-only fields are greyed out while P2P/Tencent panels are active, and Tencent/P2P push are mutually exclusive because they share the local camera.
+- Synced hosted web console static frontend and rebuilt/copied the desktop mini app package.
+
+Files / deployed paths:
+- `frontend\src\pages\DashboardPage.tsx`
+- `frontend\src\styles\globals.css`
+- `frontend\src\styles\theme.css`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+- `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+- Remote `/opt/cloud-service-console-web/frontend/dist`
+- `E:\Cloud-Service-Console\Cloud Service Console.exe`
+- `E:\Cloud-Service-Console\cloud-console-backend.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+
+Validation:
+- `cmd /c npm.cmd run build --prefix frontend`
+- `curl.exe -fsS https://p2p.cityulive.com/api/config`
+- Public console asset check confirmed inline P2P push strings and `https://p2p.cityulive.com` are present, and `腾讯云推流 (BETA)` is absent.
+- `python scripts\build_installer.py`
+- Remote `cloud-service-console-web.service` and `webrtc-p2p-video.service` returned `active`.
+
+Runtime/cloud impact:
+- Static frontend only was replaced under `/opt/cloud-service-console-web/frontend/dist`; backend env/tokens were not regenerated.
+- No go2rtc legacy video, Tencent status API, control signal, Tank Trouble, or P2P signaling service restart/change.
+- Desktop EXE and sidecar were rebuilt and copied to `E:\Cloud-Service-Console`.
+
+## 2026-05-27 22:02 - Console P2P push entry
+
+Scope:
+- Integrated the public P2P WebRTC pusher into the local-stream UI.
+- Added `P2P推流 (BETA)` immediately after `腾讯云推流`, opening `https://p2p.cityulive.com/push.html?room=robot`.
+- Removed `(BETA)` from Tencent Cloud push button/panel naming.
+- Updated web-mode copy to show Tencent Cloud and P2P as supported web push paths.
+- Synced hosted web console static frontend and rebuilt/copied the desktop mini app package.
+
+Files / deployed paths:
+- `frontend\src\pages\DashboardPage.tsx`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+- `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+- Remote `/opt/cloud-service-console-web/frontend/dist`
+- `E:\Cloud-Service-Console\Cloud Service Console.exe`
+- `E:\Cloud-Service-Console\cloud-console-backend.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+- `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+
+Validation:
+- `cmd /c npm.cmd run build --prefix frontend`
+- `python scripts\build_installer.py`
+- `curl.exe -fsS https://p2p.cityulive.com/api/config`
+- Public console asset check confirmed `P2P推流 (BETA)` and `p2p.cityulive.com/push.html?room=robot` are present, and `腾讯云推流 (BETA)` is absent.
+
+Runtime/cloud impact:
+- Static frontend only was replaced under `/opt/cloud-service-console-web/frontend/dist`; `cloud-service-console-web.service` stayed active.
+- No backend token/config regeneration, no go2rtc legacy video, Tencent status API, control signal, Tank Trouble, or P2P signaling service change.
+- Desktop EXE and sidecar were rebuilt and copied to `E:\Cloud-Service-Console`.
+
+## 2026-05-27 17:45 - Public P2P HTTPS deployment
+
+Scope:
+- Deployed the standalone P2P WebRTC video prototype to server `150.109.100.30`.
+- Added a dependency-free Python signaling server (`server.py`) because Node.js is not installed on the server.
+- Created systemd service `webrtc-p2p-video.service`.
+- Added Nginx virtual host for `p2p.cityulive.com`, with HTTP redirected to HTTPS.
+- Issued Let's Encrypt certificate for `p2p.cityulive.com`.
+- Bound the internal signaling service to `127.0.0.1:8099`; public access goes through Nginx `443`.
+
+Files / cloud paths:
+- External local `E:\Desktop\123\webrtc-p2p-video\server.py`
+- Remote `/opt/webrtc-p2p-video`
+- Remote `/etc/systemd/system/webrtc-p2p-video.service`
+- Remote `/etc/nginx/conf.d/webrtc-p2p-video.conf`
+- Remote `/etc/letsencrypt/live/p2p.cityulive.com/fullchain.pem`
+- Remote `/etc/letsencrypt/live/p2p.cityulive.com/privkey.pem`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile server.py`.
+- Local Python signaling smoke test returned `ok: true` for `/api/config` and `/api/rooms/robot/status`.
+- Remote `systemctl is-active webrtc-p2p-video.service` returned `active`.
+- Remote `curl http://127.0.0.1:8099/api/config` returned `ok: true`.
+- Public `http://p2p.cityulive.com/` returned `301` to HTTPS.
+- Public `https://p2p.cityulive.com/` returned `200 OK`.
+- Public `https://p2p.cityulive.com/api/config` returned `ok: true`.
+- Browser smoke loaded `https://p2p.cityulive.com/watch.html?room=robot`.
+- Existing services remained active: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-control-signaling`, and `go2rtc-telemetry-relay`.
+
+Runtime/cloud impact:
+- New cloud service: `webrtc-p2p-video.service`.
+- New public HTTPS entry: `https://p2p.cityulive.com`.
+- New Nginx config: `/etc/nginx/conf.d/webrtc-p2p-video.conf`.
+- No change to existing Cloud Service Console app code, legacy go2rtc SRT path, Tencent path, control signal services, Tank Trouble services, or `console.cityulive.com`.
+
+## 2026-05-27 16:57 - P2P background signaling launcher
+
+Scope:
+- Updated the standalone P2P WebRTC prototype `start-signaling.cmd` to launch `server.js` in the background.
+- The start script now checks whether the configured port is already listening, starts Node hidden, verifies readiness, and writes logs to `logs\signaling.out.log` / `logs\signaling.err.log`.
+- Updated the prototype README to explain that the startup window can be closed after the success message and `stop-signaling.cmd` should be used to stop the background server.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\start-signaling.cmd`
+- External `E:\Desktop\123\webrtc-p2p-video\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Ran `cmd /c start-signaling.cmd`; command returned while `0.0.0.0:8099` remained listening.
+- `GET http://127.0.0.1:8099/api/config` returned `ok: true`.
+- Ran corrected stop logic; port `8099` stopped listening.
+
+Runtime/cloud impact:
+- Local-only P2P prototype launcher behavior.
+- No cloud service, existing console app, legacy go2rtc path, Tencent path, control signal, or Tank Trouble change.
+
+## 2026-05-27 16:50 - P2P signaling startup message
+
+Scope:
+- Improved the standalone P2P WebRTC prototype signaling server startup output.
+- The console now clearly says the server started successfully in Chinese and shows the next scripts to run.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `node --check server.js`
+
+Runtime/cloud impact:
+- Local-only P2P prototype console-message change.
+- No cloud service, existing console app, legacy go2rtc path, Tencent path, control signal, or Tank Trouble change.
+
+## 2026-05-27 16:47 - P2P stop script PID variable fix
+
+Scope:
+- Fixed `stop-signaling.cmd` in the standalone P2P WebRTC prototype.
+- Renamed the PowerShell loop variable from `$pid` to `$processId` because `$PID` is a built-in read-only PowerShell variable.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\stop-signaling.cmd`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Ran the corrected stop logic against port `8099`; it stopped the existing signaling server process.
+
+Runtime/cloud impact:
+- Local-only P2P helper script fix.
+- No cloud service, existing console app, legacy go2rtc path, Tencent path, control signal, or Tank Trouble change.
+
+## 2026-05-27 16:40 - P2P prototype stop script
+
+Scope:
+- Added a Windows stop script for the standalone P2P WebRTC prototype.
+- The script reads the configured signaling port from `config.json`, finds the listening process, and stops it.
+- Updated the prototype README usage instructions.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\stop-signaling.cmd`
+- External `E:\Desktop\123\webrtc-p2p-video\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Manual script review.
+
+Runtime/cloud impact:
+- Local-only helper script for stopping the standalone P2P signaling server.
+- No cloud service, existing console app, legacy go2rtc path, Tencent path, control signal, or Tank Trouble change.
+
+## 2026-05-27 15:18 - Standalone P2P WebRTC video prototype
+
+Scope:
+- Added an independent true P2P WebRTC video prototype under `E:\Desktop\123\webrtc-p2p-video`.
+- The prototype has a Node.js signaling server that exchanges only offer / answer / ICE messages.
+- The video media path is intended to flow directly between the pusher browser and viewer browser through WebRTC; the signaling server does not ingest or relay media frames.
+- Added separate pusher and viewer pages, room selection, camera/fps/resolution/bitrate controls, optional timestamp overlay, viewer stats, and Windows `.cmd` launchers.
+
+Files:
+- External `E:\Desktop\123\webrtc-p2p-video\config.json`
+- External `E:\Desktop\123\webrtc-p2p-video\server.js`
+- External `E:\Desktop\123\webrtc-p2p-video\public\index.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\push.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+- External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+- External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+- External `E:\Desktop\123\webrtc-p2p-video\start-signaling.cmd`
+- External `E:\Desktop\123\webrtc-p2p-video\open-pusher.cmd`
+- External `E:\Desktop\123\webrtc-p2p-video\open-viewer.cmd`
+- External `E:\Desktop\123\webrtc-p2p-video\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `node --check server.js`
+- `node --check public\shared.js`
+- Started the signaling server locally on `0.0.0.0:8099`.
+- `GET http://127.0.0.1:8099/api/config` returned `ok: true`.
+- `GET http://127.0.0.1:8099/api/rooms/robot/status` returned `ok: true`.
+- Verified `push.html` and `watch.html` are served with distinct pusher/viewer HTML content.
+- Browser smoke loaded the local P2P index page.
+
+Runtime/cloud impact:
+- Local-only external prototype service on port `8099` when `start-signaling.cmd` is running.
+- No change to existing Cloud Service Console app, go2rtc cloud video services, SRT bridge, Tencent Cloud path, control signal services, Tank Trouble services, Nginx config, public cloud ports, or deployed web console.
+
+## 2026-05-27 11:05 - Correct 0522 portable SRT bridge refresh
+
+Scope:
+- Investigated Windows `start-local` failure where FFmpeg opened `UGREEN Camera 4K` successfully but failed to connect to `srt://150.109.100.30:19091` with `I/O error`.
+- Confirmed cloud `go2rtc-srt-bridge` could be `active` and listening on UDP `19091` while SRT handshakes failed, including from `127.0.0.1` on the server.
+- Restarted only `go2rtc-srt-bridge` to recover the SRT ingest listener.
+- Updated the correct external 0522 portable package so Windows/Linux/macOS `start-local` refreshes an idle SRT bridge before starting local legacy push, while refusing to restart it if `main-camera` already has an active producer.
+
+Files:
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\windows\start-local.ps1`
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\linux\start-local.sh`
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\macos\start-local.sh`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Verified cloud UDP packets reached `150.109.100.30:19091`.
+- Verified local and server-side SRT caller attempts failed before restarting `go2rtc-srt-bridge`.
+- Restarted `go2rtc-srt-bridge` only; then FFmpeg test source successfully pushed to public SRT ingest.
+- Ran correct Windows `start-local.cmd`; it succeeded and created one cloud `main-camera` producer.
+- Ran `stop-local.cmd`; cloud `main-camera` producer count returned to `0`.
+- Verified remote services active after cleanup: `go2rtc-srt-bridge`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `nginx`, `coturn`.
+- `bash -n` passed for correct 0522 Linux/macOS `start-local.sh`.
+- PowerShell parser validation passed for correct 0522 Windows `start-local.ps1`.
+
+Runtime/cloud impact:
+- Temporarily restarted only the video SRT bridge service `go2rtc-srt-bridge`.
+- No control signal service, telemetry service, Nginx config, public port, cloud service name, Tank Trouble service, or hosted web console changed.
+
+## 2026-05-25 18:19 - Hosted console Tencent status text sync
+
+Scope:
+- Synced the Tencent Cloud push status text fix to the hosted web console at `https://console.cityulive.com/`.
+- Updated only the hosted frontend static bundle under `/opt/cloud-service-console-web/frontend/dist`; did not run a full backend redeploy.
+
+Files:
+- Remote `/opt/cloud-service-console-web/frontend/dist/index.html`
+- Remote `/opt/cloud-service-console-web/frontend/dist/assets/index-WRBRTEao.js`
+- Local `build\cloud-console-frontend-dist-fix.tar.gz`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `https://console.cityulive.com/?access_token=xhfang` references `/assets/index-WRBRTEao.js`.
+- `https://console.cityulive.com/assets/index-WRBRTEao.js` returned `200`, contains the new Tencent status text, and no longer contains the affected `????` placeholders.
+- Remote services remained active: `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+
+Runtime/cloud impact:
+- Cloud impact limited to hosted web console static frontend files.
+- No go2rtc video service, SRT bridge, control signal service, telemetry service, Nginx config, public port, cloud service name, or Tank Trouble service changed.
+
+## 2026-05-25 17:34 - Tencent Cloud push status text fix
+
+Scope:
+- Fixed the Tencent Cloud push signal card in the local streaming page so the web-local Tencent status no longer displays literal `???` placeholder text.
+- Replaced the affected values/notes with clear Chinese states for pushing, restorable, occupied, and waiting.
+
+Files:
+- `frontend\src\pages\DashboardPage.tsx`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `npm.cmd run build` in `frontend`.
+- Text search confirmed the affected `???` placeholders are gone from `frontend\src\pages\DashboardPage.tsx`.
+
+Runtime/cloud impact:
+- Frontend video-link UI text only.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, or video protocol changed.
+
+## 2026-05-22 17:07 - Correct 0522 go2rtc portable config fix
+
+Scope:
+- Corrected the active external pusher target to `go2rtc-portable-0522\go2rtc-portable`.
+- Fixed Linux/macOS config loading so Python validation failures stop with the real config error instead of falling through to `CFG_CONFIG_PATH: unbound variable`.
+- Made `sender.webrtcPreferredCodec` strict only for `transport.ingestMode = webrtc`; SRT/HTTP ingest now ignore invalid/non-applicable codec values and use `h264` internally.
+- Added `_comment_*` option notes to Windows, Linux, and macOS config files in the correct 0522 portable package.
+- Synchronized Windows, Linux, and macOS default config generators plus README guidance.
+
+Files:
+- External `go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.windows.config.json`
+- External `go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.linux.config.json`
+- External `go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.macos.config.json`
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\linux\common.sh`
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\macos\common.sh`
+- External `go2rtc-portable-0522\go2rtc-portable\scripts\common\ConfigHelpers.ps1`
+- External `go2rtc-portable-0522\go2rtc-portable\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n` on all correct 0522 portable root `.sh` scripts plus `scripts\linux\*.sh` and `scripts\macos\*.sh`, 21 files total.
+- JSON parse validation on correct 0522 Windows/Linux/macOS config files.
+- PowerShell parser validation on correct 0522 `scripts\common\ConfigHelpers.ps1`.
+- Python logic check confirmed SRT mode ignores invalid `sender.webrtcPreferredCodec`, while WebRTC mode still errors clearly.
+- Python compile validation on correct 0522 Linux/macOS camera helpers.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, hosted web console behavior, or video protocol changed.
+
+## 2026-05-22 15:48 - External legacy go2rtc portable config option comments
+
+Scope:
+- Added `_comment_*` option notes to the latest WeChat external go2rtc portable shared config.
+- Documented allowed/common values for capture format, resolution, frame rate, bitrate, viewer auto-open, delay marker, WebRTC codec, encoder override, ingest mode, and SRT timing options.
+- Synchronized Windows, Linux, and macOS default config generators so newly generated configs keep the same option notes.
+- Kept normal same-server switching simple: edit only `cloud.serverHost` and plaintext `cloud.sshPassword`.
+
+Files:
+- External `telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\common\ConfigHelpers.ps1`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\macos\common.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- JSON parse validation on external `config\sender-cloud.config.json`.
+- `bash -n` on all external root `.sh` scripts plus external `linux\*.sh` and `macos\*.sh` scripts.
+- PowerShell parser validation on external `common\ConfigHelpers.ps1`.
+- Config loader validation confirmed comment fields do not affect derived stream/server settings.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, hosted web console behavior, or video protocol changed.
+
+## 2026-05-22 15:35 - External legacy go2rtc portable Linux NVIDIA NVENC support
+
+Scope:
+- Added Linux NVIDIA NVENC support to the latest WeChat external go2rtc portable pusher package.
+- Linux `sender.videoEncoder` now supports blank auto mode, `h264_nvenc`, and `libx264`.
+- Blank auto mode probes `h264_nvenc` with FFmpeg first, then falls back to CPU `libx264`.
+- Forced `h264_nvenc` now fails with a clear driver/GPU/FFmpeg support message when unavailable.
+- Linux FFmpeg arguments now use separate low-latency settings for NVENC and `libx264`.
+
+Files:
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\start-sender.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n` on all external root `.sh` scripts and all external `linux\*.sh` scripts, 21 files total.
+- JSON parse validation on external `config\sender-cloud.config.json`.
+- Search validation for Linux encoder references.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, hosted web console behavior, or video protocol changed.
+- Real NVENC runtime test still needs a Linux NVIDIA host.
+
+## 2026-05-22 13:09 - External legacy go2rtc portable macOS support
+
+Scope:
+- Added macOS support to the latest WeChat external go2rtc portable pusher package.
+- Added `macos\` scripts adapted to the 0522 package layout and the shared `config/sender-cloud.config.json`.
+- Root `.sh` entry points now dispatch automatically to `linux\` or `macos\` by `uname -s`.
+- Switching identical cloud servers still only requires editing `cloud.serverHost` and plaintext `cloud.sshPassword`.
+- macOS sender uses AVFoundation camera detection and supports `h264_videotoolbox`, `hevc_videotoolbox`, or `libx264`.
+
+Files:
+- External `telebot-main-0522\telebot-main\go2rtc-portable\macos\*`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\*.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n` on all external root `.sh` scripts and all external `macos\*.sh` scripts.
+- `python -m py_compile` on external `macos\camera_helper.py`.
+- JSON parse validation on external `config\sender-cloud.config.json`.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, hosted web console behavior, or video protocol changed.
+- macOS AVFoundation capture still needs a real Mac runtime test.
+
+## 2026-05-22 10:52 - Legacy portable serverHost-only switching config
+
+Scope:
+- Simplified the latest WeChat external go2rtc portable pusher config so switching identical cloud servers only requires editing `cloud.serverHost` and `cloud.sshPassword`.
+- Windows and Linux loaders now derive `publicHost`, `sshHost`, SRT ingest URL, WHIP URL, viewer URL, STUN URL, and TURN URLs from `cloud.serverHost`.
+- Removed visible fixed cloud fields from `config/sender-cloud.config.json`.
+- Added plaintext `cloud.sshPassword` lookup before falling back to the old local secrets file.
+
+Files:
+- External `telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\common\ConfigHelpers.ps1`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\setup-local.ps1`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\full-setup.ps1`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\setup-local.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\linux\full-setup.sh`
+- External `telebot-main-0522\telebot-main\go2rtc-portable\README.md`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Windows `Get-SenderCloudConfig` derivation check verified generated SSH host, SRT ingest URL, viewer URL, and TURN/STUN URLs from `cloud.serverHost`.
+- JSON parse validation for the portable config.
+- `bash -n` validation for touched Linux shell scripts.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No cloud runtime changed, restarted, renamed, or redeployed.
+- No public port, cloud service name, control signal service, Tank Trouble service, hosted web console behavior, or video protocol changed.
+
+## 2026-05-21 19:40 - Legacy media-aware video status fix
+
+Scope:
+- Fixed cloud video status aggregation so legacy push state uses both sender heartbeat and go2rtc media activity.
+- A fresh legacy sender heartbeat marks the old link active.
+- If the sender heartbeat is stale but go2rtc producer bytes/packets are still increasing, the old link is also active with `liveReason: media`.
+- If both heartbeat and media activity are stale for more than 60 seconds, the old link becomes stopped.
+- Deployed the updated telemetry relay to `150.109.100.30` and restarted only `go2rtc-telemetry-relay`.
+
+Files:
+- `backend/cloud_setup_bundle/telemetry_relay.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\telemetry_relay.py`
+- Cloud repeated `GET http://127.0.0.1:18081/api/video/status` samples returned `activeMode: legacy`, `legacy.live: true`, `legacy.liveReason: media`, and increasing `producerBytes` / `producerPackets`.
+- Public web console API `GET https://console.cityulive.com/api/video/status?access_token=xhfang` returned `activeMode: legacy` and `legacy.liveReason: media`.
+- Cloud services stayed active: `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`, `go2rtc-control-signaling`.
+
+Runtime/cloud impact:
+- Cloud impact: restarted only `go2rtc-telemetry-relay`.
+- No EXE build, hosted web deploy, public port change, control signal change, or Tank Trouble change.
+
+## 2026-05-21 18:10 - Legacy portable Windows AMF startup fix
+
+Scope:
+- Fixed the latest WeChat external go2rtc portable Windows sender so AMD AMF hardware encoding can be selected.
+- Relaxed AMF selection when the runtime encode test passes but the periodic keyframe probe is inconclusive.
+- Fixed AMD AMF FFmpeg profile from unsupported `baseline` to `constrained_baseline`.
+- Fixed generated FFmpeg supervisor script corruption caused by embedding the heartbeat function in an expandable heredoc.
+- Restored heartbeat startup as an outer function and added parser validation for generated launch scripts.
+- Improved startup failure reporting to surface fatal FFmpeg stderr directly.
+
+Files:
+- External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-camera-push-to-cloud.ps1
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- PowerShell parser validation on `scripts\windows\start-camera-push-to-cloud.ps1`.
+- Verified local FFmpeg exposes `h264_amf`.
+- Direct AMF profile probe showed `constrained_baseline`, `main`, and `high` work while `baseline` fails.
+- Ran `scripts\windows\start-local.ps1`; AMF selection reached `h264_amf (hardware)` before the remaining SRT network failure.
+- Confirmed cloud `go2rtc-srt-bridge.service` is active and listening on UDP `0.0.0.0:19091`.
+
+Runtime/cloud impact:
+- External Windows local sender behavior changed.
+- No Cloud Service Console app runtime changed.
+- No EXE build, hosted web deploy, cloud service restart, public port change, control signal change, or Tank Trouble change.
+- Remaining observed issue: local FFmpeg cannot connect to `srt://150.109.100.30:19091` and reports `I/O error`, indicating a UDP/SRT network path issue.
+
+## 2026-05-21 17:50 - Legacy portable alternate server config clarity
+
+Scope:
+- Clarified that plaintext `cloud.sshPassword` remains visible and editable in each OS config.
+- Moved `cloud.sshPassword` next to `cloud.sshHost` / `cloud.sshUser` in Windows, Linux, and macOS configs.
+- Added config comments and README guidance for another cloud server: edit `cloud.publicHost`, `cloud.sshHost`, `cloud.sshUser`, and `cloud.sshPassword` before running `setup-local`.
+
+Files:
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.windows.config.json
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.linux.config.json
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.macos.config.json
+- External go2rtc-portable-0520\go2rtc-portable\README.md
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- JSON parse validation on Windows, Linux, and macOS configs.
+- Confirmed all three configs expose `publicHost`, `sshHost`, `sshUser`, and `sshPassword`.
+- Confirmed README documents the four fields for another cloud server.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No EXE build, hosted web deploy, cloud service restart, public port change, control signal change, or Tank Trouble change.
+
+## 2026-05-21 17:41 - Legacy portable password-only visible SSH config
+
+Scope:
+- Cleaned the latest WeChat external go2rtc portable pusher configs so normal users only see plaintext `cloud.sshPassword`.
+- Removed visible `cloud.sshKeyPath` from Windows, Linux, and macOS system configs.
+- Kept internal default SSH key path fallback in scripts for compatibility and automatic later connections.
+- Updated README wording and default config generators.
+- Aligned generated default capture/output resolution to `1280x720`.
+
+Files:
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.windows.config.json
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.linux.config.json
+- External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.macos.config.json
+- External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+- External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\macos\common.sh
+- External go2rtc-portable-0520\go2rtc-portable\README.md
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- Confirmed `sshKeyPath` no longer appears in `config` or `README.md`.
+- JSON parse validation on all config files.
+- Confirmed Windows/Linux/macOS configs still contain `cloud.sshPassword`.
+- PowerShell parser validation on touched scripts.
+- `bash -n` on touched Linux/macOS shell scripts.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No EXE build, hosted web deploy, cloud service restart, public port change, control signal change, or Tank Trouble change.
+
+## 2026-05-21 16:39 - Legacy portable root cleanup
+
+Scope:
+- Cleaned the latest WeChat external go2rtc portable pusher root at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0520\go2rtc-portable`.
+- Root now shows only daily-use entries plus `README.md`, `config`, `logs`, `scripts`, and `internal`.
+- Moved bundled go2rtc runtime files and legacy YAML templates into `internal\runtime`.
+- Moved viewer web assets into `internal\www`.
+- Moved historical docs into `internal\docs`.
+- Updated script references so helper/deploy code uses the new internal asset paths.
+
+Files:
+- External go2rtc-portable-0520\go2rtc-portable\README.md
+- External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+- External go2rtc-portable-0520\go2rtc-portable\scripts\windows\deploy-go2rtc-cloud.ps1
+- External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-local.ps1
+- External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-tencent.cmd
+- External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-sender-template.cmd
+- External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\linux\deploy-cloud.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\macos\common.sh
+- External go2rtc-portable-0520\go2rtc-portable\internal\*
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- PowerShell parser validation on touched Windows scripts.
+- JSON parse validation on all sender config files.
+- `bash -n` on root, Linux, and macOS shell scripts.
+- Path check confirmed internal runtime, web, and docs assets exist.
+
+Runtime/cloud impact:
+- No Cloud Service Console app runtime changed.
+- No EXE build, hosted web deploy, cloud service restart, public port change, control signal change, or Tank Trouble change.
+
+## 2026-05-21 16:10 - Legacy portable macOS and per-OS configs
+
+Scope:
+- Updated the external legacy go2rtc portable pusher at E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0520\go2rtc-portable.
+- Added macOS support for root setup-local.sh, start-local.sh, and stop-local.sh through scripts\macos.
+- Added macOS Homebrew dependency setup, AVFoundation camera auto-detection, and VideoToolbox encoder auto-selection.
+- Split config by OS: Windows, Linux, and macOS each have their own sender-cloud.<os>.config.json.
+- All system configs default to 150.109.100.30 and include plaintext cloud.sshPassword for internal SSH key bootstrap.
+
+Files:
+- External go2rtc-portable-0520\go2rtc-portable\setup-local.sh
+- External go2rtc-portable-0520\go2rtc-portable\start-local.sh
+- External go2rtc-portable-0520\go2rtc-portable\stop-local.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\macos\*
+- External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\linux\setup-local.sh
+- External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+- External Windows local sender scripts and config files
+- docs\VIDEO_LINK_AGENT.md
+- frontend\IMPLEMENTATION_LOG.md
+- docs\SHARED_AGENT_STATUS.md
+
+Validation:
+- bash -n on touched shell scripts.
+- python -m py_compile on camera helpers and heartbeat helper.
+- PowerShell parser validation on touched Windows scripts.
+- JSON parse validation on config files.
+- Windows config helper smoke test for the new Windows default config path.
+
+Cloud deployment note:
+- No cloud deployment or service restart was performed.
+- No control signal, Tank Trouble, public port, Nginx route, or hosted web console behavior changed.
+
+## 2026-05-20 21:02 - Local stream auto downgrade startup
+
+Scope:
+- Updated the desktop mini app local legacy push path.
+- Startup now rejects FFmpeg attempts that keep running while logging obvious camera decode errors, including `No JPEG data found in image`.
+- The backend retries lower or safer capture configurations, including default camera capture without forced MJPEG and `1280x720`, `960x540`, and `640x480` fallback profiles.
+- The final successful config is saved and returned so the UI fields refresh to the actually working downgraded values.
+
+Files:
+- `backend\local_stream.py`
+- `frontend\src\pages\DashboardPage.tsx`
+- `docs\VIDEO_LINK_AGENT.md`
+- `frontend\IMPLEMENTATION_LOG.md`
+- `docs\SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\local_stream.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- backend\local_stream.py frontend\src\pages\DashboardPage.tsx`
+- `cmd /c npm run installer:build`
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+
+Cloud deployment note:
+- No hosted web-console deployment or cloud service restart was performed.
+- No public ports, service names, control signal behavior, Tank Trouble behavior, or Nginx routes changed.
+
+## 2026-05-19 17:13 - Legacy portable Linux NVIDIA encoder support
+
+Scope:
+- Updated the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable`.
+- Linux now reads `sender.videoEncoder` from config.
+- Added Linux support for `h264_nvenc`, `hevc_nvenc`, and `libx264`.
+- Linux auto selection now tries `h264_nvenc` first, then falls back to `libx264`.
+- Added `videoEncoder` to Linux default config generation and updated README.
+
+Files:
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\scripts\linux\common.sh`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\scripts\linux\start-sender.sh`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n setup-local.sh start-local.sh stop-local.sh scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+- Fake FFmpeg encoder-list smoke test confirmed auto `h264_nvenc`, explicit `hevc_nvenc`, fallback `libx264`, and clear failure when explicit `hevc_nvenc` is unavailable.
+
+Cloud deployment note:
+- No Cloud Service Console runtime changed.
+- No EXE rebuild, hosted web-console deployment, or cloud service restart was performed.
+
+## 2026-05-19 15:30 - Legacy portable Linux root entries restored
+
+Scope:
+- Added root Linux wrappers back to the external legacy go2rtc portable pusher: `setup-local.sh`, `start-local.sh`, and `stop-local.sh`.
+- Root now exposes Windows and Linux daily-use entries only: setup/start/stop for each platform.
+- Other maintenance and helper scripts remain under `scripts/`.
+- Updated the external package README.
+
+Validation:
+- Root script-entry check confirmed only six daily-use scripts are exposed.
+- `bash -n setup-local.sh start-local.sh stop-local.sh scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+- PowerShell scriptblock parse check for all `scripts\windows\*.ps1`.
+- Target check confirmed the Linux wrappers point to existing scripts under `scripts\linux`.
+
+Cloud deployment note:
+- No Cloud Service Console runtime changed.
+- No EXE rebuild, hosted web-console deployment, or cloud service restart was performed.
+
+## 2026-05-19 15:25 - Legacy portable root entry cleanup
+
+Scope:
+- Reorganized the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable`.
+- Kept only `setup-local.cmd`, `start-local.cmd`, and `stop-local.cmd` as root user-facing entry points.
+- Moved other Windows/Linux/helper/maintenance scripts under `scripts/`.
+- Updated path resolution and the package README for the cleaned layout.
+
+Files:
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\setup-local.cmd`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\start-local.cmd`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\stop-local.cmd`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\scripts\...`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- PowerShell scriptblock parse check for all `scripts\windows\*.ps1`.
+- `bash -n scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+- Root script-entry check confirmed only `setup-local.cmd`, `start-local.cmd`, and `stop-local.cmd` remain in the package root.
+- Target check confirmed those three commands point to existing Windows scripts.
+
+Cloud deployment note:
+- No Cloud Service Console runtime changed.
+- No EXE rebuild, installer build, hosted web-console deployment, or cloud service restart was performed.
+## 2026-05-19 14:57 - Legacy portable stop-all only stops local push
+
+Scope:
+- Updated the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable`.
+- Changed `stop-all` so it only stops local video push/sender processes.
+- Removed the old cloud-stop behavior from the Windows and Linux `stop-all` entry scripts.
+
+Files:
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\stop-all.ps1`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\linux\stop-all.sh`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- PowerShell scriptblock parse check for the Windows `stop-all.ps1`.
+- `bash -n E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\linux\stop-all.sh`
+- Keyword check confirmed no remote service stop calls remain in the Windows/Linux `stop-all` scripts.
+
+Cloud deployment note:
+- No Cloud Service Console runtime changed.
+- No EXE rebuild, installer build, hosted web-console deployment, or cloud service restart was performed.
+- The legacy pusher can no longer stop shared cloud services through `stop-all`.
+
+## 2026-05-19 13:45 - Teammate frontend Tencent playback fixes
+
+Scope:
+- Updated the external teammate frontend at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518`.
+- Fixed Tencent player preview aspect ratio and legacy-to-Tencent mode switching without page refresh.
+
+Files:
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\app.py`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\app.js`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\styles.css`
+- `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\VIDEO_LINK_INTEGRATION_NOTE.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\app.py`
+- `node --check E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\app.js`
+
+Cloud deployment note:
+- No Cloud Service Console runtime changed.
+- No EXE rebuild, installer build, hosted web-console deployment, or service restart was performed.
+
+## 2026-05-19 13:30 - Console domain updated to cityulive.com
+
+Scope:
+- Documentation-only sync for the hosted web console domain change.
+- New current browser entries:
+  - `https://console.cityulive.com/?access_token=xhfang`
+  - `https://console.cityulive.com/?access_token=cmc5006`
+- The old `console.cityulive.xyz` console entry is deprecated/broken for current use.
+
+Files:
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- `https://console.cityulive.com/?access_token=xhfang` returned `200`.
+- `https://console.cityulive.com/?access_token=cmc5006` returned `200`.
+- `https://console.cityulive.com/api/access?access_token=xhfang` returned admin role.
+- `https://console.cityulive.com/api/access?access_token=cmc5006` returned user role.
+
+Cloud deployment note:
+- No cloud runtime changed in this task.
+- No EXE rebuild, installer build, hosted web-console deployment, or service restart was performed.
+
+## 2026-05-18 16:30 - Standalone Tencent Linux pusher codec selection
+
+Scope:
+- Updated the standalone Tencent Cloud WebRTC Linux pusher utility at `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux`.
+- Added configurable codec selection for `h264`, `vp8`, `vp9`, and `hevc`.
+- The local pusher page now remembers the selected codec and rewrites the Tencent push URL with the matching codec query flags before starting push.
+
+Files:
+- `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\run-tencent-webrtc-push.sh`
+- `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\config.env`
+- `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\config.example.env`
+- `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\tencent-webrtc-pusher.html`
+- `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\README.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\run-tencent-webrtc-push.sh`
+- Inline JavaScript syntax check for `tencent-webrtc-pusher.html` via `node`
+- URL rewrite smoke check via `node` confirmed:
+  - `h264` strips Tencent codec override params
+  - `vp9` appends `tx_vp9=true`
+  - `hevc` appends `tx_hevc=true&tx_h265=true`
+
+Cloud deployment note:
+- No Cloud Service Console app runtime changed.
+- No EXE rebuild, installer build, or hosted web-console deployment was performed.
+- This task only changed the standalone local Tencent pusher utility and its documentation sync.
+
+## 2026-05-15 23:22 - HTTPS web console entry documentation sync
+
+Scope:
+- Documentation-only sync for the hosted web console HTTPS migration.
+- Recorded that the preferred browser entry is `https://console.cityulive.xyz/?access_token=...`.
+- Clarified that browser camera, microphone, screen capture, and Tencent Cloud web push should use the HTTPS domain entry.
+
+Files:
+- `docs/SHARED_AGENT_STATUS.md`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- Previously verified `https://console.cityulive.xyz/` returned `200` with title `Cloud Service Console v3`.
+- Previously verified `https://console.cityulive.xyz/api/access` returned the expected admin/user roles for valid access tokens.
+- Previously verified the certificate is for `console.cityulive.xyz`, issued by Let's Encrypt, expiring `2026-08-13`.
+
+Cloud deployment note:
+- No cloud runtime changed in this documentation sync.
+- No app code changed.
+- No EXE rebuild or installer build was performed.
+- Direct fallback remains `http://150.109.100.30:18080/?access_token=...`, but browser media capture should use the HTTPS domain.
+
+## 2026-05-15 15:40 - HTTPS prep for web console domain
+
+Scope:
+- Prepared the old server for a future HTTPS web-console domain `console.cityulive.xyz`.
+- This is needed before browser-based Tencent Cloud push can use camera/microphone reliably in the hosted web console.
+
+Changes:
+- Added `/etc/nginx/conf.d/cloud-service-console-https.conf` on `150.109.100.30`.
+- Configured host-only HTTP reverse proxy for `console.cityulive.xyz` to `http://127.0.0.1:18080`.
+- Installed certbot at `/usr/bin/certbot`.
+- Reloaded only Nginx.
+
+Current blocker:
+- `console.cityulive.xyz` has no DNS record yet, so Let's Encrypt HTTPS certificate issuance cannot complete.
+- Port `443` is not listening yet.
+- Next external step: add DNS `console.cityulive.xyz A 150.109.100.30` and allow TCP `443` in the cloud security group, then run certbot.
+
+Validation:
+- `Resolve-DnsName console.cityulive.xyz` currently returns no record.
+- `Resolve-DnsName cityulive.xyz` still resolves to Tencent Cloud Live CDN.
+- Host-header check `Host: console.cityulive.xyz` on `http://150.109.100.30/` returned the web console app shell.
+- Old `/console/` path remains `404`.
+- `http://150.109.100.30:18080/api/access` with the admin token still returns `200`.
+- `Test-NetConnection 150.109.100.30 -Port 443` failed as expected because no certificate/443 listener is active yet.
+- Existing services remained `active`: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, and `coturn`.
+
+Cloud deployment note:
+- Backup created: `/etc/nginx/conf.d/cloud-service-console-https.conf.bak-20260515153927`.
+- No video streaming service, control signal broker, Tank Trouble service, telemetry relay, SRT bridge, coturn, or hosted web console restart was performed.
+
+## 2026-05-15 15:05 - Video heartbeat timeout stops mode
+
+Scope:
+- Updated the video status timeout rule for both `legacy` and `tencent` push modes.
+- More than 60 seconds without a heartbeat now returns `state: "stopped"` and `live: false` instead of leaving the mode in a stale/yellow state.
+
+Changes:
+- Changed the cloud telemetry relay heartbeat timeout constants from 15 seconds to 60 seconds.
+- Changed expired-heartbeat snapshots to return `stopped`.
+- Deployed the updated relay to old server `150.109.100.30`.
+- Restarted only `go2rtc-telemetry-relay`.
+- Rebuilt and copied the local desktop runtime EXEs to `E:\Cloud-Service-Console`.
+
+Files:
+- `backend/cloud_setup_bundle/telemetry_relay.py`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\telemetry_relay.py`
+- Local snapshot smoke check confirmed 59-second heartbeat is `active` and 61-second heartbeat is `stopped` for both modes.
+- Remote `python3 -m py_compile /tmp/telemetry_relay.py.codex.*`
+- Remote constants check confirmed both timeout constants are `60`.
+- Remote `systemctl is-active go2rtc-telemetry-relay` returned `active`.
+- Existing services before and after remained `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`, `cloud-service-console-web`.
+- Public `http://150.109.100.30:18081/api/video/status` returned `legacy.state: "stopped"`, `legacy.staleAfterSec: 60`, and `tencent.staleAfterSec: 60`.
+- `cmd /c npm run installer:build`
+
+Cloud deployment note:
+- Remote backup: `/opt/go2rtc-cloud/telemetry_relay.py.bak-heartbeat-timeout-20260515150414`.
+- No public ports, Nginx rules, service names, control signaling, Tank Trouble, or go2rtc ingest/playback services changed.
+
+## 2026-05-15 14:37 - Remove Nginx console entry
+
+Scope:
+- Removed the Nginx-based web console entry on old server `150.109.100.30`.
+- Future web console access should use only the standalone `18080` entry.
+
+Changes:
+- Backed up and disabled `/etc/nginx/conf.d/cloud-service-console-web.conf`.
+- Reloaded only `nginx`.
+- Kept `cloud-service-console-web.service` running on `18080`.
+
+Validation:
+- Remote `nginx -t` passed.
+- Remote `systemctl reload nginx` succeeded.
+- Existing services before and after remained `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`, `cloud-service-console-web`.
+- Public `http://150.109.100.30/console/?access_token=xhfang` now returns `404`.
+- Public `http://150.109.100.30/api/access` now returns `404`.
+- Public `http://150.109.100.30:18080/api/access` with admin token returns `200`.
+
+Cloud deployment note:
+- No public ports or service names changed.
+- No go2rtc, control signaling, telemetry relay, SRT bridge, coturn, or Tank Trouble service was restarted.
+
+## 2026-05-15 14:11 - Web console deployment sync
+
+Scope:
+- Synced the hosted standalone web console on `150.109.100.30`.
+- Deployed the current frontend/backend web-console package to `/opt/cloud-service-console-web`.
+- Preserved the existing admin/user access tokens.
+- At deployment time both `:18080` and `/console/` worked; the later `14:37` Nginx cleanup intentionally removed `/console/`.
+
+Changes:
+- Rebuilt the frontend bundle with the latest overview cards.
+- Restarted only `cloud-service-console-web.service`.
+- Did not restart go2rtc, control signaling, telemetry relay, SRT bridge, Nginx, coturn, or Tank Trouble services.
+
+Validation:
+- `cmd /c npm.cmd run build`
+- Remote `systemctl is-active cloud-service-console-web.service` returned `active`.
+- Remote `/api/health` on `127.0.0.1:18080` returned successfully with the preserved admin token.
+- Existing chain services before and after deployment were all `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Public `http://150.109.100.30:18080/api/access` returned `200`.
+- Public `http://150.109.100.30:18080/api/health` returned `200`.
+- Public `http://150.109.100.30/console/` returned the app shell.
+- Public main JS asset contains `閹貉冨煑娣団€冲娇閻樿埖鈧梗 and no longer contains `娴滄垹顏惄顔界垼` or `瑜版挸澧犲Ο鈥崇础`.
+
+Cloud deployment note:
+- Cloud impact is limited to the standalone `cloud-service-console-web.service` and files under `/opt/cloud-service-console-web`.
+- No public ports or cloud service names changed.
+
+## 2026-05-15 13:52 - Overview video push status card
+
+Scope:
+- Video Link Agent desktop/web console update.
+- Replaced the overview "瀵板懎顦╅悶鍡樺付閸? summary card with a video push status module.
+- Kept the change within video status API/UI wiring; no control signal or Tank Trouble logic was changed.
+
+Changes:
+- Added local backend `GET /api/video/status` as a same-origin proxy to the current server's cloud video status API.
+- Marked `/api/video/status` as a safe read-only path for normal web-console users.
+- Added frontend `VideoPushStatus` types and `getVideoPushStatus()`.
+- The overview card polls video status every 5 seconds while connected and visible.
+- The card shows active mode, conflict/offline/error state, and separate rows for `legacy` and `tencent` push status.
+- Per-mode notes show heartbeat age and producer visibility in Chinese.
+- Fixed the overview layout regression by preventing summary cards from stretching to the tallest card.
+- Made the video-link status rows compact and two-column on desktop/tablet widths, with a single-column fallback on narrow screens.
+
+Files:
+- `backend/main.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `frontend/src/types/cloud.ts`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\main.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- In-app browser automation timed out and `http://127.0.0.1:8080/` was not reachable, so visual browser verification was not completed.
+- Replaced copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026-05-15 13:51:37`
+  - `cloud-console-backend.exe` updated at `2026-05-15 13:51:29`
+  - `Cloud Service Console Setup.exe` updated at `2026-05-15 13:51:54`
+  - `Cloud Service Console_0.3.68_x64-setup.exe` updated at `2026-05-15 13:51:54`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No public ports, cloud service names, Nginx rules, control signal behavior, or Tank Trouble behavior changed.
+- The deployed standalone web console was not restarted or redeployed in this step; preserve existing access tokens if deploying it later.
+
+## 2026-05-15 07:56 - Desktop Tencent push parameter sync
+
+Scope:
+- Video Link Agent desktop app update.
+- Cleared legacy Local Stream push logs on backend shutdown.
+- Synced the Local Stream Tencent Cloud push button with the standalone Tencent pusher parameter behavior.
+
+Changes:
+- Added `LocalStreamManager.clear_logs()` and call it from the backend shutdown hook after quiet local-stream stop.
+- Tencent Cloud push now saves the current Local Stream draft config before starting.
+- Tencent Cloud push uses `output_video_size`, `target_framerate`, and `video_bitrate` through TXLivePusher `setProperty` calls.
+- Tencent Cloud push heartbeat payload now includes optional `videoWidth`, `videoHeight`, `fps`, `bitrateKbps`, and `quality`.
+- Non-applicable Local Stream settings remain legacy-only: FFmpeg encoder/path, input format, SRT latency/packet/timeout/drop settings, ingest ports, and exact browser camera constraints.
+
+Files:
+- `backend/local_stream.py`
+- `backend/main.py`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\local_stream.py backend\main.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Replaced copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026-05-15 07:56:01`
+  - `cloud-console-backend.exe` updated at `2026-05-15 07:55:52`
+  - `Cloud Service Console Setup.exe` updated at `2026-05-15 07:56:18`
+  - `Cloud Service Console_0.3.67_x64-setup.exe` updated at `2026-05-15 07:56:18`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No public ports, service names, Nginx rules, control signal behavior, or Tank Trouble behavior changed.
+- Browser automation against `http://127.0.0.1:8080/` timed out; build validation passed.
+
+## 2026-05-14 23:29 - Tencent Linux pusher status reporting
+
+Scope:
+- Video Link Agent update to the standalone Tencent Linux WebRTC pusher package at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\tencent-webrtc-pusher-linux-0514\tencent-webrtc-pusher-linux`.
+- Added optional Tencent status reporting so the independent Linux pusher can make `/api/video/status` show `tencent.live=true`.
+
+Changes:
+- Added `CLOUD_VIDEO_STATUS_BASE_URL`, `TENCENT_PLAY_URL`, `STATUS_CLIENT_ID`, and `STATUS_HEARTBEAT_SECONDS` to config files.
+- The run script passes those status values into the local pusher page.
+- The pusher page reports `/api/video/tencent/start` only after `TXLivePusher.startPush()` succeeds.
+- The pusher page reports `/api/video/tencent/heartbeat` during active push and `/api/video/tencent/stop` on stop/page unload.
+- The full push URL and `txSecret` are not uploaded; only stream name, push host, optional play URL, source, and client id are reported.
+
+Files:
+- External Tencent Linux pusher package:
+  - `config.env`
+  - `config.example.env`
+  - `run-tencent-webrtc-push.sh`
+  - `tencent-webrtc-pusher.html`
+  - `README.md`
+- Main repo logs/docs:
+  - `docs/VIDEO_LINK_AGENT.md`
+  - `frontend/IMPLEMENTATION_LOG.md`
+  - `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `bash -n run-tencent-webrtc-push.sh`
+- `bash -n stop-tencent-webrtc-push.sh`
+- HTML parser smoke check for `tencent-webrtc-pusher.html`.
+- `bash run-tencent-webrtc-push.sh --help`
+
+Cloud deployment note:
+- No remote cloud deployment was performed for this package change.
+- It relies on already deployed endpoints at `http://150.109.100.30:18081/api/video/tencent/*`.
+- No new public ports, service names, Nginx rules, control signal behavior, or Tank Trouble behavior changed.
+- EXE rebuilt: no, because this change is in a standalone external pusher package, not desktop app code.
+
+## 2026-05-14 17:56 - Legacy/Tencent video status API
+
+Scope:
+- Video Link Agent update for two-link video mode detection.
+- Synced the desktop Local Stream one-click push with the `legacy` runtime heartbeat protocol.
+- Added cloud status aggregation so frontend code can ask the server whether `legacy`, `tencent`, both, or neither are active.
+
+Changes:
+- Desktop Local Stream now writes `<remoteBase>/www/<stream>-runtime.json` after FFmpeg starts, refreshes it every 5 seconds, writes `stopped` on manual stop, and writes `stale` if FFmpeg exits while the app is alive.
+- Cloud telemetry relay now serves:
+  - `GET /api/video/status`
+  - `POST /api/video/tencent/start`
+  - `POST /api/video/tencent/heartbeat`
+  - `POST /api/video/tencent/stop`
+- Cloud status response returns `activeMode`, `conflict`, `availableModes`, `legacy`, and `tencent`.
+- Cloud Nginx template now proxies `/api/video/` to `go2rtc-telemetry-relay`.
+- `video-endpoints.json` now includes `runtimeStatusUrl` and `videoStatusUrl`.
+- Tencent Cloud push in the Local Stream panel now reports start/heartbeat/stop to the cloud status endpoint after `TXLivePusher.startPush()` succeeds.
+- Tencent push secrets are not uploaded; only stream name, push host, optional play URL, source, and client id are reported.
+
+Files:
+- `backend/local_stream.py`
+- `backend/cloud_setup.py`
+- `backend/cloud_setup_bundle/telemetry_relay.py`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- External teammate handoff: `E:\Desktop\123\VIDEO_LINK_STATUS_API_FOR_FRONTEND.md`
+
+Validation:
+- `python -m py_compile backend\local_stream.py backend\cloud_setup.py backend\cloud_setup_bundle\telemetry_relay.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+- Local route registration check for `/api/video/status` and `/api/video/tencent/*`.
+- `cmd /c npm run installer:build`
+- Replaced copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026-05-14 18:02:59`
+  - `cloud-console-backend.exe` updated at `2026-05-14 18:02:50`
+  - `Cloud Service Console Setup.exe` updated at `2026-05-14 18:03:16`
+  - `Cloud Service Console_0.3.62_x64-setup.exe` updated at `2026-05-14 18:03:16`
+
+Cloud deployment note:
+- Deployed video status API to old server `150.109.100.30`.
+- Updated remote `/opt/go2rtc-cloud/telemetry_relay.py`.
+- Updated remote `go2rtc-telemetry-relay.service` environment for stream name, remote base, and go2rtc streams URL.
+- Inserted `/api/video/` proxy into the existing `/etc/nginx/conf.d/go2rtc-cloud.conf` without overwriting Tank Trouble or control blocks.
+- Updated remote `/opt/go2rtc-cloud/www/video-endpoints.json`.
+- Restarted only `go2rtc-telemetry-relay`; reloaded Nginx.
+- No new public ports or cloud service names were added.
+- Control signal and Tank Trouble behavior were not changed.
+
+Remote validation:
+- Remote `python3 -m py_compile /opt/go2rtc-cloud/telemetry_relay.py`.
+- Remote `sudo nginx -t`.
+- Remote `systemctl status go2rtc-telemetry-relay` reported active.
+- Remote `http://127.0.0.1:18083/api/video/status` returned `200`.
+- Remote `http://127.0.0.1:18081/api/video/status` returned `200`.
+- Public `http://150.109.100.30:18081/api/video/status` returned `200`.
+- Public `http://150.109.100.30:18081/video-endpoints.json` includes `runtimeStatusUrl` and `videoStatusUrl`.
+- Public control checks still returned `200` for `/control/webrtc/health` and `/control/monitor/key-state?session=robot-control`.
+
+## 2026-05-14 17:19 - Legacy go2rtc sender heartbeat
+
+Scope:
+- Video Link Agent update to the standalone old go2rtc sender package at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0514\go2rtc-portable`.
+- Added live `legacy` runtime heartbeat status for future two-link video mode selection.
+
+Changes:
+- Added `legacy_sender_heartbeat.py`, a small cross-platform heartbeat publisher that refreshes the existing cloud runtime status JSON.
+- Windows sender start now launches the heartbeat after the old go2rtc push is confirmed and stops it from the stop script.
+- Linux sender start now launches the heartbeat after the old go2rtc push is confirmed and stops it from the stop script.
+- Runtime status payload now includes `videoMode: "legacy"`, `lastHeartbeatAt`, `heartbeatIntervalSec`, and `statusReason`.
+- README documents `<publicBaseUrl>/main-camera-runtime.json` as the legacy sender heartbeat source.
+
+Files:
+- External portable sender package:
+  - `legacy_sender_heartbeat.py`
+  - `common/ConfigHelpers.ps1`
+  - `start-camera-push-to-cloud.ps1`
+  - `stop-camera-push-to-cloud.ps1`
+  - `linux/common.sh`
+  - `linux/start-sender.sh`
+  - `linux/stop-sender.sh`
+  - `README.md`
+- Main repo logs/docs:
+  - `docs/VIDEO_LINK_AGENT.md`
+  - `frontend/IMPLEMENTATION_LOG.md`
+  - `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- PowerShell parser check for the changed `.ps1` files.
+- `bash -n` for the changed Linux shell files.
+- `python -m py_compile` for `legacy_sender_heartbeat.py`.
+
+Cloud deployment note:
+- No remote deployment was performed.
+- No public ports, cloud service names, go2rtc systemd units, Nginx config, control signal chain, or Tank Trouble services changed.
+- The heartbeat writes the existing runtime JSON only when the portable sender is run with working SSH access.
+- EXE rebuilt: no, because this change is in the standalone old sender package, not the desktop app.
+- GitHub push: no.
+- Git tag update: no.
+
+## 2026-05-13 13:38 - Tencent Cloud TCPlayer v4 playback integration
+
+Scope:
+- Video Link Agent fix for embedded Tencent Cloud Live WebRTC playback.
+
+Changes:
+- Replaced the old TCPlayerLite playback loader with Tencent Cloud `TCPlayer` v4.9.1 CSS/JS, matching the official TCPlayer demo path that can play `webrtc://cityulive.xyz/live/robot_control`.
+- Changed the embedded playback container from a plain `div` to a real `<video>` element and initialize with `TCPlayer(videoId, options)` followed by `player.src(playUrl)`.
+- Added cleanup/remount handling for the web player so repeated playback attempts start from a fresh TCPlayer container.
+- Kept playback URL validation and local browser storage behavior unchanged.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 13:37:57`
+  - `cloud-console-backend.exe` updated at `2026/5/13 13:37:48`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 13:38:14`
+- Browser automation setup timed out while trying to inspect the in-app browser, so live playback still needs a manual click-through with a running Tencent Cloud stream.
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 13:19 - Tencent Cloud push preview reset
+
+Scope:
+- Video Link Agent UI/runtime fix for the Tencent Cloud Live push preview.
+
+Changes:
+- Added a preview reset for the Tencent Cloud push preview container before each new push starts.
+- Clears and remounts the SDK preview container after stopping push as well.
+- Prevents repeated start/stop cycles from accumulating nested SDK render nodes that appear as growing black borders around the camera preview.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 13:19:08`
+  - `cloud-console-backend.exe` updated at `2026/5/13 13:19:00`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 13:19:25`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 12:37 - Tencent Cloud web playback button
+
+Scope:
+- Video Link Agent update for the Tencent Cloud Live WebRTC push beta panel.
+- Added a post-push `缂冩垿銆夌粩顖濐潎閻獖 flow using Tencent Cloud TCPlayerLite WebRTC playback.
+
+Changes:
+- Added `缂冩垿銆夌粩顖濐潎閻獖 beside the Tencent Cloud push controls; it is enabled after Tencent Cloud push is running.
+- Clicking it opens a playback-address dialog for a URL such as `webrtc://cityulive.xyz/live/robot_control`.
+- The dialog validates the playback URL before opening the embedded player.
+- The app dynamically loads Tencent Cloud `TcPlayer` from TCPlayerLite and embeds playback in the Tencent Cloud push panel.
+- After the player reports playback activity, the playback URL is saved to local browser storage and prefilled next time.
+- Playback address storage is separate from the Tencent Cloud push-code storage.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 12:37:19`
+  - `cloud-console-backend.exe` updated at `2026/5/13 12:37:11`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 12:37:36`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 12:26 - Tencent Cloud push status strip
+
+Scope:
+- Video Link Agent UI fix for the Tencent Cloud push panel status display.
+
+Changes:
+- Changed the Tencent Cloud push preview/status grid to align items at the top instead of stretching the status column to preview height.
+- Reduced the push status box from a large full-height green panel to a compact status strip with the existing small green lamp and text.
+
+Files:
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- First `cmd /c npm run installer:build` built successfully but could not copy because `E:\Cloud-Service-Console\Cloud Service Console.exe` was running.
+- Stopped `Cloud Service Console.exe` and two `cloud-console-backend.exe` processes.
+- Reran `cmd /c npm run installer:build`.
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 12:26:16`
+  - `cloud-console-backend.exe` updated at `2026/5/13 12:26:07`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 12:26:32`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 12:16 - Tencent Cloud push dialog clipping fix
+
+Scope:
+- Video Link Agent UI fix for the Tencent Cloud push-code dialog.
+
+Changes:
+- Raised the shared setup/push modal overlay above the app shell/sidebar.
+- Offset the fixed overlay to the viewport so the Tencent Cloud push-code textarea is no longer clipped by the left navigation area.
+- Added max-height scrolling for the modal card so it remains usable on shorter windows.
+
+Files:
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 12:16:34`
+  - `cloud-console-backend.exe` updated at `2026/5/13 12:16:25`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 12:16:50`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 12:08 - Tencent Cloud push code dialog memory
+
+Scope:
+- Video Link Agent update for the Tencent Cloud Live WebRTC push beta flow on the Local Stream page.
+- Changed the `閼垫崘顔嗘禍鎴炲腹濞?(BETA)` entry so it asks for the push code in a modal before opening the push panel.
+
+Changes:
+- Clicking `閼垫崘顔嗘禍鎴炲腹濞?(BETA)` now opens a push-code dialog for the Tencent Cloud `webrtc://...txSecret=...&txTime=...` URL.
+- The dialog validates the URL before opening the in-page push panel.
+- After `TXLivePusher.startPush()` succeeds once, the push code is saved to local browser storage.
+- The next Tencent Cloud push flow pre-fills and displays the saved push code, with a `娣囶喗鏁糮 action available before pushing.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 12:07:33`
+  - `cloud-console-backend.exe` updated at `2026/5/13 12:07:23`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 12:07:49`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- Built and copied local EXEs after the code change per the updated user workflow.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 11:34 - Local stream occupancy guard
+
+Scope:
+- Video Link Agent update for the default Local Stream push path.
+- Disabled `娑撯偓闁款喗甯瑰ù涔?when the existing stream is visible but this machine is not the local publisher.
+
+Changes:
+- Treats `push_visible && !running` as another device/user already publishing the default stream.
+- The `娑撯偓闁款喗甯瑰ù涔?action is disabled in that state, and hovering the disabled action area shows `閸忔湹绮禍鐑橆劀閸︺劍甯瑰ù涔?
+- The local signal card reports `閸楃姷鏁ゆ稉鐠?with note `閸忔湹绮禍鐑橆劀閸︺劍甯瑰ù涔?
+- Added a small wrapper style so the native hover title still works around the disabled button.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 11:32:56`
+  - `cloud-console-backend.exe` updated at `2026/5/13 11:32:47`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 11:33:14`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- Built and copied local EXEs after the code change per the updated user workflow.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 11:21 - Tencent Cloud WebRTC push beta
+
+Scope:
+- Video Link Agent update for the Local Stream page.
+- Added a `閼垫崘顔嗘禍鎴炲腹濞?(BETA)` button beside `娑撯偓闁款喗甯瑰ù涔?
+- The new panel lets the user paste a Tencent Cloud Live `webrtc://...txSecret=...&txTime=...` push URL and publish directly from the desktop WebView/browser without OBS.
+
+Changes:
+- Dynamically loads Tencent Cloud `TXLivePusher` SDK only when the beta panel starts pushing.
+- Supports camera or screen/window capture, with optional microphone.
+- Shows an in-page preview container and concise status text.
+- Does not persist the Tencent Cloud push URL or hard-code the `txSecret` into source files.
+- Styled the beta panel to match the current local-stream UI in light and dark themes.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- Verified copied runtime files in `E:\Cloud-Service-Console`:
+  - `Cloud Service Console.exe` updated at `2026/5/13 11:25:30`
+  - `cloud-console-backend.exe` updated at `2026/5/13 11:25:21`
+  - `Cloud Service Console Setup.exe` updated at `2026/5/13 11:25:47`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- No cloud services, public ports, go2rtc config, local FFmpeg ingest, systemd units, or deployment bundles were changed.
+- Built and copied local EXEs after the code change per the updated user workflow.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 10:54 - Activity logs and local stream UI polish
+
+Scope:
+- UI Design Agent update for activity logs, local debug flow visibility, local stream panel polish, and user-facing error text.
+- Added a dedicated `閺堫剙婀寸拫鍐槸閺冦儱绻擿 above `閺堫剙婀撮崥搴ｎ伂閺冦儱绻擿 so setup/refresh/start/stop flows are visible without mixing them into backend service output.
+- Kept the cloud/video/control/game business protocols intact except for user-facing log/error wording needed by the UI.
+
+Changes:
+- Activity log component now accepts title/subtitle/empty labels, auto-scrolls, uses the shared log-console style, and keeps log text selectable for copying.
+- Activity view now shows `閺堫剙婀寸拫鍐槸閺冦儱绻擿 first and `閺堫剙婀撮崥搴ｎ伂閺冦儱绻擿 second, with taller themed log windows.
+- One-click configuration closes the password dialog after submission, switches to Activity, and records local debug steps for check/run completion.
+- Dashboard refresh, sidebar refresh, start-all, and stop-all switch to Activity and append readable local debug steps.
+- Successful service/setup steps now render as green success log lines; errors remain red.
+- Local stream dropdowns now use a custom themed select menu.
+- Local stream gray blocks were restyled for light/dark mode, and the five-light all-live effect is clipped inside the local stream panel.
+- Local stream startup failures now show a concise red summary while the full FFmpeg stderr remains in the selectable push log.
+- Cloud setup drift text maps internal `www` to user-facing `娴滄垹顏純鎴︺€夌挧鍕爱`.
+
+Files:
+- `frontend/src/components/ActivityLog.tsx`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `backend/main.py`
+- `backend/service_manager.py`
+- `backend/cloud_setup.py`
+- `backend/local_stream.py`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `python -m py_compile backend\cloud_setup.py`
+- `python -m py_compile backend\local_stream.py`
+- `cmd /c "frontend\node_modules\.bin\tauri.cmd build --config src-tauri/tauri.conf.json --bundles none"`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- One-click setup wording/check behavior changed locally; future one-click setup may sync cloud webpage resources if drift is detected.
+- Built EXEs only, no installer in this step.
+- Copied EXEs to `E:\Cloud-Service-Console\Cloud Service Console.exe` and `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-13 10:42 - Control monitor polling and user-only dialing filter
+
+Scope:
+- Control signal lane and mini-app monitor display only.
+- Reduced the side-channel keyboard polling floor to make pressed keys show up faster.
+- Filtered the mini-app dialing state so internal compute/arm command sessions are not counted as user web frontend dialing.
+
+Changes:
+- `backend/cloud_setup_bundle/control_signaling.py` now tags pending browser offers with a role and marks whether they came from a user frontend.
+- `backend/main.py` and `backend/health_checker.py` now prefer `userPendingOffers` / `pendingOfferClients` when building the mini-app-facing control status.
+- `backend/main.py` now skips the extra `/control/webrtc/status` fallback fetch when the cloud `key-state` payload already contains `linkStatus`.
+- `frontend/src/pages/DashboardPage.tsx` now polls control key-state with a 50ms minimum floor instead of 200ms.
+- `frontend/src/types/cloud.ts` and `backend/models.py` now carry the extra user/internal pending-offer fields.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/main.py`
+- `backend/health_checker.py`
+- `backend/models.py`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\main.py backend\health_checker.py backend\models.py backend\cloud_setup_bundle\control_signaling.py`
+- `cmd /c npm.cmd run build --prefix frontend`
+- `cmd /c npm.cmd run installer:build`
+
+Cloud impact:
+- Cloud broker schema changed to expose user/internal pending-offer separation.
+- Local installer rebuilt and copied to `E:\Cloud-Service-Console`.
+- No video ingest, Tank Trouble game logic, or external TURN settings were changed.
+
+## 2026-05-07 11:02 - Saved login account dropdown on host field
+
+Scope:
+- UI Design Agent update for the login page and local login settings model.
+- Added a saved-account host dropdown fed by previously successful local logins, with auto-fill for the paired username, password, and preference toggles.
+- No cloud deployment, video link logic, control signaling protocol, or Tank Trouble gameplay changed.
+
+Changes:
+- Local login settings now keep a small `saved_accounts` history alongside the current login form state, while remaining backward-compatible with old single-account settings files.
+- Successful logins are promoted to the top of the saved-account list and deduplicated by `host + username`.
+- The login page host field now opens a custom dropdown menu showing saved servers and whether each entry remembers password or auto-login.
+- Clicking a saved entry fills `host`, `username`, `password`, `remember_password`, and `auto_login` into the form without auto-submitting.
+
+Files:
+- `backend/config.py`
+- `backend/models.py`
+- `backend/settings_store.py`
+- `backend/main.py`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/LoginPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend/main.py backend/models.py backend/settings_store.py backend/config.py`
+- `cmd /c npm --prefix frontend run build`
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No package version bump, GitHub push, tag update, or installer build was performed in this step.
+
+## 2026-05-06 00:24 - v0.3.62 installer build
+
+Scope:
+- Tank Trouble Agent release packaging step after the land mine powerup update.
+- Bumped desktop package metadata from `0.3.61` to `0.3.62`, built the Windows NSIS installer, and copied it to the local release directory.
+
+Changes:
+- Updated root, frontend, Tauri, and Cargo version metadata to `0.3.62`.
+- Ran the Tauri production build, which rebuilt the frontend and packaged the backend bundle.
+- Generated and copied installer: `E:\Cloud-Service-Console\Cloud Service Console_0.3.62_x64-setup.exe`.
+
+Files:
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/TANK_TROUBLE_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- `cmd /c npm run tauri:build`
+- Verified copied installer exists at `E:\Cloud-Service-Console\Cloud Service Console_0.3.62_x64-setup.exe` with size `22605776` bytes.
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- The installer includes the current bundled Tank Trouble cloud script/assets; existing one-click setup remains the path for syncing servers.
+- GitHub push: no.
+- Git tag update: no; latest known tag remains `v0.3.50`.
+
+## 2026-05-06 00:18 - Tank Trouble land mine powerup
+
+Scope:
+- Tank Trouble Agent update for the Tank Trouble game only.
+- Added a gray `AT MINE` powerup, local mine-layer rendering, online mine planting, cloud-authoritative mine triggers/damage, preview/spectator rendering, and bundled mine icon assets.
+
+Changes:
+- Desktop Canvas now renders the `land-mine.png` pickup, `AT MINE` pickup text, mine-layer tank without a long barrel, planted mines with owner-colored lamps, fade/invisibility, fast reveal near tanks, and a mine-specific distortion-style explosion.
+- Online sync now carries `mine_ammo` and `mines`; local fire prediction plants a visible mine immediately, then reconciles against cloud state.
+- Cloud room service now spawns `land_mine`, gives 3 mines, arms mines after 1s, triggers them on any tank in range, detonates after 1s, and emits `weapon=land_mine` death events.
+- Local preview runtime/page and cloud spectator page now pass/render mines and the mine-layer tank appearance.
+- Added `land-mine.png` to both desktop public assets and the cloud setup bundle assets.
+
+Files:
+- `frontend/src/components/TankTroublePanel.tsx`
+- `frontend/src/types/cloud.ts`
+- `backend/models.py`
+- `backend/tank_trouble_preview_runtime.py`
+- `backend/tank_trouble_preview_page.py`
+- `backend/cloud_setup_bundle/tank_trouble_room.py`
+- `frontend/public/tank-trouble/powerups/land-mine.png`
+- `backend/cloud_setup_bundle/www/tank-trouble/powerups/land-mine.png`
+- `docs/TANK_TROUBLE_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py backend\tank_trouble_preview_runtime.py backend\tank_trouble_preview_page.py backend\main.py backend\models.py`
+- Extracted cloud spectator `<script>` to `build-logs\spectator-page-check.js` and ran `node --check build-logs\spectator-page-check.js`.
+- Extracted local preview page `<script>` to `build-logs\preview-page-check.js` and ran `node --check build-logs\preview-page-check.js`.
+- `cmd /c npm --prefix frontend run build`
+
+Cloud deployment note:
+- No remote cloud deployment was performed.
+- Existing Tank Trouble one-click setup hashes `backend/cloud_setup_bundle/tank_trouble_room.py` and `backend/cloud_setup_bundle/www/tank-trouble/**`, so it will upload the updated cloud game script and `land-mine.png` asset to any configured server and restart only `cloud-service-console-tank-trouble`.
+- No app version bump, EXE build, GitHub push, or tag update in this step.
+
+## 2026-05-05 19:14 - Control monitor paired-state lamps
+
+Scope:
+- Control Signal Agent update for the mini app control monitor and control broker status aggregation.
+- Fixed the case where the real browser-to-robot DataChannel was connected but the monitor lamps stayed yellow/off because the robot receiver stopped polling after accepting an offer and the frontend had not posted side-channel `callState`.
+
+Changes:
+- Broker `linkStatus` now treats a completed browser-offer / robot-answer exchange (`answersPosted > 0`) as a paired-state fallback for `frontendDialing`, `backendListening`, and `directConnected`.
+- Local backend fallback from `/control/webrtc/status` uses the same paired-state inference and ORs it with broker-returned `linkStatus` so stale `false` fields do not hide a completed pairing.
+- Dashboard control monitor now shows paired/link activity even when no side-channel key-state client exists, and link-lamp notes show `paired` instead of stale `0 dialing` or old poll ages.
+- Virtual keyboard behavior is unchanged: keycaps still require frontends to post `/control/monitor/key-state` with `pressedKeys`.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/main.py`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Cloud deployment:
+- Old server `150.109.100.30`: uploaded updated `/opt/go2rtc-cloud/control_signaling.py`.
+- Restarted only `go2rtc-control-signaling`.
+- Did not change Nginx, video services, TURN/STUN, or Tank Trouble.
+- Note: restarting the broker clears in-memory offer/status counters, but established DataChannels are not routed through the broker.
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+- Remote `python3 -m py_compile /tmp/control_signaling.py`
+- Public health `http://150.109.100.30:18081/control/webrtc/health` returned `ok: true`.
+- Synthetic public offer/answer on session `codex-status-check` returned `linkStatus.frontendDialing=true`, `backendListening=true`, and `directConnected=true`.
+
+Build/release:
+- No EXE built.
+- No GitHub push.
+- No tag update.
+
+## 2026-05-05 18:43 - Control monitor lamp latency readouts
+
+Scope:
+- Control Signal Agent update for the mini app side-channel control monitor.
+- Added frontend dialing and backend listening latency display without changing the browser-to-robot WebRTC signaling contract, DataChannel payload, video link, Tank Trouble, ports, TURN/STUN, Nginx paths, or service names.
+
+Changes:
+- Cloud broker monitor snapshots now expose optional `latencyMs` / `latencySource` for frontend key-state clients and `frontendLatencyMs` / `backendLatencyMs` in `linkStatus`.
+- Frontend key-state can report `latencyMs` / `rttMs`; otherwise the broker/local backend can estimate from `sentAtMs`, `clientSentAtMs`, or `ts`, then fall back to latest-seen freshness.
+- Robot receiver polls/answers can optionally report `latency_ms` / `latencyMs` / `rtt_ms` / `rttMs` for the backend listening lamp.
+- Dashboard control monitor lamps now render compact latency capsules beside frontend dialing and backend listening.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/main.py`
+- `backend/models.py`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+
+Cloud deployment note:
+- No cloud deployment performed in this step.
+- Old server will show fallback `seen` freshness through the local backend until the updated `control_signaling.py` is deployed.
+- No app version bump, installer build, GitHub push, or tag update.
+
+## 2026-05-05 17:52 - Service management control signaling URL examples
+
+Scope:
+- Control Signal Agent compatibility check after the cloud control signaling contract started requiring `client_id` and `robot_client_id`.
+- No service-management start/stop behavior, video link, Tank Trouble, Nginx, cloud service, or DataChannel payload changed.
+
+Changes:
+- Confirmed service management `Control Signaling` health/start/stop does not call `browser-offer`, `robot-next-offer`, or `robot-answer`, so its runtime logic does not need protocol adaptation.
+- Updated setup/result helper URLs so displayed control examples use `browser-offer?session=robot-control&client_id=frontend-a` and `robot-next-offer?session=robot-control&robot_client_id=arm-001-receiver`.
+
+Files:
+- `backend/cloud_setup.py`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup.py backend\main.py backend\models.py backend\cloud_setup_bundle\control_signaling.py`
+- Searched current backend/docs/frontend contract URLs; only historical shared-log text still contains the pre-change robot-next-offer URL.
+
+Cloud deployment note:
+- No cloud deployment required; this is local metadata/example URL alignment only.
+- No app version bump, installer build, GitHub push, or tag update.
+
+## 2026-05-05 17:31 - Require frontend client_id for control browser offers
+
+Scope:
+- Control Signal Agent follow-up to remove the old frontend dial rule from the cloud broker.
+- No video ingest/playback, Tank Trouble, TURN/STUN, Nginx path, or DataChannel payload format changed.
+
+Changes:
+- `POST /control/webrtc/browser-offer` now requires `client_id=<frontendId>` in addition to `session=<robotId>`.
+- Old frontend calls with only `session` now return `HTTP 400`.
+- Robot `robot-next-offer` responses include `clientId` / `frontendClientId` so the robot side can see which frontend generated the offer.
+- Existing robot-side `robot_client_id` exclusivity remains unchanged.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/models.py`
+- `frontend/src/types/cloud.ts`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+- `docs/CONTROL_SIGNAL_API_USAGE.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+- Local temporary broker test: old browser-offer without `client_id` returned `400`; new browser-offer with `client_id=front-a` was pulled by `robot_client_id=robot-a` and completed answer delivery.
+
+Cloud deployment note:
+- Deployed updated `control_signaling.py` to old server `150.109.100.30:/opt/go2rtc-cloud/control_signaling.py` and restarted `go2rtc-control-signaling`.
+- Public validation on `18081`: old browser-offer without `client_id` returned `400`; new browser-offer with `client_id` completed offer/answer and robot offer included `clientId` / `frontendClientId`; health `200`; monitor key-state `200`.
+- No app version bump, installer build, GitHub push, or tag update in this step.
+
+## 2026-05-05 17:06 - Exclusive robot receiver lock for control signaling
+
+Scope:
+- Control Signal Agent change to make one robot id / `session` accept only one active robot-side receiver at a time.
+- No video ingest/playback, go2rtc video, Tank Trouble, or control DataChannel payload format changed.
+
+Changes:
+- Cloud control broker now requires robot receivers to pass a stable `robot_client_id` on `robot-next-offer` and `robot-answer`.
+- The first active `robot_client_id` claims the listener slot for that `session`; a second different receiver gets `HTTP 409` with `error=robot_listener_conflict` while the first receiver is fresh.
+- Repeated polls and answers from the same `robot_client_id` remain accepted, so a normal polling receiver is not blocked by its own loop.
+- Broker status and monitor `linkStatus` now expose receiver diagnostics including `robotListenerClientId`, listener age/freshness, and conflict count.
+- Desktop backend receiver-style compatibility APIs and frontend legacy wrappers now pass `robot_client_id`.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/main.py`
+- `backend/models.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+- `docs/CONTROL_SIGNAL_API_USAGE.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+- Local temporary broker test with `aiohttp`: same `robot_client_id` repeated polls returned `204`, second `robot_client_id` returned `409`, wrong receiver answer returned `409`, correct receiver answer returned `200`, and browser offer returned the answer.
+
+Cloud deployment note:
+- Deployed updated `control_signaling.py` to old server `150.109.100.30:/opt/go2rtc-cloud/control_signaling.py` and restarted `go2rtc-control-signaling`.
+- Public validation on `18081`: health `200`, same receiver repeated poll `204`, second receiver `409`, wrong receiver answer `409`, correct receiver answer `200`, browser offer returned answer, monitor key-state `200`.
+- No app version bump, installer build, GitHub push, or tag update in this step.
+
+## 2026-05-05 16:18 - Centered visible-width control monitor keyboard and v0.3.60 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard after screenshots showed crooked rows and right-edge clipping.
+- Fixed keyboard layout only; no cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic changed.
+
+Changes:
+- Replaced per-row centering with one centered keyboard track so standard row offsets no longer appear visually crooked.
+- The responsive fitting code now intersects the keyboard with horizontally clipping ancestors and the visual viewport, then reveals extra columns only when they fit in the actually visible area.
+- Removed invisible trailing grid columns on shorter rows so `ZXCVBNM` can no longer reserve empty columns and push the track out of the panel.
+- Baseline `QWER / ASDF / ZXCV` remains visible; if needed, keycaps shrink within their square shape before any baseline key clips.
+
+Version:
+- Desktop app version bumped from `0.3.59` to `0.3.60`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.60_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.60_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 15:53 - Conservative control monitor keyboard fitting and v0.3.59 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard responsive fitting.
+- Added a stronger fitting reserve after screenshots still showed edge clipping at zoomed/narrow widths.
+- Did not change cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic.
+
+Changes:
+- Responsive visible-column calculation now reserves roughly half a key before revealing extra columns.
+- Narrow keycap minimum was reduced so the required baseline `QWER / ASDF / ZXCV` can fit more comfortably.
+- Extra columns still reveal progressively only when they fit with the reserve.
+
+Version:
+- Desktop app version bumped from `0.3.58` to `0.3.59`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/UI_DESIGN_AGENT.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.59_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.59_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 15:44 - Control monitor full-column fitting and v0.3.58 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard responsive fitting.
+- Fixed the case where an extra right-side key column could be partially clipped instead of being hidden.
+- Did not change cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic.
+
+Changes:
+- Keyboard column fitting now tests each candidate visible column count against the widest rendered row.
+- Extra right-side key columns are shown only when the entire column fits inside the keyboard panel.
+- Added a small subpixel safety margin for zoomed layouts.
+- Control monitor rows now use `box-sizing: border-box` so padding offsets are included in row width.
+- Baseline `QWER / ASDF / ZXCV` remains visible at the narrowest supported widths.
+
+Version:
+- Desktop app version bumped from `0.3.57` to `0.3.58`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.58_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.58_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 15:27 - Responsive expanding control monitor keyboard and v0.3.57 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard and link-lamp layout.
+- Made the virtual keyboard adaptively reveal more right-side keys as its available width grows.
+- Did not change cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic.
+
+Changes:
+- Control monitor keyboard now always starts from `QWER / ASDF / ZXCV`.
+- When width allows, it reveals extra standard-keyboard columns in order:
+  - `T/G/B`
+  - `Y/H/N`
+  - then farther-right keys such as `U/J/M`, `I/K`, `O/L`, `P`.
+- Keyboard rows stay centered as the visible key count changes.
+- Keycaps remain square and keep standard half-key row offsets.
+- The three control link lamps are restored to a horizontal three-column layout.
+- Added a `ResizeObserver` so window zooming/resizing updates the visible key count without a refresh.
+
+Version:
+- Desktop app version bumped from `0.3.56` to `0.3.57`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.57_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.57_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 15:11 - Standard control monitor keyboard offsets and v0.3.56 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard and link-lamp layout.
+- Corrected the visible `QWER / ASDF / ZXCV` monitor keyboard to follow standard keyboard half-key offsets.
+- Did not change cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic.
+
+Changes:
+- Control monitor keyboard rows now use fractional CSS offsets instead of whole-grid column shifts:
+  - `Q W E R`: no offset.
+  - `A S D F`: slight right shift like the Caps Lock/home row.
+  - `Z X C V`: larger right shift like the Shift row.
+- Control monitor keycaps now use `aspect-ratio: 1 / 1` and a stable key-size variable so they remain square.
+- The three control link lamps now stack vertically at all widths.
+- Updated UI/control handoff docs to record square keycaps, half-key offsets, and vertical link lamps.
+
+Version:
+- Desktop app version bumped from `0.3.55` to `0.3.56`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.56_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.56_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 15:00 - Control monitor QWER keyboard layout and v0.3.55 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard.
+- Reduced the displayed key set to the requested control keys only.
+- Did not change cloud deployment, video link behavior, Tank Trouble rules, or control DataChannel payload logic.
+
+Changes:
+- Control monitor keyboard now shows only `Q W E R`, `A S D F`, and `Z X C V`.
+- Rows use normal keyboard-style offsets: top row starts first, home row shifts right, bottom row shifts farther right.
+- Removed the wider mixed-key monitor layout from the visible keyboard while preserving existing key-state normalization and multi-client key highlighting.
+- Updated UI/control handoff docs to record the current limited key layout.
+
+Version:
+- Desktop app version bumped from `0.3.54` to `0.3.55`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.55_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.55_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud deployment was performed.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 14:51 - Control monitor link lamps and v0.3.54 installer
+
+Scope:
+- Control Signal/UI Design Agent crossover for the service-management control monitor panel.
+- Added status plumbing and UI lamps for frontend dialing, backend listening, and frontend-to-robot direct connection.
+- Did not change video link behavior, Tank Trouble rules, or real DataChannel control payloads.
+
+Changes:
+- Cloud control signaling broker now includes `linkStatus` in `/control/monitor/key-state` snapshots.
+- Local backend augments control monitor key-state responses with compatible `linkStatus` by reading `/control/webrtc/status` when needed.
+- Control monitor panel now displays three compact lamps:
+  - `閸撳秶顏幏銊ュ娇`: pending browser offer or active frontend dialing/connecting state.
+  - `閸氬海顏幒銉ユ儔`: robot receiver has polled `robot-next-offer` within the recent freshness window.
+  - `閻╃绻涢幋鎰`: active frontend reports `callState` as connected/open/live/ready.
+- Added responsive/dark-theme styling for the three-lamp strip.
+- Documented that the broker cannot directly observe DataChannel connectivity after answer delivery, so direct-connect confirmation depends on frontend side-channel `callState`.
+
+Version:
+- Desktop app version bumped from `0.3.53` to `0.3.54`.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/main.py`
+- `backend/models.py`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `frontend/src/types/cloud.ts`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.54_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.54_x64-setup.exe`.
+
+Cloud deployment note:
+- Cloud script changed locally but was not deployed to the server in this step.
+- Existing cloud servers can still provide partial lamp data through the local backend fallback from `/control/webrtc/status`; direct-connect needs frontend `callState` reports.
+- No GitHub push, tag update, or silent install was performed.
+
+## 2026-05-05 14:33 - Control monitor normal keyboard layout and v0.3.53 installer
+
+Scope:
+- UI Design Agent refinement for the service-management control monitor keyboard layout.
+- Adjusted visual layout only; no cloud scripts, backend APIs, video link logic, control signaling business behavior, or Tank Trouble rules changed.
+- Built a new desktop installer because the previous `0.3.52` installer did not include the final equal-width keyboard layout.
+
+Changes:
+- Control monitor keyboard now uses a fixed 8-column responsive grid as its normal layout baseline.
+- Shorter rows are offset within the 8-column grid instead of stretching across the full keyboard width.
+- Letter keys now stay visually equal-width across rows.
+- Active keys no longer scale larger; they only lift/glow so pressed and unpressed keycaps keep the same size.
+- Updated UI documentation and master UI contract so future keyboard-like controls preserve equal-width letter keys.
+
+Version:
+- Desktop app version bumped from `0.3.52` to `0.3.53`.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- Playwright/Chrome keyboard layout check against local mock API at 1366x900 and 560x760.
+- Verified rows use starts `1, 2, 1, 3` on an 8-column grid.
+- Verified no key overflow and no document/body horizontal overflow.
+- Verified narrow layout letter keys all measured `47.766px`; desktop side-column layout differed only by browser subpixel rounding (`25.891px` to `25.906px`).
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.53_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.53_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud changes.
+- Installer was built and copied; it was not silently installed, pushed, or tagged in this step.
+
+## 2026-05-05 14:22 - v0.3.52 installer build for control monitor UI
+
+Scope:
+- Packaging/version update after the UI Design Agent control monitor keyboard responsive fix.
+- Built a new desktop installer that includes the Optima keycap font and zoom/narrow-window clipping fix.
+- Did not modify cloud scripts, deploy remote services, push GitHub, or update a Git tag.
+
+Version:
+- Desktop app version bumped from `0.3.51` to `0.3.52`.
+
+Files:
+- `package.json`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run tauri:build`
+- Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.52_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.52_x64-setup.exe`.
+
+Cloud deployment note:
+- No cloud changes.
+- Installer was built and copied; it was not silently installed, pushed, or tagged in this step.
+
+## 2026-05-05 14:15 - Control monitor keyboard responsive UI
+
+Scope:
+- UI Design Agent change for the service-management control monitor panel only.
+- Changed the mini app control monitor keyboard typography and responsive layout.
+- Did not modify cloud scripts, video link logic, control signaling business behavior, Tank Trouble rules, or backend APIs.
+
+Changes:
+- Control monitor keycaps now use the Optima font stack with UI-safe fallbacks.
+- Control monitor key rows now expose their row length to CSS and render as full-width responsive grids.
+- Removed fixed key widths that caused zoomed/narrow windows to clip keys such as `F`, `ESC`, and `ENTER`.
+- Added `min-width: 0` and responsive padding/gap constraints around the service side column, control monitor panel, stage, keyboard rows, meta chips, and client rows.
+- Clipped only the outer app shell's horizontal paint overflow so zoomed/narrow windows do not get a stray horizontal scroll or hidden controls.
+- Updated the shared UI contract to require fixed-format controls to shrink within their panels.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- Playwright/Chrome UI check against a local mock API at 1366x900, 980x900, 780x760, and 560x760.
+- Verified all 25 control monitor keys stayed inside the keyboard container at each width.
+- Verified keycap computed font stack is `Optima, "Optima nova", Candara, "Segoe UI", sans-serif`.
+- Verified `body.scrollWidth` and `documentElement.scrollWidth` match the viewport after the outer shell overflow fix.
+
+Cloud deployment note:
+- No cloud changes.
+- No exe build, GitHub push, or tag update performed.
 
 ## 2026-05-04 18:10 - Control signal TURN NAT relay fix
 
@@ -111,9 +4349,9 @@ Scope:
 
 Changes:
 - Removed the hardcoded Tank Trouble monitor URL that pointed at the old `111.230.62.106:18086` server.
-- `鐩戞帶鍦板浘` now asks the local backend for `/api/games/tank-trouble/spectator/page-url`, so the opened spectator page always uses the currently logged-in cloud host.
+- `闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 now asks the local backend for `/api/games/tank-trouble/spectator/page-url`, so the opened spectator page always uses the currently logged-in cloud host.
 - The latency-test web preview entry now also uses the current cloud server spectator page instead of the local preview URL.
-- Added a Tank Trouble-only `涓€閿厤缃甡 button in the Tank Trouble launch card.
+- Added a Tank Trouble-only `濞戞挴鍋撻梺娆惧櫍閸樸倗绱旈悽?button in the Tank Trouble launch card.
 - Added backend endpoints `/api/games/tank-trouble/setup/check` and `/api/games/tank-trouble/setup/run`.
 - Tank Trouble setup uploads only `tank_trouble_room.py` plus `cloud_setup_bundle/www/**` to `/home/<user>/.cloud-service-console/tank-trouble`, installs only the `cloud-service-console-tank-trouble.service` systemd unit, and verifies `:18086/health`.
 - Tank Trouble setup does not start, stop, restart, or rewrite any video/go2rtc/control-signal service or config.
@@ -861,11 +5099,11 @@ Implementation:
 - `frontend/src/components/TankTroublePanel.tsx`
   - Added a local `controlBindingEditOpen` state.
   - The key binding grid is read-only by default.
-  - Users must click `璁剧疆` before any action button can capture a new key.
-  - Clicking `瀹屾垚` exits edit mode and clears any pending key capture.
+  - Users must click `閻犱礁澧介悿鍝?before any action button can capture a new key.
+  - Clicking `閻庣懓鏈崹姝?exits edit mode and clears any pending key capture.
   - Captured keys still only change the local `event.code -> forward/backward/left/right/fire` mapping.
 - `frontend/src/styles/globals.css`
-  - Added a compact `璁剧疆 / 瀹屾垚` pill button.
+  - Added a compact `閻犱礁澧介悿?/ 閻庣懓鏈崹姝?pill button.
   - Read-only key buttons keep their display styling but no longer behave like clickable controls.
   - Edit mode restores clickable hover / capture feedback.
 
@@ -976,7 +5214,7 @@ Version: `0.3.10`
 Goal:
 
 - Show each player's latency on Tank Trouble scoreboards.
-- Fix ghost bullets on the cloud `鐩戞帶鍦板浘` spectator page.
+- Fix ghost bullets on the cloud `闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 spectator page.
 - Make the latency-test browser preview match the in-app Tank Trouble visual style.
 
 Implementation:
@@ -1026,7 +5264,7 @@ Verification:
 Time: 2026-05-03
 
 Goal:
-- Improve visible smoothness on the cloud `鐩戞帶鍦板浘` spectator page without increasing server workload or touching video/control chains.
+- Improve visible smoothness on the cloud `闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 spectator page without increasing server workload or touching video/control chains.
 
 Implementation:
 - Updated `backend/cloud_setup_bundle/tank_trouble_room.py`.
@@ -1049,381 +5287,381 @@ Verification:
 - `cmd /c npm run build`
 - `node --check build-logs\spectator-page-check.js`
 
-杩欎唤鏃ュ織鐢ㄤ簬鎶婂綋鍓嶅皬绋嬪簭浠庡紑濮嬪埌鐜板湪鐨勫疄鐜拌繃绋嬫暣鐞嗗嚭鏉ワ紝鏂逛究鍚庣画 agent 蹇€熺悊瑙ｂ€滀负浠€涔堜細闀挎垚鐜板湪杩欐牱鈥濄€?
-璇存槑锛?
-- 杩欐槸涓€浠芥牴鎹綋鍓嶄粨搴撶姸鎬併€佺幇瀛樻枃妗ｅ拰杩炵画鍗忎綔璁板綍閲嶅缓鍑烘潵鐨勫伐绋嬫棩蹇椼€?- 瀹冩洿鍏虫敞闃舵銆佽璁″喅绛栥€佸叧閿敼鍔ㄥ拰淇濈暀绾︽潫锛岃€屼笉鏄弗鏍肩殑鍒嗛挓绾ф彁浜ゅ巻鍙层€?- 鏂囦欢缂栫爜缁熶竴浣跨敤 UTF-8銆?- 浠ュ悗鍙缁х画淇敼 `cloud-service-console` 杩欏灏忕▼搴忕殑鍔熻兘浠ｇ爜锛屽氨搴斿悓姝ユ洿鏂拌繖浠芥棩蹇椼€?
-## 闃舵 0锛氳縼绉荤洰鏍囩‘瀹?
-璧风偣锛?
-- 鏃ф帶鍒跺彴瀛樺湪锛屼絾闇€瑕佽縼绉诲埌鏇寸幇浠ｇ殑妗岄潰鏋舵瀯銆?- 鐩爣涓嶆槸缁х画鍫?Tkinter锛岃€屾槸褰㈡垚鏂扮殑妗岄潰搴旂敤浣撶郴銆?
-鏍稿績鍐崇瓥锛?
-- UI 鎹㈡垚 `React + TypeScript`
-- 鏈湴鎺у埗閫昏緫淇濈暀鍦?`Python + FastAPI`
-- 妗岄潰澹充娇鐢?`Tauri`
-- SSH銆佷簯绔湇鍔℃帶鍒躲€佸仴搴锋鏌ョ户缁敱 Python 璐熻矗锛屼笉杩涘墠绔?
-瀵瑰簲鏃╂湡璇存槑锛?
-- 鏍圭洰褰?`README.md`
-- 鏍圭洰褰?`AGENT_V3_MIGRATION_GUIDE.md`
+閺夆晜鐟ら崬銈夊籍閵夈儳绠堕柣顫妺缁剟骞庢繝鍌滅Ъ闁告挸绉撮惃顒傜矙鐎ｎ亞纰嶅ù鐘查缁辨垶鎱ㄧ€ｎ亜鐓傞柣婊勬緲濠€顏堟儍閸曨偆鏉介柣婊勫缁诲啰绮欑€ｎ偅娈婚柣鐐叉閸ゎ參寮堕妷顖滅闁哄倿鈧稓鈹掗柛姘捣閻?agent 闊浂鍋婇埀顒傚枔閹﹦鎲撮敐鍌楀亾濠娾偓鐠愮喐绂掗埀顒佺▕閸粎绐楅梻鈧幐搴＄亣闁绘粍婢樺﹢顏呮交濞嗘劗澹夐柍銉︾缚閳?
+閻犲洤鐡ㄥΣ鎴︽晬?
+- 閺夆晜鐟﹀Σ鍛婄▔閳ь剚绂掗懞銉у闁硅鍠栫紞瀣礈瀹ュ嫮娉㈤幖瀛樻尵婵悂骞€娴ｇ鍋撴担鍝勭疀閻庢稒蓱閺嬪啫顩奸敐鍛閺夆晝鍋熼悽濠氬础韫囧海绋婇悹浣规緲缂嶅秹鏌屽鍛处闁告垹鍎ゅ鐢告儍閸曨偂绱ｇ紒瀣儐濡晞绠涘灏栧亾?- 閻庣懓鍟ú鍧楀礂閾忣偅鏆堥梻鍐煐椤斿矂濡存担绛嬪晭閻犱讲鈧啿鏋€缂佹稒鐗撻埀顑跨閸櫻囨煥椤旇姤鏆柛鏂诲妼閹风増绌卞┑鍫熸畬缂佹拝闄勫顐︽晬瀹€鍐ｅ亾鐏炶偐鐟濋柡鍕靛灟瀵寮介懖鈺傜暠闁告帒妫濋幐鎾剁棯瑜庤ぐ浣圭閵堝懎鍧婇柛娆忕湴閳?- 闁哄倸娲ｅ▎銏㈢磽閺嶎偆鍨崇紓浣哄枍缁斿瓨鎷呯捄銊︽殢 UTF-8闁?- 濞寸姰鍎遍幃妤呭矗椤忓浂娲ｇ紓浣堝懐鏁惧ǎ鍥跺枟閺?`cloud-service-console` 閺夆晜鐟ラ〃婊呬焊韫囨洍鏌ら幖鏉戠箳濞堟垿宕濋悢璇插幋濞寸媴绲块悥婊堟晬鐏炶姤鐨戦幖瀛樻煥閹挸顫㈤妷锔界函闁哄倹濯界换鏍ㄧ閼恒儲锛夐煫鍥ㄣ仠閳?
+## 闂傚啳鍩栭?0闁挎稒淇虹缓鑲╃矓閼姐倖绐楅柡宥呮川閳ユ鈧?
+閻犙囶棑閸嬶綁鏁?
+- 闁哄唲鍕粯闁告帟娉涜ぐ瀵糕偓娑櫭﹢顏堟晬鐏炶偐绋婚梻鍥ｅ亾閻熸洑娴囩缓鑲╃矓鐠囨彃鐓傞柡鍥ь嚟楠炲洦绂掗敐鍥ㄧ暠婵℃鐭傚浼村几閼哥數鈧垶濡?- 闁烩晩鍠楅悥锝嗙▔瀹ュ棙笑缂備綀鍛暰闁?Tkinter闁挎稑鐭侀埀顒€鏈Σ姝屻亹閵忊€崇亣闁哄倹澹嗗▓鎴濐浖瀹€鍕〃閹煎瓨姊婚弫銈嗘媴閹惧爼鍏囬柕?
+闁哄秶顭堢缓楣冨礃瀹曞洨鎽滈柨?
+- UI 闁瑰箍鍨洪崹?`React + TypeScript`
+- 闁哄牜鍓欏﹢鎾箳瑜嶉崺妤呮焻閺勫繒甯嗗ǎ鍥ㄧ箘閺嗏偓闁?`Python + FastAPI`
+- 婵℃鐭傚鐗堢珶閸忓懎鈻忛柣?`Tauri`
+- SSH闁靛棔妞掔花顖滅博椤栨稒绠涢柛鏂哄墲鐢爼宕氶煬娴嬪亾娴ｉ晲娣幖鎾敱椤ュ懘寮婚妷褎鍩涚紓渚囧幘閺?Python 閻犳劗鍠曢惌妤呮晬鐏炶偐鐟濋弶鈺傜☉婢х姷绮?
+閻庣數鎳撶花鏌ュ籍閳哄倹鍩傞悹鍥х摠濡叉垿鏁?
+- 闁哄秴婀卞ú鎷屻亹?`README.md`
+- 闁哄秴婀卞ú鎷屻亹?`AGENT_V3_MIGRATION_GUIDE.md`
 
-## 闃舵 1锛歏3 宸ョ▼楠ㄦ灦寤虹珛
+## 闂傚啳鍩栭?1闁挎稒鐡? 鐎规悶鍎抽埢鍏碱殽閵婏妇浠哥€点倛娅ｉ悵?
 
-涓昏缁撴灉锛?
-- 寤虹珛 `frontend/` 鍓嶇宸ョ▼
-- 寤虹珛 `backend/` FastAPI backend
-- 寤虹珛 `src-tauri/` 妗岄潰澹?- 鍓嶅悗绔€氳繃 HTTP API 瀵规帴锛岃€屼笉鏄妸涓氬姟閫昏緫濉炲湪 UI 閲?
-鍏抽敭鏂囦欢锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 鐎点倛娅ｉ悵?`frontend/` 闁告挸绉堕顒€顔忛妷褉鏌?
+- 鐎点倛娅ｉ悵?`backend/` FastAPI backend
+- 鐎点倛娅ｉ悵?`src-tauri/` 婵℃鐭傚鐗堢珶?- 闁告挸绉撮幃妤冪博椤栫偐鍋撳宕囩畺 HTTP API 閻庝絻顫夌敮鎾晬瀹€鍐ｅ亾鐏炶偐鐟濋柡鍕靛灡婵″憡绋夊顒€顫ら梺顐ｆ缁额偅绻呴悙鍙夎含 UI 闂?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/package.json`
 - `frontend/src/App.tsx`
 - `backend/main.py`
 - `src-tauri/tauri.conf.json`
 
-闃舵鎰忎箟锛?
-- 鍏堟妸鏃ч€昏緫浠?UI 灞傚墺绂诲嚭鏉?- 鍏堜繚璇佹柊鏋舵瀯鑳借窇锛屽啀閫愭杩唬瑙傛劅鍜屽姛鑳?
-## 闃舵 2锛氱櫥褰曘€佷細璇濅笌鏈湴璁剧疆鎸佷箙鍖?
-涓昏缁撴灉锛?
-- 鍋氬嚭鐙珛鐧诲綍椤?- 鏀寔杈撳叆浜戞湇鍔″櫒 `Host`
-- 鏀寔 SSH 鐢ㄦ埛鍚?/ 瀵嗙爜
-- 鏀寔璁颁綇瀵嗙爜
-- 鏀寔鑷姩鐧诲綍
-- 鐧诲綍鐘舵€佺敱 backend 淇濆瓨骞剁鐞?
-鍏抽敭鍐崇瓥锛?
-- 鐧诲綍淇℃伅涓嶅啀鏁ｈ惤鍦ㄥ閮ㄨ剼鏈腑锛岃€屾槸鏀惧埌缁熶竴鐨勮缃枃浠?- 榛樿鍊煎唴缃紝涓嶄緷璧栫敤鎴锋墜宸ュ噯澶囬澶栭厤缃?
-鍏抽敭鏂囦欢锛?
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 闁稿繐鐗婃俊鎼佸籍瑜旈埀顒佹缁额偅绂?UI 閻忕偛鍊告晶铏圭矉鐠囨彃姣夐柡?- 闁稿繐鐗呯换姘辨嫚娴ｈ鐓€闁哄鍩栭悗顖炴嚄閸婄喓鐛撻柨娑樿嫰閸熲偓闂侇偅鍔栭鐐存交椤撴繂鏁╅悷娆忓€归崝鍛村椽鐏炶棄顫犻柤?
+## 闂傚啳鍩栭?2闁挎稒姘ㄥ▍銉ㄣ亹閺囨ǚ鍋撴担椋庣獥閻犲洦绻€缁楀矂寮甸鈧﹢瀵告媼閸撗呮瀭闁归晲妞掔粻娆撳礌?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁稿鑹鹃崵顓㈡偑椤掑倻褰岄柣褑顕х紞宥嗐亜?- 闁衡偓椤栨稑鐦弶鍫熸尭閸欏棙绂嶉幋鐐寸疀闁告柡鈧櫕鐝?`Host`
+- 闁衡偓椤栨稑鐦?SSH 闁活潿鍔嶉崺娑㈠触?/ 閻庨潧妫涢悥?
+- 闁衡偓椤栨稑鐦悹渚€顣︾紞鍥┾偓闈涙閻?
+- 闁衡偓椤栨稑鐦柤濂変簻婵晠鎯傜拠鑼Э
+- 闁谎嗩嚙缂嶅秹鎮╅懜纰樺亾娴ｇ儤鏆?backend 濞ｅ洦绻傞悺銊╃嵁閸撲緡鍚€闁?
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 闁谎嗩嚙缂嶅秵绌遍埄鍐х礀濞戞挸绉撮崯鈧柡渚婄秬閹倝宕烽妸銉▎闂侇喓鍔忛崜濂稿嫉椤戣儻鍘柨娑樼焷閳ь剙鏈Σ鎼佸绩閹冪厒缂備胶鍠嶇粩鎾儍閸曨噮鍟庣紓鍐惧枟閺嬪啯绂?- 濮掓稒顭堥濠氬磹閻撳骸鏁剁紓鍐惧櫙缁辨繃绋夊鍕穿閻犙勭墱閺併倝骞嬮柨瀣杹鐎规悶鍎遍崳顖涘緞閸ヮ剦鏉哄鑸电墵閸樸倗绱?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/pages/LoginPage.tsx`
 - `backend/settings_store.py`
 - `backend/config.py`
 
-褰撳墠閬楃暀鐗瑰緛锛?
-- 鐧诲綍榛樿涓绘満浠嶆槸 `150.109.100.30`
-- 榛樿 SSH 鐢ㄦ埛浠嶆槸 `ubuntu`
+鐟滅増鎸告晶鐘绘焼濡ゅ啯娈岄柣妤冩嚀缁舵盯鏁?
+- 闁谎嗩嚙缂嶅秵顪€濡鍚囧☉鎾剁帛濠р偓濞寸姴绉靛Σ?`150.109.100.30`
+- 濮掓稒顭堥?SSH 闁活潿鍔嶉崺娑欑瀹ュ棙笑 `ubuntu`
 
-## 闃舵 3锛氫富鎺у埗鍙伴〉闈㈡垚鍨?
-涓昏缁撴灉锛?
-- 鍋氬嚭涓绘帶鍒跺彴 `DashboardPage`
-- 寤虹珛宸︿晶瀵艰埅鍜岄《閮ㄦ搷浣滃尯
-- 褰㈡垚 5 涓富瑙嗗浘锛?  - 鎺у埗鍙版€昏
-  - 鏈嶅姟绠＄悊
-  - 鍋ュ悍妫€鏌?  - 娲诲姩鏃ュ織
-  - 鐜╃帺娓告垙
+## 闂傚啳鍩栭?3闁挎稒鐭€靛矂骞掕閸╂宕ｆ导娣偓澶愭閵忊€崇亣闁?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁稿鑹鹃崵顓熺▔缂佹ê浠橀柛鎺曟硾瑜?`DashboardPage`
+- 鐎点倛娅ｉ悵娑橆啅閿旀寧娅犻悗浣冨閸╁懘宕畝鍕┾偓濠囨焾閵婏附鎯欏ù锝嗙矊鐏?
+- 鐟滆埇鍨洪崹?5 濞戞搩浜欑€靛瞼鎲撮崱妤佺闁?  - 闁硅矇鍐ㄧ厬闁告瑧澧楅埀顒佹椤?
+  - 闁哄牆绉存慨鐔虹不閿涘嫭鍊?
+  - 闁稿鍎遍幃宥呂涢埀顒勫蓟?  - 婵炶尪顕ф慨鈺呭籍閵夈儳绠?
+  - 闁绘壕鏅濈敮鍝勩€掗崨濠傜亞
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/pages/DashboardPage.tsx`
 - `frontend/src/components/AppShell.tsx`
 - `frontend/src/components/Sidebar.tsx`
 - `frontend/src/components/Topbar.tsx`
 
-闃舵鎰忎箟锛?
-- 浜у搧宸茬粡浠庘€滃嚑涓寜閽殑宸ュ叿椤甸潰鈥濆彉鎴愪簡涓€涓粨鏋勫畬鏁寸殑妗岄潰鎺у埗鍙?
-## 闃舵 4锛氫簯绔湇鍔＄鐞嗚兘鍔涙帴鍏?
-涓昏缁撴灉锛?
-- frontend 鍙互璋冪敤 backend 鍚仠鏈嶅姟
-- backend 閫氳繃 SSH 鎺у埗杩滅 systemd 鏈嶅姟
-- 鏈嶅姟鐘舵€佸彲浠ョ粺涓€鏌ヨ骞跺湪 UI 鍗＄墖閲屽睍绀?- 鍋氬嚭鍚姩鍏ㄩ儴 / 鍋滄鍏ㄩ儴鑳藉姏
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 濞存籂鍐╂儌鐎规瓕灏欑划鈩冪鎼存ǚ鍋撳鍐ㄦ濞戞搩浜濈€垫粓鏌﹂鐐暠鐎规悶鍎遍崣鎸庛亜閻㈠憡妗ㄩ柍銉︾箓瑜板骞嬮幇顏嗗晩濞戞挴鍋撳☉鎿冧簽缁劑寮搁崟顐ゆ殮闁轰礁顕▓鎴濐浖瀹€鍕〃闁硅矇鍐ㄧ厬闁?
+## 闂傚啳鍩栭?4闁挎稒鐭花顖滅博椤栨稒绠涢柛鏃撶磿椤撴悂鎮堕崱姘幋闁告梹绋掔敮鎾礂?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- frontend 闁告瑯鍨禍鎺旀嫬閸愵亝鏆?backend 闁告凹鍨版禒鐘诲嫉瀹ュ懎顫?
+- backend 闂侇偅淇虹换?SSH 闁硅矇鍐ㄧ厬閺夆晜绮庨?systemd 闁哄牆绉存慨?
+- 闁哄牆绉存慨鐔兼偐閼哥鍋撴担绋胯濞寸姰鍎崇划鐑樼▔閳ь剟寮婚妷顭戝殑妤犵偠娉涘﹢?UI 闁告绱曟晶鏍煂鐏炵晫娼旂紒鈧?- 闁稿鑹鹃崵顓㈠触椤栨艾袟闁稿繈鍔戦崕?/ 闁稿绮嶉娑㈠礂閵娾晛鍔ラ柤瀹犳婵?
 
-褰撳墠鍥哄畾绠＄悊鐨勬湇鍔★細
+鐟滅増鎸告晶鐘诲炊閸濆嫮鏆扮紒鐙呯磿閹﹪鎯冮崟顒佺疀闁告柡妲勭槐?
 
 1. `nginx`
 2. `go2rtc-cloud`
 3. `go2rtc-srt-bridge`
 4. `go2rtc-control-signaling`
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `backend/service_manager.py`
 - `backend/config.py`
 - `backend/main.py`
 - `frontend/src/components/ServiceCard.tsx`
 - `frontend/src/pages/DashboardPage.tsx`
 
-闃舵鎰忎箟锛?
-- 灏忕▼搴忓紑濮嬬湡姝ｆ壙鎷呪€滀簯绔湇鍔℃帶鍒跺彴鈥濈殑鑱岃矗锛岃€屼笉鍙槸闈欐€佺姸鎬侀潰鏉?
-## 闃舵 5锛氬唴缃粯璁ら厤缃笌澶栭儴渚濊禆鏀剁缉
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 閻忓繐绻掗埢鍏兼償韫囨挾纾诲┑顔碱儑濠€鈥愁潰閿濆棗顥為柟宄版噳閳ь剚绮堢花顖滅博椤栨稒绠涢柛鏂哄墲鐢爼宕氱捄鍝勯叡闁炽儲绻勫▓鎴︽嚂瀹€鍐厬闁挎稑鐭侀埀顒€濂旂粭澶愬矗椤忓懏笑闂傚牊鐟﹂埀顑胯兌婵悂骞€娓氣偓濞间即寮?
+## 闂傚啳鍩栭?5闁挎稒鑹鹃崬瀵哥磾椤曗偓缁垳鎷嬮妶澶婂赋缂傚喚鍠曠粭灞惧緞閺嶎厼鍔ュ〒姘箚缁傚棝寮ㄩ崜浣虹礆
 
-鏈€閲嶈鐨勫彉鍖栦箣涓€锛?
-- 灏忕▼搴忎笉鍐嶄緷璧栫敤鎴峰湪椤圭洰澶栧崟鐙彁渚?`sender-cloud.config.json`
-- 鏀规垚椤圭洰鍐呯疆榛樿妯℃澘
-- 鐧诲綍鍙渶瑕佽緭鍏ユ湇鍔″櫒鍜屽瘑鐮?- 澶ч噺榛樿绔彛銆佸崗璁€佺敤鎴峰悕閮藉唴缃?
-褰撳墠鍐呯疆妯℃澘浣嶇疆锛?
+闁哄牃鍋撻梺鎻掔Х椤╋箓鎯冮崟顐㈢秮闁告牗鐗旂粻锝嗙▔閳ь剟鏁?
+- 閻忓繐绻掗埢鍏兼償韫囧海鐟濋柛鎰С缁堕鎸ч弽顐ｆ殢闁规潙鍢插﹢顏呫亜閸︻厽绐楀鑸电墪瀹曠喖鎮浣哥倒濞?`sender-cloud.config.json`
+- 闁衡偓鐟欏嫬鐏囧銈呮贡濞蹭即宕橀崨顖滄瀭濮掓稒顭堥璇参熼埄鍐╃凡
+- 闁谎嗩嚙缂嶅秹宕ｉ鍫熶粯閻熸洑娴囩欢顓㈠礂閵夛附绠涢柛鏂衡偓铏彜闁告粌鑻惁鎴︽儘?- 濠㈠爢鍥ф濮掓稒顭堥鑽ょ博椤栨艾缍撻柕鍡曠瀹曟鎷嬮琛″亾娴ｇ儤鏆忛柟鏉戝槻閹洟鏌堥挊澶婃暥缂?
+鐟滅増鎸告晶鐘诲礃閸涱垳鏋傛俊顖楀墲濠㈡ɑ鎷呭鍥╂瀭闁?
 - `backend/cloud_setup_bundle/config/sender-cloud.config.json`
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `backend/cloud_setup.py`
 - `backend/config.py`
 
-闃舵鎰忎箟锛?
-- 鎻愰珮璺ㄦ満鍣ㄥ彲绉绘鎬?- 闄嶄綆鈥滄崲涓€鍙扮數鑴戝氨璺戜笉璧锋潵鈥濈殑姒傜巼
-- 涓烘渶缁堢殑 `exe` / 瀹夎鍖呭仛鍑嗗
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 闁圭粯鍔欓悵顔炬崉閵婏附绨氶柛锝冨妼瑜拌尙绮旂紒姗嗘Щ闁?- 闂傚嫬绉崇紞鍡涘灳濠婂嫬搴婂☉鎾亾闁告瑦澹嗛弫鎼佹嚇閹存繃鐨戦悹鐑樺灣缁楀鎸ч柨瀣檷闁炽儲绻勫▓鎴濐潡閸屾粌鑺?
+- 濞戞挾鍎ゅ〒鍓佺磼閸垺鐣?`exe` / 閻庣懓顦抽ˉ濠囧礌閸涱厺绮甸柛鎴濇椤?
 
-## 闃舵 6锛氬仴搴锋鏌ャ€佺鍙ｆ鏌ャ€佽繛鎺ュ揩鐓?
-涓昏缁撴灉锛?
-- 澧炲姞浜戠鍋ュ悍妫€鏌ユ樉绀?- 澧炲姞鎵嬪姩绔彛妫€鏌?- 澧炲姞鏈満 IP / 鏈嶅姟鍣?IP / 鍦板尯淇℃伅
-- 澧炲姞鍥芥棗璧勬簮鏄剧ず
-- 鏀寔鎵嬪姩鍒锋柊杩炴帴蹇収
+## 闂傚啳鍩栭?6闁挎稒鑹炬禒瀛樻償闁垮姊鹃柡灞诲劘閳ь兛鑳堕顒勫矗閿濆棭姊鹃柡灞诲劘閳ь兛娴囩换娑㈠箳閵夈儲褰ラ柣?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 濠⒀呭仜婵偞绂嶉幋鐙€浼傞柛瀣ㄥ劚閹秴螞閳ь剟寮婚妷锔解枖缂佲偓?- 濠⒀呭仜婵偤骞嶇€ｎ亜袟缂佹棏鍨拌ぐ娑樜涢埀顒勫蓟?- 濠⒀呭仜婵偤寮甸浣圭皻 IP / 闁哄牆绉存慨鐔煎闯?IP / 闁革附婢樼亸顖涚┍閳╁啩绱?
+- 濠⒀呭仜婵偤宕堕懞銉︻棞閻犙冨缁噣寮伴崜褋浠?
+- 闁衡偓椤栨稑鐦柟闈涱儏婵晠宕氶柨瀣厐閺夆晝鍋炵敮纾嬬疀椤愩倕寮?
 
-鍏抽敭鍐崇瓥锛?
-- 绔彛妫€娴嬩笉鍋氭寔缁珮棰戠洃鍚紝鑰屾槸鎵嬪姩妫€鏌?- 鍦板尯淇℃伅瑕佸敖閲忓鐢ㄦ埛鍙嬪ソ鍦板睍绀?- 鍥芥棗璧勬簮鏀规垚鏈湴闅忓伐绋嬫墦鍖咃紝閬垮厤 exe 渚濊禆澶栭儴缃戠粶璧勬簮
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 缂佹棏鍨拌ぐ娑樜涢埀顒€霉鐎ｂ晝鐟濋柛瀣鐎垫梻绱掗銏㈠蒋濡増鍨瑰ú鍐触椤掑﹦绀夐柤鏉挎湰濡叉悂骞嶇€ｎ亜袟婵☆偀鍋撻柡?- 闁革附婢樼亸顖涚┍閳╁啩绱栭悷鏇氱閺佹牠鏌岃箛鎿冨殸闁活潿鍔嶉崺娑㈠矗鐎ｎ亗鍋ㄩ柛锔芥緲閻秶绮?- 闁搞儴濮ゅΛ妤冩導閸曨剛鐖遍柡鈧憴鍕亣闁哄牜鍓欏﹢鎾⒕韫囨挷绱ｇ紒瀣儐婢э箓宕犻崪鍐闂侇剙鐏濋崢?exe 濞撴碍绻嗙粋鍡樺緞閺嶎厼鍔ョ紓鍐╁灩缁墎鎸ч崟顒傜埍
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/Sidebar.tsx`
 - `frontend/public/flags/*`
 - `frontend/public/flags/README-circle-flags.md`
 - `backend/config.py`
 - `backend/main.py`
 
-## 闃舵 7锛氫富棰樸€佸姩鏁堛€佽瑙夐鏍兼寔缁墦纾?
-杩欎竴闃舵涓嶆槸涓€娆″畬鎴愶紝鑰屾槸鎸佺画澶氳疆寰皟绱Н鍑烘潵鐨勩€?
-涓昏缁撴灉锛?
-- 鏄庣‘娴呰壊 / 娣辫壊鍙屼富棰?- 缁熶竴鍦嗚椋庢牸
-- 鍗＄墖 hover 鍔ㄦ晥
-- 鑳屾櫙鏌斿拰娓愬彉涓庢皼鍥村厜鏂?- 鏇存闈㈠寲銆佹洿杞婚噺 SaaS Dashboard 椋庢牸鐨勭晫闈?- 澶氳疆淇婊氬姩銆佸竷灞€瑁佸垏銆佸榻愩€佸垎闅旂嚎銆佺姸鎬佸彲璇绘€ч棶棰?
-鍏抽敭鏂囦欢锛?
+## 闂傚啳鍩栭?7闁挎稒鐭€靛本锛愬Ο绯曞亾娴ｇ袟闁轰礁鐗勯埀顑挎祰椤鎲存径鎰垫闁哄秴鍚嬬€垫梻绱掗鐔封叺缁?
+閺夆晜鐟ょ粩鎾⒓閼告鍞藉☉鎾崇У濡插憡绋夐埀顒€鈻庨垾宕囨殮闁瑰瓨鍔х槐婵嬫嚀鐏炵偓笑闁归晲鑳堕悽缁樺緞濮樺磭鏋傜€甸偊鍠涢惃鐔烘椤栨簽婵嬪礄閻戞ɑ闄嶉柣銊ュ閳?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁哄嫬娴烽垾妯好归崨鏉款棌 / 婵烇綀绮炬竟濠囧矗鐏炵厧鐦滃Λ?- 缂備胶鍠嶇粩鎾捶閸℃凹娼″瀣閻?
+- 闁告绱曟晶?hover 闁告柣鍔嶉弲?
+- 闁煎啿鏈▍娆撳蓟閺傛寧瀚叉繛鎾村姇瑜板绋夋惔銏㈡闁搞儲娼欓崢婊堝棘?- 闁哄洤鐡ㄩ、鎴︽閵忕姴顕ч柕鍡曠劍濞叉寧娼繝姘 SaaS Dashboard 濡炲瀛╅悧鎼佹儍閸曨厽娅曢梻?- 濠㈣埖淇洪悿鍡樼┍椤旂⒈妲绘繝濠冭壘婵晠濡存担鍝ヮ伌閻忕偐鍋撻悷浣风閸ㄥ繘濡存担鍓插殸濮掔粯鍔戦埀顑跨閸ㄥ酣姊鹃弮鍌氭疇闁靛棔鑳舵慨鎼佸箑娴ｇ璁查悹鍥╃帛閳ь儸鍥紪濡?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/styles/globals.css`
 - `frontend/src/styles/theme.css`
 - `frontend/src/components/*`
 - `frontend/src/pages/LoginPage.tsx`
 - `frontend/src/pages/DashboardPage.tsx`
 
-杩欎竴闃舵閲屽舰鎴愪簡鍚庣画蹇呴』缁ф壙鐨勭敤鎴峰亸濂斤細
+閺夆晜鐟ょ粩鎾⒓閼告鍞介梺鎻掕嫰閼镐即骞嬮幇顏嗗晩闁告艾娴烽悽鏄忕疀閸涙番鈧繒绱掕婢规瑩鎯冮崟顓熸殢闁规潙鍢叉禍鍛婄附閺傘倗绐?
 
-- 澶у渾瑙?- 鏌斿拰閰嶈壊
-- 鐜荤拑鎰?/ 娓愬彉鎰?- 鏈夊姩鏁堬紝浣嗕笉鑳借繃澶?- 甯冨眬鍜屽榻愬繀椤昏绌?- 鏀瑰姩鏃跺敖閲忓皯鍔ㄦ枃浠跺拰閫昏緫
+- 濠㈠爢鍐╁閻?- 闁哄本鏌ㄩ幏浼存煀瀹ュ牆顥?
+- 闁绘粏宕甸幏鎴﹀箛?/ 婵炴挻鍔曡ぐ澶愬箛?- 闁哄牆顦慨鈺呭极閸剛绀夊ù锝呮缁楀鎳楅崐鐔虹畺濠?- 閻㈩垰鍟惇顒勫椽鐏炵瓔鍤犲缁樺姇缁烩偓濡炪倖妲掗澶岀矚?- 闁衡偓閻熸澘袟闁哄啳娉涢弫鏍煂韫囨挾姣岄柛鏂诲妽閺嬪啯绂掔捄鐑樺闂侇偅妲掔欢?
 
-## 闃舵 8锛氳棰戦瑙堣兘鍔涙帴鍏?
-涓昏缁撴灉锛?
-- 鍦ㄦ湇鍔＄鐞嗛〉鍐呭祵瑙嗛棰勮鍖哄煙
-- 榛樿娴佸悕浣跨敤 `main-camera`
-- 浼樺厛灏濊瘯 WebRTC 棰勮
-- 淇濈暀 MP4 棰勮鍥為€€璺緞
-- 棰勮绐楀彛姣斾緥鍔ㄦ€佽窡闅忓疄闄呰棰?
-鍏抽敭鏂囦欢锛?
+## 闂傚啳鍩栭?8闁挎稒淇洪～瀣紣閹达富鏆曢悷娆忕墣閸忔﹢宕濆☉娆忓闁?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁革负鍔嶅﹢鍥礉閿涘嫷鍚€闁荤偛妫濋妴澶愬礃閸涱厾銈甸悷娆忔椤ｈ埖锛愰崟顕呮綌闁告牕鎼悡?
+- 濮掓稒顭堥璇裁规担鍛婂€冲ù锝堟硶閺?`main-camera`
+- 濞村吋锚閸樻稓浜稿┑濠勬Ц WebRTC 濡澘瀚～?
+- 濞ｅ洦绻勯弳鈧?MP4 濡澘瀚～宥夊炊閻愯　鍋撻埀顒傛崉椤栨氨绐?
+- 濡澘瀚～宥囩玻濡も偓瑜版稑袙閺傚墽浼愰柛鏂诲妽閳ь兛娴囩粣锟犳⒕韫囨挾鏉介梻鍕嚀椤锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/pages/DashboardPage.tsx`
 - `backend/main.py`
 
-闃舵鎰忎箟锛?
-- 鎺у埗鍙伴噷鍙互鐩存帴鐪嬧€滀簯绔綋鍓嶈兘涓嶈兘鏀跺埌鐢婚潰鈥?
-## 闃舵 9锛氭帶鍒剁洃瑙嗛敭鐩樻帴鍏?
-涓昏缁撴灉锛?
-- 鍦ㄦ湇鍔＄鐞嗛〉鍔犲叆鈥滄帶鍒剁洃瑙嗛敭鐩樷€濆崱鐗?- 鏈満鍙复鏃舵帴鍏?`robot-control` 浼氳瘽
-- 鐢?UI 鏂瑰紡鏄剧ず缃戦〉绔潵鐨勬寜閿姸鎬?- 鏄剧ず娑堟伅鏁板拰鏈€杩戞洿鏂版椂闂?
-鍏抽敭鍐崇瓥锛?
-- 杩欐潯閾捐矾鏄洃瑙嗛摼璺紝涓嶆槸姝ｅ紡鏈烘鑷傛帶鍒堕摼璺湰韬?- 鍏抽棴鏃朵笉搴旇鍗犵敤鎺у埗浼氳瘽
-- 鍓嶇閫氳繃 backend 鎷夐厤缃紝backend 鍐嶅鎺ヤ簯绔?signaling
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 闁硅矇鍐ㄧ厬闁告瑤鍗抽崳鐑藉矗椤栨瑤绨伴柣鈺佺摠鐢挳鎯囩€Ｑ€鍋撳鈧花顖滅博椤栨氨绉奸柛鎾崇Х閸忔ɑ绋夊鍫濆幋闁衡偓鐠哄搫鐓傞柣銏狀煼濞间即鍨?
+## 闂傚啳鍩栭?9闁挎稒纰嶇敮鍫曞礆閸撲焦纾ч悷娆忔閺侇參鎯勫Ο璇插闁?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁革负鍔嶅﹢鍥礉閿涘嫷鍚€闁荤偛妫濋妴澶愬礉閻樻彃寮抽柍銉︾矋鐢爼宕氶崜浣圭＇閻熸瑥妫濋弫顓㈡儎濡皝鍋撳┑鍡楀耿闁?- 闁哄牜鍓氬┃鈧柛娆樺灟婢跺秹寮懜闈涘闁?`robot-control` 濞村吋淇洪惁?
+- 闁?UI 闁哄倻鎳撶槐锟犲及閸撗佷粵缂傚啯鍨块妴澶岀博椤栨稒闄嶉柣銊ュ鐎垫粓鏌ㄩ鎯﹂柟?- 闁哄嫬澧介妵姘槈閸喍绱栭柡浣规緲閹蜂即寮甸埀顒佹交閹寸偞绾柡鍌滃濡炲倿姊?
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 閺夆晜鐟﹀顖炴煣閹规劗鐔呴柡鍕靛灣濞插啰鎲撮崱娑欐嚑閻犱警鍨界槐婵囩▔瀹ュ棙笑婵繐绲界槐锟犲嫉閻戞﹩娼鹃柤宄板€圭敮鍫曞礆閸洘鎳犻悹渚灡濠€浼寸叕?- 闁稿繑濞婂Λ鎾籍閺堢數鐟濋幖瀛樻椤曟岸宕￠悩鍨殢闁硅矇鍐ㄧ厬濞村吋淇洪惁?
+- 闁告挸绉堕顒勬焻濮樺磭绠?backend 闁瑰嘲顦甸崢銈囩磾椤曞棛绀塨ackend 闁告劕绉撮顕€骞掗妷銈囬殬缂?signaling
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/pages/DashboardPage.tsx`
 - `backend/main.py`
 - `backend/cloud_setup_bundle/control_signaling.py`
 
-## 闃舵 10锛氫竴閿厤缃笌瑙嗛妯″紡鍒囨崲鎺ュ叆
+## 闂傚啳鍩栭?10闁挎稒鐭粩鎾煥椤曗偓閸樸倗绱旈鑽ょ憿閻熸瑥妫濋。璺何熼垾宕囩闁告帒娲﹀畷鏌ュ箳閵夈儱寮?
 
-涓昏缁撴灉锛?
-- UI 椤堕儴鍔犲叆鈥滀竴閿厤缃€?- 鏀寔妫€娴嬩簯绔幆澧冩槸鍚﹀氨缁?- 涓嶅氨缁椂鎵ц浜戠閮ㄧ讲 / 淇
-- 鍔犲叆 `HTTP` / `SRT` ingest 妯″紡鍒囨崲
-- 妯″紡鍒囨崲鏃舵湁杩涘害鏉″拰缁撴灉鎻愮ず
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- UI 濡炪倕鐖奸崕鎾礉閻樻彃寮抽柍銉︾矆缁旀挳鏌ㄩ鈧崢銈囩磾椤斿厜鍋?- 闁衡偓椤栨稑鐦俊顐熷亾婵炴潙顑勭花顖滅博椤栨粌绠氬褍鍟Σ鎼佸触閿曗偓濮樸劎绱?- 濞戞挸绉村銊х磼椤忓懏顦ч柟绗涘棭鏀藉ù婊勫灩椤忣剟鏌堥妸褑顔?/ 濞ｅ浂鍠栭ˇ?
+- 闁告梻濮撮崣?`HTTP` / `SRT` ingest 婵☆垪鈧磭纭€闁告帒娲﹀畷?
+- 婵☆垪鈧磭纭€闁告帒娲﹀畷鏌ュ籍閼稿灚绠掗弶鈺傜☉鐎规娊寮堕垾铏缂備焦鎸婚悘澶愬箵閹邦喓浠?
 
-鍏抽敭鍐崇瓥锛?
-- 鐜板湪 UI 涓婄殑涓€閿厤缃疄闄呮槸鈥滀簯绔厤缃€?- 鍚嶅瓧閲岀殑 `local_setup` 鏄巻鍙查仐鐣欐帴鍙ｅ悕
-- 鍒囨崲妯″紡灞炰簬杈冮噸鎿嶄綔锛岄渶瑕佹槑纭?busy 鍙嶉
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 闁绘粍婢樺﹢?UI 濞戞挸锕﹀▓鎴炵▔閳ь剟鏌ㄩ鈧崢銈囩磾椤旇偐鏉介梻鍕噺濡叉悂鍨惧鈧花顖滅博椤栫偛甯崇紓鍐惧枓閳?- 闁告艾绉撮悺褔鏌屽畝鈧▓?`local_setup` 闁哄嫷鍨板濠氬矗閺屻儰绮ｉ柣锝嗙懄鐢挳宕ｉ敐鍛€?
+- 闁告帒娲﹀畷鎻捨熼垾宕囩閻忕偟鍋樼花顒佹綇閸愵喖娅㈤柟鍨С缂嶆棃鏁嶅畝鍕粯閻熸洑鐒﹀Σ鎴犳兜?busy 闁告瑥绉归々?
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `backend/cloud_setup.py`
 - `backend/main.py`
 - `frontend/src/pages/DashboardPage.tsx`
 
-## 闃舵 11锛氳法鏈哄櫒鍙敤鎬т笌 sidecar 鐢熷懡鍛ㄦ湡
+## 闂傚啳鍩栭?11闁挎稒淇哄▔鏇㈠嫉閸濆嫭鐝ら柛娆樺灣閺併倝骞€瑜岀粭?sidecar 闁汇垻鍠庨幊锟犲川閵婏附鍩?
 
-涓昏缁撴灉锛?
-- 寮曞叆 backend sidecar 鎵撳寘鏂规
-- 鐢?PyInstaller 鎵?Python backend
-- Tauri 鑷姩鎷夎捣 backend sidecar
-- 涓荤▼搴忛€€鍑烘椂鑷姩娓呯悊 backend
-- backend 鑷繁涔熶細鍙嶆煡鐖惰繘绋嬶紝閬垮厤娈嬬暀
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 鐎殿喗娲栭崣?backend sidecar 闁瑰灚鎸哥€垫﹢寮憴鍕垫敵
+- 闁?PyInstaller 闁?Python backend
+- Tauri 闁煎浜滄慨鈺呭箯婢跺孩宕?backend sidecar
+- 濞戞捁宕甸埢鍏兼償韫囨稈鍋撻埀顒勫礄閻戞ɑ顦ч柤濂変簻婵晛銆掗崨顖涘€?backend
+- backend 闁煎浜滅换浣圭▕閻斿墎绐楅柛娆忕У閻擄繝鎮ラ幆鎵缂佸顑戠槐婵嬫焼閸喖甯虫繛鍫濐儑閺嗏偓
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `scripts/build_backend_bundle.py`
 - `backend/launcher.py`
 - `src-tauri/src/main.rs`
 - `src-tauri/tauri.conf.json`
 
-闃舵鎰忎箟锛?
-- 璁╁皬绋嬪簭閫愭鎺ヨ繎鈥滄嬁鍒板埆鐨?Windows 鏈哄櫒灏辫兘鐩存帴瑁呪€濈殑鐘舵€?
-## 闃舵 12锛氬潶鍏嬫父鎴忔帴鍏ヤ富绋嬪簭
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 閻犱讲鏅涢惃顒傜矙鐎ｎ亞纰嶉梺顐ｅ姈椤掔偤骞掗妷銊х闁炽儲绮嶇€ｄ線宕氶弶鍨劶闁?Windows 闁哄牆鎼▍鎺斾焊鏉堫偄鍘撮柣鈺佺摠鐢鎲楅崨顏佸亾濠靛牊鐣遍柣妯垮煐閳?
+## 闂傚啳鍩栭?12闁挎稒鑹惧鍫曞礂鐎ｎ偆鍩楅柟鏉戠箲鐢挳宕楅妷銈呯槣缂佸顑呯花?
 
-涓昏缁撴灉锛?
-- 宸︿晶鏂板鈥滅帺鐜╂父鎴忊€?- 褰撳墠鎺ュ叆鐨勬父鎴忔槸 `Tank Trouble`
-- 娓告垙涓嶅啀鏄閮ㄧ嫭绔嬮」鐩紝鑰屾槸骞跺叆涓荤▼搴?- 鏀寔璁粌妯″紡
-- 鏀寔鎴块棿 / 鍦板浘鍚屾
-- 鏀寔鎺掕姒滀笌鐜╁棰滆壊
-- 淇濈暀浜嗗師濮嬪弬鑰冩父鎴忕洰褰曪紝浣嗗綋鍓嶆闈㈠墠绔繍琛岄€昏緫宸茬粡鑷垚涓€浣?
-鍏抽敭鏂囦欢锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 鐎归潻缂氶弲鍫曞棘閺夋鏉婚柍銉︾矌鐢椽鎮抽埡鍌滃煑闁规潙绻嗛埀?- 鐟滅増鎸告晶鐘诲箳閵夈儱寮抽柣銊ュ閻栧爼骞嬭箛鏃€笑 `Tank Trouble`
+- 婵炴挸鎲￠崹娆愮▔瀹ュ懎鏅欓柡鍕靛灠椤﹀鏌堥妸褍顏紒鏂款儔閵嗗秹鎯勯鍡欑闁兼澘鏈Σ鎼佺嵁鐠哄搫寮冲☉鎾瑰吹閳诲吋鎯?- 闁衡偓椤栨稑鐦悹渚囧幘缁苯螣閳ュ磭纭€
+- 闁衡偓椤栨稑鐦柟鏉戞健濡?/ 闁革附婢樺ù姗€宕ョ仦缁㈠妱
+- 闁衡偓椤栨稑鐦柟鐑樺笩椤㈡垵顫楀鈧粭宀勬偝閳轰緡鍟€濡増绮忔竟?
+- 濞ｅ洦绻勯弳鈧ù婊冩鐢偅鎱ㄧ€ｎ亜妫橀柤鏉垮暞閻栧爼骞嬭箛鏇熺獥鐟滅増娲╃槐婵囨媴閸℃绉奸柛鎾崇У椤㈡垿妫冮姀鐘差枀缂佹棏鍨电换宥囨偘瀹€鍕ㄥ亾閺勫繒甯嗙€规瓕灏欑划锟犳嚊椤忓懎鐏囧☉鎾亾濞?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/pages/DashboardPage.tsx`
 - `games/tank-trouble/original/*`
 
-## 闃舵 13锛氬潶鍏嬫父鎴忎簯绔埧闂翠笌鎶曠エ鎹㈠浘
+## 闂傚啳鍩栭?13闁挎稒鑹惧鍫曞礂鐎ｎ偆鍩楅柟鏉戠箣缁垳绮╅娑樼叄闂傚倻绻濈粭宀勫箮閺囩姰鍋嶉柟骞垮灩濞?
 
-涓昏缁撴灉锛?
-- 鍚庣鍔犲叆鍧﹀厠鎴块棿 API
-- 浜戠鎴块棿鑴氭湰璐熻矗鐜╁闆嗗悎銆佸湴鍥?seed銆佹姇绁ㄦ崲鍥俱€佸€掕鏃舵崲鍥?- 鍓嶇閫氳繃 room sync 淇濇寔鍦板浘涓€鑷?
-鍏抽敭鏂囦欢锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁告艾娴烽顒勫礉閻樻彃寮抽柛褝绠戦崢鐘诲箣閸ф锛?API
+- 濞存粍鍨归顒勫箣閸ф锛熼柤瀛樼濠€鎵嫻閻旇崵鐓戦柣婧炬櫅椤斿秹姊块崱妤佸€ら柕鍡曠濠€鎾炊?seed闁靛棔鐒︽慨鍥╃矈閵婏箑搴婇柛銉ゅ嫎閳ь兛绀侀埀顒佸笩椤撴悂寮懜闈涘簥闁?- 闁告挸绉堕顒勬焻濮樺磭绠?room sync 濞ｅ洦绻冪€垫棃宕烽弶鎸庣濞戞挴鍋撻柤?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `backend/main.py`
 - `backend/models.py`
 - `backend/tank_trouble_cloud.py`
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
 
-闃舵鎰忎箟锛?
-- 娓告垙涓嶅啀鍙槸绾湰鍦?canvas 璇曠帺锛岃€屾槸寮€濮嬪叿澶団€滀簯绔腑鏋?+ 鏈湴鍓嶇鈥濈殑缁撴瀯
+闂傚啳鍩栭宀勫箛韫囧海鐤呴柨?
+- 婵炴挸鎲￠崹娆愮▔瀹ュ懎鏅欓柛娆樹簼濡插摜鐥娑欐嫳闁?canvas 閻犲洦娲滅敮娲晬瀹€鍐ｅ亾鐏炵偓笑鐎殿喒鍋撳┑顔碱儏閸欐寧寰勯崶锝傚亾濠娾偓缁垳绮╅娆掑幀闁?+ 闁哄牜鍓欏﹢鎾礈瀹ュ浂浼傞柍銉︾箘濞堟垹绱掗幘瀵糕偓?
 
-## 闃舵 14锛氬潶鍏嬫父鎴忎复鏃跺欢杩熸祴璇曟ā寮?
-鏂板鐩殑锛?
-- 鐢ㄦ埛甯屾湜涓存椂楠岃瘉涓€鏉♀€滃墠绔緭鍏?-> 浜戠 -> 杩斿洖杩滅瀵硅薄琛ㄧ幇鈥濈殑閾捐矾寤惰繜
-- 杩欎釜闇€姹傛槸涓存椂娴嬭瘯鎬ц川锛屼笉搴斿奖鍝嶆寮忚棰戦摼璺€佹寮忔帶鍒堕摼璺?
-鍓嶆湡鍋氭硶锛?
-- 鐜╁鏈湴鐩存帴鎺у埗鑷繁鐨勫潶鍏?- 浜戠鏍规嵁鐜╁杈撳叆椹卞姩涓€涓€滃厠闅嗗潶鍏嬧€?- 鍓嶇鍐嶆樉绀鸿繖涓厠闅嗗潶鍏嬪拰瀹冪殑瀛愬脊
+## 闂傚啳鍩栭?14闁挎稒鑹惧鍫曞礂鐎ｎ偆鍩楅柟鏉戠箣婢跺秹寮捄鐑橆偨閺夆晝鍠愮粊瀵告嫚閺囩唽浣割嚕?
+闁哄倹婢橀·鍐儎椤旂偓鐣遍柨?
+- 闁活潿鍔嶉崺娑氭暜鐏炵偓绠垮☉鎾崇摠濡炲倹顨ュ畝鍐濞戞挴鍋撻柡澶嗘閳ь剚绮屾晶鐘电博椤栨繄缈婚柛?-> 濞存粍鍨归?-> 閺夆晜鏌ㄥú鏍ㄦ交濠婂拋浼傞悗鐢殿攰閽栧嫮鎮伴妸褍绠涢柍銉︾箘濞堟垿鏌ч幑鎰唴鐎点倖鍎肩换?
+- 閺夆晜鐟ら柌婊堟閳ь剙效閸屾稒笑濞戞挸鐡ㄥ鍌毭圭€ｎ厾妲搁柟顑棗绐涢柨娑樺缁楀鎯旈弬鍨殯闁告繂绉甸婊冾嚕韫囨凹娼掑Λ鐗堝灴閹借偐鎹勯妯峰亾娴ｈ鍔€鐎殿喖绻戠敮鍫曞礆閸洘鎳犻悹?
+闁告挸绉靛﹢锟犲磻濮橆厾銆婇柨?
+- 闁绘壕鏅涢宥夊嫉椤掆偓濠€鎾儎鐎涙ê澶嶉柟璨夊啫鐓戦柤濂変簻缁讳線鎯冮崟顐ｈ晧闁?- 濞存粍鍨归顒勫冀鐟欏嫬绁﹂柣婧炬櫅椤斿秵娼忛幘鍐插汲濡炵懓宕慨鈺傜▔閳ь剚绋夐浣插亾濠婂啫甯梻鍛濞煎爼宕楃€Ｑ€鍋?- 闁告挸绉堕顒勫礃瀹ュ棙鈻旂紒鈧ウ璺ㄧ濞戞搩浜滈崢鐘绘⒕閸℃钑夐柛蹇擃儏閹锋壆鈧懓鍟板▓鎴犫偓娑欏姇閼?
 
-褰撴椂鐨勯棶棰橈細
+鐟滅増鎸诲鍌炴儍閸曨垱锛栧Λ鐗堬公缁?
 
-- 鍏嬮殕鍧﹀厠绉诲姩涓嶈繛缁?- 鍏嬮殕瀛愬脊鎺夊抚鏄庢樉
-- 鐪嬭捣鏉ュ儚鏄竴甯т竴甯ц烦
+- 闁稿繐顑夊▓鏇㈠锤閿曗偓閸樼姷绮旂拠鎻捫楀☉鎾崇Х缁绘稓绱?- 闁稿繐顑夊▓鏇犫偓娑欏姇閼村﹪骞掓径濠冨闁哄嫬瀛╁Ο?
+- 闁活亜顑堥幑锝夊级閵夈儱鍓奸柡鍕靛灟缁斿鏁缁斿鏁閻?
 
-## 闃舵 15锛氬欢杩熸ā寮忕涓€娆′紭鍖?
-涓昏缁撴灉锛?
-- 淇杩囦竴浜涚姸鎬佸悓姝?bug
-- 渚嬪 clone respawn 鍚庢帶鍒跺簭鍒椾涪澶辩殑闂
-- 鍓嶇鏇惧鍏嬮殕瀵硅薄鍋氳繃绠€鍗曞钩婊?/ 淇
+## 闂傚啳鍩栭?15闁挎稒鑹惧▎銏℃交閻旀敼浣割嚕韫囨洦鍎戝☉鎾亾婵炲棌鈧尙鍠橀柛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 濞ｅ浂鍠栭ˇ鍙夋交閸ワ妇顏卞ù婊勭〒婵悂骞€娴ｅ憡鍊辨慨?bug
+- 濞撴艾顑呴々?clone respawn 闁告艾瀛╃敮鍫曞礆鐠鸿櫣纰嶉柛鎺撱仦濞戭亝寰勬潏鈺傜暠闂傚偆鍣ｉ。?
+- 闁告挸绉堕顒勫即閹屽殸闁稿繐顑夊▓鏇犫偓鐢殿攰閽栧嫰宕戝宕囩畺缂佺姭鍋撻柛妤佹礀闁解晛顭?/ 濞ｅ浂鍠楅?
 
-浣嗙敤鎴峰弽棣堜粛鐒舵槸锛?
-- 鈥滃緢鍗♀€?- 鈥滃抚鏁颁綆鈥?- 鈥滄柇鏂画缁€?
-璇存槑绾揩鐓у紡鍥炴帹浠嶇劧涓嶅銆?
-## 闃舵 16锛氬欢杩熸ā寮忛噸鏋勪负鈥滆緭鍏ュ悓姝?+ 鏈湴閫愬抚妯℃嫙鈥?
-杩欐槸褰撳墠闃舵鏈€鍏抽敭鐨勪竴娆″潶鍏嬪欢杩熸祴璇曚紭鍖栥€?
-鏍稿績鎬濊矾鏀规垚锛?
-- 浜戠涓嶅啀楂橀鍥炴帹姣忎竴甯у厠闅嗕綅缃?- 浜戠涓昏杩斿洖锛?  - `clone_input`
+濞达絽妫涢弫銈夊箣瀹勬澘鍐€濡絽鐗呯划娑㈡倿閼稿灚笑闁?
+- 闁炽儲绮岀欢銏ゅ础閳锯偓閳?- 闁炽儲绮岄幎姘跺极妫颁胶绉甸柍?- 闁炽儲绮嶉弻鍥棘椤撶姷鏁剧紓渚囧幐閳?
+閻犲洤鐡ㄥΣ鎴犵棯椤栨碍褰ラ柣鎾楀啰纭€闁搞儳鍋炵敮瑙勭瀹ュ洤濮у☉鎾崇Т椤у嫰濡?
+## 闂傚啳鍩栭?16闁挎稒鑹惧▎銏℃交閻旀敼浣割嚕韫囨稑娅㈤柡瀣鐠愮喖鍨惧鍡欑炕闁稿繈鍎遍幃鎾愁潰?+ 闁哄牜鍓欏﹢鎾焻閹邦剚濮庢俊顖楀墲鐎氭瑩鍨?
+閺夆晜鐟﹀Σ姝屻亹閹惧啿顤呴梻鍐煐椤斿矂寮甸埀顒勫礂閹惰姤鏆涢柣銊ュ缁旀潙鈻庨垾铏晧闁稿繐顑呭▎銏℃交閻斿摜銈撮悹鍥ㄦ磻缁鳖參宕犻弽銉㈠亾?
+闁哄秶顭堢缓楣冨箑濠靛﹦鐔呴柡鈧憴鍕亣闁?
+- 濞存粍鍨归顒佺▔瀹ュ懎鏅欏Δ鍌涳耿椤ｅ爼宕堕悙鏉戣吂婵絽绻嬬粩瀵告暜瑜嶉崢鐘绘⒕閸℃洜绉寸紓?- 濞存粍鍨归顒佺▔閺勫浚娲ｉ弶鈺傛煥濞叉牠鏁?  - `clone_input`
   - `fire_events`
   - `clone_reset_seq`
-- 鍓嶇鑷繁鍦ㄦ湰鍦版瘡甯фā鎷熷厠闅嗗潶鍏嬪拰鍏嬮殕瀛愬脊
+- 闁告挸绉堕顒勬嚊椤忓嫮绠掗柛锔哄妽濠€浼村捶閻楀牏妲ㄩ悽顖嗗媭渚€骞忛悢宄板脯闂傚懎妫楀鍫曞礂鐎ｎ亝瀚查柛蹇擃儔濞堟洜鈧稒鍔曢懘?
 
-杩欐牱鍋氱殑鍘熷洜锛?
-- 杩滅瀵硅薄鐨勬洿鏂伴鐜囦笉搴斿彈缃戠粶鍖呴鐜囩洿鎺ラ檺鍒?- 缃戠粶鍙悓姝ヨ緭鍏?/ 鐘舵€?/ 浜嬩欢
-- 鐢婚潰琛ㄧ幇蹇呴』鐢卞墠绔湰鍦?`requestAnimationFrame` 杩炵画鎺ㄨ繘
+閺夆晜鐟﹂悧閬嶅磻濮樿鲸鐣遍柛妯煎枎濞叉粓鏁?
+- 閺夆晜绮庨顒傗偓鐢殿攰閽栧嫰鎯冮崟顒佺函闁哄倷鍗抽。鍫曟偝閸ワ妇鐟濋幖瀛樻煥瑜板牏绱旈幋鐘垫崟闁告牕鎳橀。鍫曟偝閸モ晜绾柟鎭掑劦濡炬椽宕?- 缂傚啯鍨圭划鍫曞矗椤忓嫭鍊辨慨婵勫劥缁额參宕?/ 闁绘鍩栭埀?/ 濞存粌顑勫▎?
+- 闁汇垹顭峰鎵偘閵娧冪疀闊洤鎳橀妴蹇涙偨閸楃偛顤呯紒鏃戝灡濠€浼村捶?`requestAnimationFrame` 閺夆晝鍋熼悽濠氬箳閵娿劎绠?
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/types/cloud.ts`
 - `backend/models.py`
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
 
-## 闃舵 17锛氬欢杩熸ā寮忚繘涓€姝ラ檷绛夊緟鍜岄槻鍫嗙Н
+## 闂傚啳鍩栭?17闁挎稒鑹惧▎銏℃交閻旀敼浣割嚕韫囨氨绠诲☉鎾亾婵縿鍎靛椋庣驳婢跺﹦绐￠柛婊冪焸濡插宕奸崱娅?
 
-褰撳墠鏈€鏂扮殑涓€杞紭鍖栭噸鐐规槸锛?
-- 闄嶄綆鎸夐敭鍙樺寲鍒颁簯绔悓姝ョ殑绛夊緟鏃堕棿
-- 閬垮厤鍚屾璇锋眰鍫嗙Н
-- 杈撳叆娲昏穬鏃舵洿蹇窡杩涳紝绌洪棽鏃堕檷棰?
-褰撳墠瀹炵幇缁撴灉锛?
-- `TankTroublePanel.tsx` 涓紩鍏ワ細
+鐟滅増鎸告晶鐘诲嫉閳ь剟寮幍顔界暠濞戞挴鍋撻弶鐑嗗枙缁鳖參宕犻弽顓炴闁绘劘顫夊Σ鎼佹晬?
+- 闂傚嫬绉崇紞鍡涘箰婢舵劖鏆涢柛娆惷€垫煡宕氭０浣洪殬缂佹棏鍨伴幃鎾愁潰閵壯勭暠缂佹稑顦欢鐔煎籍閸洘锛?
+- 闂侇剙鐏濋崢銈夊触鐏炵虎鍔勯悹鍥敱閻即宕奸崱娅?
+- 閺夊牊鎸搁崣鍡椕洪弰蹇曗攬闁哄啳鍩栧ú鑳疀椤愩儳顎€閺夆晜鍐荤槐婵堢矚濞差亝锛濋柡鍐ㄧ埣濡鹃攱锛?
+鐟滅増鎸告晶鐘碘偓鍦仧楠炲洨绱掗幘瀵镐函闁?
+- `TankTroublePanel.tsx` 濞戞搩鍘肩槐鈺呭礂閵夘垳绐?
   - `LATENCY_SYNC_IDLE_INTERVAL_MS = 90`
   - `LATENCY_SYNC_RUSH_INTERVAL_MS = 12`
-- 鎸夐敭鍙樺寲鏃朵富鍔?kick 涓€娆″悓姝?- 璇锋眰鍦ㄩ€旀椂涓嶉噸澶嶅爢绉?- 璇锋眰杩斿洖鍚庡鏋滆緭鍏ヤ粛娲昏穬锛岀户缁揩閫熻窡杩?
-杩欎竴杞槸涓ユ牸鎸夆€滃彧鍔ㄦ祴璇曞欢杩熼摼璺€佷笉纰板叾浠栭摼璺€濈殑鍘熷垯鍋氱殑銆?
-## 闃舵 18锛氬欢杩熸ā寮忎簯绔父椹?HTTP 鏈嶅姟
+- 闁圭顦甸弫顓㈠矗濡搫顕ч柡鍐╂构鐎靛矂宕?kick 濞戞挴鍋撴繛鍡忊偓铏€辨慨?- 閻犲洭鏀遍惇浼村捶閵娾斁鍋撻弮鈧鍌涚▔瀹ュ娅㈠璺虹Т閻栥垻绮?- 閻犲洭鏀遍惇鐗堟交閺傛寧绀€闁告艾楠搁々褔寮稿鍡欑炕闁稿繈鍎扮划娑樏洪弰蹇曗攬闁挎稑鐬奸幋椋庣磼椤撶偞褰ラ梺顐ゅ枙缁愨剝娼?
+閺夆晜鐟ょ粩瀛樻姜椤旇姤笑濞戞挶鍎查悧鎼佸箰婢跺棌鍋撳鍐ㄦ锭闁告柣鍔嶇粊瀵告嫚閺囩偞顐介弶鈺冨枛閹借偐鎹勯妯峰亾娴ｉ鐟濈痪鐗堟緲閸欑偓绂掗弽顓熸嚑閻犱警鍨埀顒佺箘濞堟垿宕㈤悢宄扮仧闁稿姘ㄥ▓鎴﹀Υ?
+## 闂傚啳鍩栭?18闁挎稒鑹惧▎銏℃交閻旀敼浣割嚕韫囧海闅樼紒鏃戝灠閻栬埖銇?HTTP 闁哄牆绉存慨?
 
-涓昏鐩爣锛?
-- 瑙ｅ喅寤惰繜娴嬭瘯妯″紡鏋佸叾鍗￠】鐨勯棶棰?- 淇濈暀鈥滆緭鍏ョ湡瀹炵粡杩囦簯绔竴鍦堚€濈殑娴嬭瘯鎰忎箟
-- 閬垮厤姣忔鍚屾閮介€氳繃 SSH exec 鍐峰惎鍔ㄤ竴涓?Python 杩涚▼
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 閻熸瑱绲介崰鍛嚈閹壆绠挎繛鏉戭儓閻︻垰螣閳ュ磭纭€闁哄绀侀崣楣冨础閿熺姰鈧垿鎯冮崟顖涳紪濡?- 濞ｅ洦绻勯弳鈧柍銉︾矎缁额參宕楅妷褎鍩傞悗鍦仧缁剝娼婚崶锔鹃殬缂佹棏鍨粩鎾捶閸埃鍋撳┑鍫熺暠婵炴潙顑堥惁顖炲箛韫囧海鐤?
+- 闂侇剙鐏濋崢銈呅掕箛鏃戝仹闁告艾鏈鐐烘焾娴犲鍋撳宕囩畺 SSH exec 闁告劕鍢查幆搴ㄥ礉閵娿倗顏卞☉?Python 閺夆晜绋撻埢?
 
-涓昏缁撴灉锛?
-- `backend/cloud_setup_bundle/tank_trouble_room.py` 澧炲姞 `--serve` 甯搁┗ HTTP server 妯″紡
-- `backend/tank_trouble_cloud.py` 鐨?latency sync / leave 浼樺厛璧颁簯绔?HTTP 鏈嶅姟
-- 鏈湴 backend 棣栨杩涘叆寤惰繜娴嬭瘯鏃堕€氳繃 SSH 鍚姩涓€娆′簯绔父椹昏繘绋?- 浜戠鏈嶅姟榛樿鐩戝惉 `18086/tcp`
-- 浜戠鏈嶅姟鏀逛负甯搁┗鐑湇鍔★紝涓嶅啀鍥犱负绌洪棽鎴栨渶鍚庝竴涓帺瀹堕€€鍑鸿€岃嚜鍔ㄩ€€鍑?- 濡傞渶鍏抽棴 18086 娓告垙鏈嶅姟锛屽簲閫氳繃鏈嶅姟鍣ㄨ繘绋嬬鐞嗘垨浜戠鏈嶅姟绠＄悊鎵嬪姩鍏抽棴
-- 濡傛灉浜戠 HTTP 鏈嶅姟涓嶅彲杈撅紝淇濈暀鏃?SSH exec 鍗曟鑴氭湰閾捐矾浣滃厹搴?
-鍏抽敭鏂囦欢锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- `backend/cloud_setup_bundle/tank_trouble_room.py` 濠⒀呭仜婵?`--serve` 閻㈩垱鎮傞埞?HTTP server 婵☆垪鈧磭纭€
+- `backend/tank_trouble_cloud.py` 闁?latency sync / leave 濞村吋锚閸樻稓鎸ф０浣洪殬缂?HTTP 闁哄牆绉存慨?
+- 闁哄牜鍓欏﹢?backend 濡絾鐗楅鍏兼交濞戞ê寮崇€点倖鍎肩换婊兠圭€ｎ厾妲搁柡鍐ㄧ埣閳ь剚淇虹换?SSH 闁告凹鍨版慨鈺傜▔閳ь剙鈻庨垾鑼殬缂佹棏鍨伴悥鑸点仚閺勫繒绠荤紒?- 濞存粍鍨归顒勫嫉瀹ュ懎顫ゅ娑欘焾椤撳鎯勯幋婵囧剶 `18086/tcp`
+- 濞存粍鍨归顒勫嫉瀹ュ懎顫ら柡鈧柅娑滅閻㈩垱鎮傞埞妤呮倻椤撶喐绠涢柛鏂烘缁辨繃绋夊鍛櫃闁搞儳濮崇拹鐔虹矚濞差亝锛濋柟瀛樼墬濞撳爼宕ユ惔婵堫伇濞戞搩浜炵敮铏光偓鐟扮埣閳ь兘鍋撻柛鎴︾細閳ь剙鐭侀崵婊堝礉閵娾斁鍋撻埀顒勫礄?- 濠碘€冲€垮〒鍫曞礂閹惰姤锛?18086 婵炴挸鎲￠崹娆撳嫉瀹ュ懎顫ら柨娑樿嫰缁ㄦ煡鏌呭宕囩畺闁哄牆绉存慨鐔煎闯閵娿劎绠荤紒瀣儑椤撴悂鎮堕崱妯虹仐濞存粍鍨归顒勫嫉瀹ュ懎顫ょ紒鐙呯磿閹﹪骞嶇€ｎ亜袟闁稿繑濞婂Λ?
+- 濠碘€冲€归悘澶嬬閹寸媭浼?HTTP 闁哄牆绉存慨鐔哥▔瀹ュ懎璁查弶鍫熸嫕缁辨繃绌卞┑鍫熸畬闁?SSH exec 闁告娲橀濂告嚇濮橆厽鎷遍梺鐐礃閻偓鎷呭鍐ㄥ箲閹?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
 - `backend/tank_trouble_cloud.py`
 - `backend/config.py`
 
-鍏抽敭鍐崇瓥锛?
-- 涓嶆敼鍓嶇 API锛宍TankTroublePanel.tsx` 浠嶈皟鐢ㄦ湰鍦?backend
-- 涓嶅奖鍝嶆寮忚棰戦摼璺拰姝ｅ紡鎺у埗閾捐矾
-- 涓嶅紩鍏ユ柊 Python 渚濊禆锛屼簯绔父椹绘湇鍔′娇鐢?stdlib `http.server`
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 濞戞挸绉甸弫濂稿礈瀹ュ浂浼?API闁挎稑鐣璗ankTroublePanel.tsx` 濞寸姴绉烽惃鐔兼偨閵婏附鎷遍柛?backend
+- 濞戞挸绉存總鏍传瀹ュ棭鍔€鐎殿喖绻楅～瀣紣閹达附鎳犻悹渚灠閹锋澘顫㈤敐鍛闁硅矇鍐ㄧ厬闂佺偓宕橀惌?
+- 濞戞挸绉寸槐鈺呭礂閵夛附鐓€ Python 濞撴碍绻嗙粋鍡涙晬鐏炶偐闅樼紒鏃戝灠閻栬埖銇欑紒妯荤疀闁告柡鈧彃鈻忛柣?stdlib `http.server`
 
-## 闃舵 19锛氭枃妗ｆ敹鏁涗笌 agent 浜ゆ帴鍑嗗
+## 闂傚啳鍩栭?19闁挎稒纰嶉弸鍐浖閿濆棙鏆柡浣圭◥缁?agent 濞存嚎鍊栫敮鎾礄閸℃妲?
 
-褰撳墠杩欎竴杞柊澧炴垚鏋滐細
+鐟滅増鎸告晶鐘虫交濞嗗海顏遍弶鐑嗗枟閺屽﹥鏅堕悙鏉戠亣闁哄绮ｇ槐?
 
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 - `frontend/UI_AGENT_SPEC.md`
 
-鐩殑锛?
-- 鎶婃鍓嶅垎鏁ｅ湪鏍圭洰褰曘€佹闈㈣崏绋裤€佸璇濅笂涓嬫枃閲岀殑淇℃伅鏀舵暃鎴愬伐绋嬪唴鐨?canonical 鏂囨。
-- 璁╁埆鐨?agent 鍙湅 `frontend` 鐩綍灏辩煡閬擄細
-  - 灏忕▼搴忔槸浠€涔?  - 鍏抽敭璺緞鍦ㄥ摢
-  - 褰撳墠鏈夊摢浜涘姛鑳?  - 鍝簺鏄巻鍙查仐鐣?  - 鍝簺杈圭晫涓嶈兘涔辩
+闁烩晩鍠氬▓鎴︽晬?
+- 闁硅泛锕ラ婵嬪礈瀹ュ懎鐎婚柡渚婄到濠€顏堝冀閸︻厽绐楃憸鐗堟磸閳ь兛鐒﹂、鎴︽閵忥絽纾哥紒瀣骏閳ь兛绀侀顔炬嫚濠靛懐鐟愬☉鎾愁儐閺嬪啴鏌屽畝鈧▓鎴炵┍閳╁啩绱栭柡鈧懜鍨異闁瑰瓨鍔曟导鎰矙鐎ｎ亜鏁堕柣?canonical 闁哄倸娲﹂妴?
+- 閻犱讲鏅涢崺鍡涙儍?agent 闁告瑯浜炲﹢?`frontend` 闁烩晩鍠栫紞宥囦焊鏉堚晝鍙€闂侇剚鎼槐?
+  - 閻忓繐绻掗埢鍏兼償韫囨梹笑濞寸姭鍋撳☉?  - 闁稿繑濞婇弫顓犳崉椤栨氨绐為柛锔哄妼閹?
+  - 鐟滅増鎸告晶鐘诲嫉婢跺﹥鎲垮ù婊勭☉婵盯鎳?  - 闁告繍浜欑花娲及椤栨艾鍧婇柛娆愮叀娴犳劙鎮?  - 闁告繍浜欑花鐑樻綇閸︻厽娅曞☉鎾崇Х閸忔ɑ绋婃潏鈺婃骄
 
-## 闃舵 20锛氬欢杩熸祴璇曟ā寮忕畝鍖栦负鈥滅函鍏嬮殕瑙嗚鈥?
-涓昏鐩爣锛?
-- 灏嗗欢杩熸祴璇曟ā寮忎粠鈥滄湰鍦板潶鍏?+ 鍏嬮殕鍧﹀厠 + 闈跺瓙鈥濈畝鍖栦负鐢婚潰涓婂彧鏈変竴杈嗗厠闅嗗潶鍏?- 璁╃敤鎴风洿瑙傛劅鍙椻€滄垜鎿嶆帶鐨勫潶鍏嬪湪瀵规墜鐪奸噷鏄粈涔堟牱鈥?- 鍘绘帀涓嶅繀瑕佺殑鏈湴鍏冪礌锛屽噺灏戣瑙夊共鎵?
-涓昏缁撴灉锛?
-- 寮曟搸鏂板 `latencyOnly` 鏍囧織鍜?`setLatencyOnly(enabled)` 鏂规硶
-- `tick()` 涓?`latencyOnly` 妯″紡璺宠繃鏈湴鍧﹀厠绉诲姩 / 寮€鐏?/ 闈跺瓙鏇存柊 / 鏈湴瀛愬脊鐗╃悊
-- `render()` 涓?`latencyOnly` 妯″紡涓嶇粯鍒舵湰鍦板潶鍏嬨€佹湰鍦板瓙寮广€侀澏瀛?- `buildLatencySyncState()` 鍦?`latencyOnly` 妯″紡杩斿洖鍦哄鍗犱綅鍧愭爣鍜岀┖闈跺瓙鏁扮粍
-- 鍏嬮殕瀛愬脊鐗╃悊涓烦杩囧鏈湴鍧﹀厠鍜岄澏瀛愮殑纰版挒妫€娴?- 杩涘叆 / 閫€鍑哄欢杩熸祴璇曟ā寮忔椂鑷姩鍒囨崲 `latencyOnly` 鏍囧織
-- 瀛愬脊娑堟暎鐗规晥鍦?`latencyOnly` 妯″紡浣跨敤鍏嬮殕鍧﹀厠璋冭壊鏉?- 宸︿笂瑙掓爣绛惧湪 `latencyOnly` 妯″紡鏄剧ず `Latency View`
+## 闂傚啳鍩栭?20闁挎稒鑹惧▎銏℃交閻斿摜銈撮悹鍥ㄦ礃鑶╃€殿喖绻掗悾婵嬪礌閺嶏箒绀嬮柍銉︾矌閸戜粙宕楃€ｎ喗鐣烽悷娆忔椤鍨?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 閻忓繐妫楀▎銏℃交閻斿摜銈撮悹鍥ㄦ礃鑶╃€殿喖绻嬬划鐘诲灳濠婂嫭鎷遍柛锔芥緲濞煎爼宕?+ 闁稿繐顑夊▓鏇㈠锤閿曗偓閸?+ 闂傚牐娉涢悺娆撳灳濠靛牏鏆嗛柛鏍ㄧ墧鐠愮喖鎮芥繝姘〃濞戞挸锕よぐ褔寮垫径澶岊伇閺夊牆妫楅崢鐘绘⒕閸℃钑夐柛?- 閻犱讲鏅濋弫銈夊箣妞嬪孩绾悷娆忓€归崝鍛村矗濡炵儵鍋撳鍕亯闁瑰灝绉电敮鍫曟儍閸曨偅钑夐柛蹇擃儏濠€顏嗏偓浣冾潐婢ф粓鎯囨總绋挎闁哄嫷鍨划鍫熺▕閸喓澹夐柍?- 闁告绮敮鈧☉鎾崇Т缁烩偓閻熸洑鑳跺▓鎴﹀嫉椤掆偓濠€鎾礂閸愵亞顦遍柨娑樿嫰閸ｈ櫣浜搁幋锝庢綊閻熸瑥顦崗閬嶅箥?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 鐎殿喗娲橀幖鎼佸棘閺夋鏉?`latencyOnly` 闁哄秴娲ょ换鏃堝椽?`setLatencyOnly(enabled)` 闁哄倽顫夌涵?
+- `tick()` 濞?`latencyOnly` 婵☆垪鈧磭纭€閻犲搫鐤囩换鍐嫉椤掆偓濠€鎾锤閿曗偓閸樼姷绮旂拠鎻捫?/ 鐎殿喒鍋撻柣?/ 闂傚牐娉涢悺娆撳即鐎涙ɑ鐓€ / 闁哄牜鍓欏﹢瀵糕偓娑欏姇閼村﹪鎮ч埡鍐╁€?
+- `render()` 濞?`latencyOnly` 婵☆垪鈧磭纭€濞戞挸绉剁划顖炲礆閼稿灚鎷遍柛锔芥緲濞煎爼宕楃€ｃ劉鍋撴担瑙勬嫳闁革附婢橀悺娆忣嚕楠炲簱鍋撴笟鈧蹇曗偓?- `buildLatencySyncState()` 闁?`latencyOnly` 婵☆垪鈧磭纭€閺夆晜鏌ㄥú鏍捶閸濆嫷妯嗛柛妤冨С缂嶅懘宕搁幇顓犲灱闁告粌鐬奸埞鏍鐠鸿櫣鎽嶉柡浣瑰缁?
+- 闁稿繐顑夊▓鏇犫偓娑欏姇閼村﹪鎮ч埡鍐╁€炲☉鎿冨弨閻戯附娼婚崶褜鍤犻柡鍫墮濠€鎾锤閿曗偓閸樼娀宕畝鍕珐閻庢稒鍔楀▓鎴犲枈閻楀牊瀵俊顐熷亾婵?- 閺夆晜绋戦崣?/ 闂侇偀鍋撻柛鎴濇惈濞嗐垺娼婚悢鍝ャ偞閻犲洦娲樿啯鐎殿喖绻戝鍌炴嚊椤忓嫬袟闁告帒娲﹀畷?`latencyOnly` 闁哄秴娲ょ换?
+- 閻庢稒鍔曢懘濠傗槈閸喐娈犻柣妤勵潐閺呫儵宕?`latencyOnly` 婵☆垪鈧磭纭€濞达綀娉曢弫銈夊礂鐎ｎ喗鐣烽柛褝绠戦崢鐘垫嫬閸愵厼顥忛柡?- 鐎归潻缂氱粭鍌滄喆閹烘挾鍨肩紒娑欏劤濠€?`latencyOnly` 婵☆垪鈧磭纭€闁哄嫬澧介妵?`Latency View`
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 
-鍏抽敭鍐崇瓥锛?
-- 鍙敼鍓嶇寮曟搸鍐呴儴閫昏緫锛屼弗鏍奸殧绂诲湪寤惰繜娴嬭瘯妯″紡
-- 浜戠 `tank_trouble_room.py` 涓嶅姩锛屽畠鍙鏍规嵁 input 椹卞姩鍏嬮殕锛屼笉鍏冲績鏈湴鍧﹀厠鏈夋病鏈?- `tank_trouble_cloud.py` 鍜屾湰鍦?backend API 涓嶅姩
-- 璁粌妯″紡鍜屾埧闂存ā寮忓畬鍏ㄤ笉鍙楀奖鍝?
-## 闃舵 21锛氬欢杩熸祴璇曟ā寮忓钩婊戞€т紭鍖?- 绂佺敤浣嶇疆鍥為€€
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 闁告瑯浜濋弫濂稿礈瀹ュ浂浼傜€殿喗娲橀幖鎼佸礃閸涙潙鍔ラ梺顐ｆ缁额偊鏁嶇仦鐓庣船闁哄秴銈稿▓褏绮嬬拠鍙夎含鐎点倖鍎肩换婊兠圭€ｎ厾妲告俊顖椻偓宕囩
+- 濞存粍鍨归?`tank_trouble_room.py` 濞戞挸绉存慨鈺呮晬鐏炵晫鏆婇柛娆樹簽椤撴悂寮界憴鍕ウ input 濡炵懓宕慨鈺呭礂鐎ｎ喗鐣烽柨娑樺缁楀宕楅崘鑼闁哄牜鍓欏﹢鎾锤閿曗偓閸樼娀寮垫径瀣⒕闁?- `tank_trouble_cloud.py` 闁告粌鏈﹢浼村捶?backend API 濞戞挸绉存慨?
+- 閻犱緡鍘剧划灞轿熼垾宕囩闁告粌鏈崺褔姊荤€涙◥浣割嚕韫囨挾鏆氶柛蹇嬪妺缁楀宕ｅΔ鈧總鏍传?
+## 闂傚啳鍩栭?21闁挎稒鑹惧▎銏℃交閻斿摜銈撮悹鍥ㄦ礃鑶╃€殿喖绻愰柦鈺侇煥閹寸偐鍋撹缁鳖參宕?- 缂佸倷鑳堕弫銈嗘媴瀹ュ洨鏋傞柛銉у仱閳ь兘鍋?
 
-涓昏鐩爣锛?
-- 瑙ｅ喅鍏嬮殕鍧﹀厠鍦ㄥ欢杩熸祴璇曚腑鈥滃洖閫€ / 璺宠穬鈥濈殑闂
-- 璁╂搷鎺т綋楠屼粠鈥滃崱椤垮洖閫€鈥濆彉鎴愨€滄湁寤惰繜浣嗘祦鐣呪€?
-闂璇婃柇锛?
-- 浜戠姣忔 sync 杩斿洖鐨勬潈濞佷綅缃笌鏈湴閫愬抚妯℃嫙鐨勪綅缃瓨鍦ㄥ井灏忓亸宸?- `applyLatencyCloneCorrection` 姣忔鏀跺埌 sync 缁撴灉鏃跺己琛屾妸鍧﹀厠鎷夊悜浜戠鍧愭爣
-- 褰撶綉缁滃欢杩熸尝鍔ㄦ椂锛岃繖绉嶆媺鎵骇鐢熸槑鏄剧殑鈥滄紓绉?- 鍥為€€鈥濇劅
-- 灏濊瘯杩囧紩鍏ヨ緭鍏ョ紦鍐?`jitter buffer` 鏂规锛屼絾浜х敓浜嗏€滈粡鑵烩€濇墜鎰熷拰瀛愬脊浣嶇疆閿欎綅锛屽凡鍥為€€
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 閻熸瑱绲介崰鍛村礂鐎ｎ喗鐣烽柛褝绠戦崢鐘诲捶閵娿儲顐介弶鈺冨枑缁佸鎷犻弴姘冲幀闁炽儲绮屽ú鏍焻閳?/ 閻犲搫鐤囩粚顒勫灳濠靛牊鐣遍梻鍌ゅ櫍椤?
+- 閻犱讲鏅滈幖鐑藉箳瑜岀紞瀣殽鐏炶偐鐭ら柍銉︾矊瀹曡鲸銇勯崹顔界闂侇偀鍋撻柍銉︾箓瑜板骞嬮幇銊㈠亾濠婂嫭绠掔€点倖鍎肩换婊勬媴閸℃銈﹂柣锝呮噳閳?
+闂傚偆鍣ｉ。鐣屾嫚婵犲啯鐒介柨?
+- 濞存粍鍨归顒€袙韫囨棏鍋?sync 閺夆晜鏌ㄥú鏍儍閸曨剚缍€濠电偘妞掔紞鍛磾椤旇崵鐟㈤柡鍫墮濠€鎾焻閹邦剚濮庢俊顖楀墲鐎氭瑩鎯冮崟顏嗙Т缂傚喚鍠栭悺銊╁捶閵娿儰绨抽悘蹇撶箰娴滅顔?- `applyLatencyCloneCorrection` 婵絽绻戦濂稿绩鐠哄搫鐓?sync 缂備焦鎸婚悘澶愬籍鐠哄搫绻侀悶娑樻湰婵℃悂宕搁敃鈧崢鐘诲箯婢跺﹥鍊诲ù婊勫灩椤忣剟宕搁幇顓犲灱
+- 鐟滅増鎸剧紞澶岀磼濠婂啯顐介弶鈺冨枑鐏忔繈宕濋妸锔筋槯闁挎稑鐭佺换鏍矓瀹ュ棗顎欓柟娈垮灟妤犲洭鎮介悢鍛婎潠闁哄嫬澧藉▓鎴﹀灳濠婂嫮纾界紒?- 闁搞儳鍋ら埀顑藉亾闁炽儲绻冮崝?
+- 閻忓繑绻嗛惁顖涙交閸パ呯┛闁稿繈鍎寸欢顓㈠礂閵壯呭闁?`jitter buffer` 闁哄倽顫夐、宥夋晬鐏炶偐绋诲ù婧犲懏鏅稿ù婊冩閳ь剚绮撶划锟犳嚈閻戔斁鍋撳┑鍥ь杹闁规壆鍠庨幏鎵偓娑欏姇閼村﹥鎷呭鍥╂瀭闂佹寧鐟ょ紞鍛存晬鐏炶棄鍤掗柛銉у仱閳ь兘鍋?
 
-鏈€缁堟柟妗堬細
+闁哄牃鍋撶紓浣哥墛閺岀喎顩奸崼顒傜獥
 
-- `latencyOnly` 妯″紡涓嬪畬鍏ㄧ鐢?`applyLatencyCloneCorrection`
-- 鍏嬮殕鍧﹀厠鐨勪綅缃彧鐢辨湰鍦伴€愬抚妯℃嫙鍐冲畾锛屽熀浜?`clone_input` 椹卞姩
-- `clone_input` 鍒拌揪鍚庣珛鍗崇敓鏁堬紝鏃犵紦鍐诧紝淇濇寔鎿嶆帶鐨勭洿鎺ュ搷搴旀劅
-- 瀛愬脊浠嶄粠浜戠杩斿洖鐨勫潗鏍囧彂灏勶紝浠ｈ〃鏈嶅姟绔潈濞佸垽瀹氭椂鐨勭湡瀹炰綅缃?
-鏈€缁堟晥鏋滐細
+- `latencyOnly` 婵☆垪鈧磭纭€濞戞挸顑呴悾顒勫礂閵娧屾矗闁?`applyLatencyCloneCorrection`
+- 闁稿繐顑夊▓鏇㈠锤閿曗偓閸樼娀鎯冮崟顏嗙Т缂傚喚鍠栬ぐ褔鎮芥潏銊︽嫳闁革缚鍗抽埀顒佸姇閹舵艾螣閳╁啫鐝柛鎰暱閻ｉ箖鏁嶇仦鐣屽敤濞?`clone_input` 濡炵懓宕慨?
+- `clone_input` 闁告帗濯介幓顏堝触鎼达絿褰岄柛妤€纾弫鎾诲极閸剛绀夐柡鍐Х缁憋箓宕樼拠褏绀夊ǎ鍥ㄧ箖鐎垫棃骞欏鍡椾粯闁汇劌瀚ú鍧楀箳閵夈儲鎯欓幖瀛樻⒐閸?
+- 閻庢稒鍔曢懘濠冪瀹ュ嫮鐭ゅù婊勫灩椤忣剚娼婚弬鎸庣闁汇劌瀚妤呭冀閸パ冪岛閻忓繐瀚哥槐婵囩閿濆牄鈧啴寮靛鍛潳缂佹棏鍨卞鍫熺箾娴ｇ鐏查悗瑙勭濡炲倿鎯冮崟顓熷焸閻庡湱鍋樼紞鍛磾?
+闁哄牃鍋撶紓浣哥墛閺呫儵寮稿鎰獥
 
-- 绉诲姩鏃惰繛璐祦鐣咃紝涓嶅啀鏈変綅缃洖閫€
-- 鏉惧紑閿悗鍧﹀厠骞虫粦鍋滀綇
-- 鎿嶆帶寤惰繜绾︾瓑浜庣綉缁滃線杩旀椂闂达紝绗﹀悎棰勬湡鐨勫欢杩熸劅鍙?- 寮€鐐欢杩熷彲瑙侊紝鎸夐敭鍒板瓙寮瑰嚭鐜颁箣闂存湁缃戠粶寤惰繜
+- 缂佸顕ф慨鈺呭籍閹壆绠鹃悹鎰靛灡缁侊箓鎮鹃崪鍐濞戞挸绉撮崯鈧柡鍫濐槷缂嶅懐绱旈鍏肩闂侇偀鍋?
+- 闁哄鍎崇槐鎴︽煥椤斿吋鍊甸柛褝绠戦崢鐘荤嵁閾忣偆鎷ㄩ柛瀣矆缂?
+- 闁瑰灝绉电敮璺侯嚈閹壆绠跨紒鎾呭閻℃垶绂嶆惔锝囩Ч缂備焦绮岀欢姘交閺冣偓濡炲倿姊绘潏鍓х缂佹绠戦幃搴紣閸曨剚鍩傞柣銊ュ濞嗐垺娼婚悢绋垮Τ闁?- 鐎殿喒鍋撻柣鎰靛枛濞嗐垺娼婚悢宄拌閻熸瑤绶ょ槐婵嬪箰婢舵劖鏆涢柛鎺撴緲閻℃瑥顕ｉ悷鏉挎瘔闁绘粓顣︾粻锝夋⒒鐎涙ɑ绠掔紓鍐╁灩缁泛顕欓幆鎵
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 
-鍏抽敭鍐崇瓥锛?
-- 涓嶄娇鐢ㄨ緭鍏ョ紦鍐诧紝瀹炴祴浣撴劅宸?- 涓嶅仛浣嶇疆鏍℃锛屾湰鍦版ā鎷熻冻澶熺簿纭紝鍥犱负杈撳叆鐩稿悓
-- 渚濈劧淇濈暀瀛愬脊浠庝簯绔潗鏍囧彂灏勶紝璇箟鏇存纭?
-## 闃舵 22锛氬欢杩熸祴璇曢摼璺崌绾т负鈥滈暱杩炴帴 + 杈撳叆搴忓彿 + 鏈湴鏍℃鈥?
-涓昏鐩爣锛?- 鎶婂潶鍏嬫父鎴忓欢杩熸祴璇曚粠鈥滃墠绔弽澶?HTTP sync鈥濆崌绾ф垚鏇存帴杩戜富娴佽仈鏈烘父鎴忕殑缁撴瀯
-- 鍏堝畬鎴愪袱浠朵簨锛氶暱杩炴帴鏁版嵁閫氶亾銆佽緭鍏ュ簭鍙?鏈嶅姟鍣ㄥ揩鐓у簭鍙?鏈湴鏍℃
-- 椤烘墜淇帀鈥滃欢杩熸祴璇曢噷鍧﹀厠鑳藉姩浣嗘寜绌烘牸鐪嬩笉鍒扮偖寮光€濈殑闂
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 濞戞挸绉虫繛鍥偨閵娿劎缈婚柛蹇嬪劤缁憋箓宕樼拠褏绀夐悗鍦仦缁佸瓨鎷呴幘鏉戝Τ鐎?- 濞戞挸绉存禒娑欐媴瀹ュ洨鏋傞柡宥佸墲椤掓粓鏁嶇仦鐐嫳闁革妇澧楄啯闁归鍠曢崘缁樺緞閻旇櫣缈辩痪顓у櫙缁辨繈宕堕悩杈閺夊牊鎸搁崣鍡涙儎缁嬫寧鍊?
+- 濞撴碍绻勯崝褎绌卞┑鍫熸畬閻庢稒鍔曢懘濠冪鎼存繄闅樼紒鏃戝灠濞兼寮介崶褍绲洪悘蹇撳缁辨繄鎷犻婵堢枀闁哄洤鐡ㄩ婊呮兜?
+## 闂傚啳鍩栭?22闁挎稒鑹惧▎銏℃交閻斿摜銈撮悹鍥ㄦ礋閹借偐鎹勯姘３缂佺嫏鍌濈闁炽儲绮撻弳杈ㄦ交閻愭潙澶?+ 閺夊牊鎸搁崣鍡樻償韫囨挸濞?+ 闁哄牜鍓欏﹢鎾冀閳╁喚鍔€闁?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?- 闁硅泛锕ゅ鍫曞礂鐎ｎ偆鍩楅柟鏉戠箰濞嗐垺娼婚悢鍝ャ偞閻犲洦娲戠划鐘诲灳濠婂啫顤呯紒鏃戝灠瀵姤寰?HTTP sync闁炽儲绻傚畷宀€鐥閸ㄦ岸寮寸€涙ê澶嶉弶鈺傚灣鐎靛苯霉娴ｆ垝绮撻柡鍫㈠劋閻栧爼骞嬭箛鏇熺暠缂備焦鎸婚悗?
+- 闁稿繐鐗嗛悾顒勫箣閹邦亣鈷堝ù鐘虫构缁ㄣ劑鏁嶅鑸垫瘣閺夆晝鍋炵敮鎾极閻楀牆绁﹂梺顐ｅ哺娴滈箖濡存担鐣岀炕闁稿繈鍎辩花顓㈠矗?闁哄牆绉存慨鐔煎闯閵娿儲褰ラ柣鎾楀啰纰嶉柛?闁哄牜鍓欏﹢鎾冀閳╁喚鍔€
+- 濡炪倗鍎ゆ晶婊勭┍椤旇棄绔撮柍銉︾矊濞嗐垺娼婚悢鍝ャ偞閻犲洦娲熼崳鐑藉锤閿曗偓閸樼娀鎳楅挊澶娦楀ù锝呮鐎垫粎绮氶悜妯煎闁活亜顑勭粭澶愬礆閹殿喖浠忕€殿喖鍘滈埀顒佺箘濞堟垿姊婚鈧。?
 
-涓昏缁撴灉锛?- 鍓嶇鍒版湰鍦?backend 鏂板 WebSocket 閫氶亾锛歚/api/games/tank-trouble/latency/ws`
-- 鏃х殑 `POST /api/games/tank-trouble/latency/sync` 浠嶇劧淇濈暀锛屼綔涓鸿嚜鍔?fallback
-- 鏈湴 backend 鍒颁簯绔繖娈典笉鍐嶆瘡娆￠兘鏂板缓涓€娆?HTTP 璇锋眰杩炴帴锛岃€屾槸浼樺厛澶嶇敤鎸佷箙 keep-alive 杩炴帴
-- 浜戠寤惰繜娴嬭瘯鐘舵€佹柊澧烇細
+濞戞挻妲掗々锔剧磼閹惧浜柨?- 闁告挸绉堕顒勫礆閻楀牊鎷遍柛?backend 闁哄倹婢橀·?WebSocket 闂侇偅宀告禍楣冩晬濮?api/games/tank-trouble/latency/ws`
+- 闁哄唲鍛暠 `POST /api/games/tank-trouble/latency/sync` 濞寸姴绉堕崝褎绌卞┑鍫熸畬闁挎稑濂旂紞鏃€绋夋ウ鍨闁?fallback
+- 闁哄牜鍓欏﹢?backend 闁告帡顣︾花顖滅博椤栨繄绠规繛鍫濆悁缁楀宕樺鍡欐Ж婵炲棴绻濋崗姗€寮弶璺ㄧ处濞戞挴鍋撴繛?HTTP 閻犲洭鏀遍惇鐗堟交閻愭潙澶嶉柨娑樼焷閳ь剙鏈Σ鍛婂濡搫甯ュ璺虹Ф閺併倝骞愭担椋庣暯 keep-alive 閺夆晝鍋炵敮?
+- 濞存粍鍨归顒€顕欓幆鎵婵炴潙顑堥惁顖炴偐閼哥鍋撴担瑙勭厐濠⒀呭剳缁?
   - `input_seq`
   - `ack_input_seq`
   - `snapshot_seq`
-- 鍓嶇寤惰繜妯″紡涓嶅啀瀹屽叏绛夊緟浜戠鍥?`clone_input` 鎵嶅姩
-- 褰撳墠鍋氭硶鏀逛负锛?  - 鏈湴鍏堟寜褰撳墠杈撳叆鐩存帴棰勬祴鍏嬮殕鍧﹀厠绉诲姩/杞悜
-  - 浜戠杩斿洖鏉冨▉浣嶇疆鍚庡仛杞婚噺鏍℃
-  - 鏃у揩鐓т細琚涪寮冿紝涓嶅啀瑕嗙洊鏂扮姸鎬?- 寤惰繜妯″紡鐨勫紑鐏幇鍦ㄦ湁涓ゅ眰淇濋殰锛?  - 鏈湴鍏堢敓鎴愰娴嬪瓙寮癸紝淇濊瘉鎸夌┖鏍肩珛鍒绘湁鍙嶉
-  - 浜戠杩斿洖 `fire_events + bullets` 鍚庡啀鎶婇娴嬪瓙寮瑰拰鏉冨▉瀛愬脊瀵归綈
-- 杩欐牱鏃㈣В鍐充簡鈥滅┖鏍兼病鐐脊鈥濓紝涔熻绉诲姩鍜屽紑鐏兘鏇存帴杩戜富娴佽仈鏈烘父鎴忕殑浣撴劅
+- 闁告挸绉堕顒€顕欓幆鎵婵☆垪鈧磭纭€濞戞挸绉撮崯鈧悗鐟拌嫰閸欏繒绮垫径濠勭濞存粍鍨归顒勫炊?`clone_input` 闁归潧绉存慨?
+- 鐟滅増鎸告晶鐘诲磻濮橆厾銆婇柡鈧柅娑滅闁?  - 闁哄牜鍓欏﹢鎾礂閸喎鐦荤憸鐗堟尭婢х姵娼忛幘鍐插汲闁烩晛鐡ㄧ敮瀛橈紣閸曨剛銈撮柛蹇擃儔濞堟洟宕搁敃鈧崢鐘电矓鐠囨彃袟/閺夌儐鍓欓幃?
+  - 濞存粍鍨归顒佹交閺傛寧绀€闁哄鍟埢澶嬫媴瀹ュ洨鏋傞柛姘娴犳稒娼繝姘闁哄秮鍓濋?
+  - 闁哄唲鍐╁渐闁绘挆鍌滅獥閻炴凹鍋傚☉顏勵嚕閸愯法绀夊☉鎾崇Т閸熲偓閻熸洖妫涘ú濠囧棘閹殿喖笑闁?- 鐎点倖鍎肩换婊兾熼垾宕囩闁汇劌瀚槐鎴︽倶椤愩倕绠涢柛锔哄妽濠€浣圭▔閵堝懐婀村ǎ鍥ㄧ箞濞堜即鏁?  - 闁哄牜鍓欏﹢鎾礂閸垺鏅搁柟瀛樺姍椤ｂ晛霉鐎ｎ亞鎽嶇€殿喚娅㈢槐婵囩┍濠靛﹦妲堥柟绋款槺閳规牠寮介懖鈺冨綄闁告帞绮﹢渚€宕ｅ澶樻疮
+  - 濞存粍鍨归顒佹交閺傛寧绀€ `fire_events + bullets` 闁告艾楠搁崯鈧柟璺猴躬椤ｂ晛霉鐎ｎ亞鎽嶇€殿喚鎳撻幏浼村级閸愩劉鏋嗛悗娑欏姇閼村﹦鈧潧缍婄紞?
+- 閺夆晜鐟﹂悧閬嶅籍閵忥及鎺楀礃閸忓懐鍟婇柍銉︾矌閳规牠寮介崗鑲╂⒕闁绘劦鍠栭懘濠囧灳濠垫挾绀夊☉鏃傚枙椤斺偓缂佸顕ф慨鈺呭椽鐏炵晫纾婚柣蹇ｅ亰閸忔﹢寮寸€涙ê澶嶉弶鈺傚灣鐎靛苯霉娴ｆ垝绮撻柡鍫㈠劋閻栧爼骞嬭箛鏇熺暠濞达絾鎸婚崝?
 
-鍏抽敭鏂囦欢锛?- `frontend/src/components/TankTroublePanel.tsx`
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?- `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/api/cloudApi.ts`
 - `frontend/src/types/cloud.ts`
 - `backend/main.py`
@@ -1432,105 +5670,105 @@ Verification:
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
 - `frontend/README.md`
 
-鍏抽敭鍐崇瓥锛?- 娌℃湁鍘荤瑙嗛閾捐矾銆佹寮忔帶鍒堕摼璺€佹湇鍔＄鐞嗛摼璺?- 鏀瑰姩浠嶇劧涓ユ牸鏀舵潫鍦ㄥ皬绋嬪簭宸ョ▼鍐呴儴
-- WebSocket 鍙厛钀藉湪鈥滃墠绔?<-> 鏈湴 backend鈥濊繖涓€娈碉紝閬垮厤涓轰簡娴嬭瘯閾捐矾鍘婚噸鍋氭暣濂椾簯绔崗璁?- 鈥滄湰鍦?backend <-> 浜戠鈥濊繖涓€娈靛厛閫氳繃鎸佷箙 keep-alive 杩炴帴闄嶅紑閿€锛屼綔涓轰綆椋庨櫓澧為噺浼樺寲
-- 鏃?HTTP sync 鍜屾棫 SSH fallback 閮戒繚鐣欙紝閬垮厤鏂伴摼璺嚭闂鏃舵暣鏉℃祴璇曢摼璺け鏁?
-楠岃瘉缁撴灉锛?- `python -m compileall backend` 閫氳繃
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?- 婵炲备鍓濆﹢渚€宕㈤懡銈庢骄閻熸瑥妫濋。鍫曟煣閹规劗鐔呴柕鍡曠劍椤掓粌顕ｈ箛鏂夸粯闁告帒鐖奸幗鑲╂崉椤栨ǚ鍋撴担瑙勭疀闁告棑绱曢鎼佹偠閸℃稒鎳犻悹?- 闁衡偓閻熸澘袟濞寸姴绉堕崝褎绋夐妷锔惧闁衡偓閼稿灚灏嗛柛锔哄妼閻剛绮欑€ｎ亞纰嶇€规悶鍎抽埢濂稿礃閸涙潙鍔?
+- WebSocket 闁告瑯浜滈崢娑㈡媰閽樺韬柍銉︾矊婢х姷绮?<-> 闁哄牜鍓欏﹢?backend闁炽儲绻嗙换鏍ㄧ▔閳ь剙鈻撶喊澶岀闂侇剙鐏濋崢銈嗙▔鏉炴壆鍟婃繛鏉戭儓閻︻垶鏌ч幑鎰唴闁告ê顭烽崳鎼佸磻濮橆厽娈诲┑鍌涖仦缁垳绮╅姘閻?- 闁炽儲绮嶅﹢浼村捶?backend <-> 濞存粍鍨归顒勫灳濠靛﹦绠瑰☉鎾亾婵炲牓娼ч崢娑㈡焻濮樺磭绠栭柟闀愭缁?keep-alive 閺夆晝鍋炵敮鎾⒔瀹ュ懐纾婚梺搴撳亾闁挎稑濂旂紞鏃€绋夋潪鎵У濡炲閰ｅ▍鎾存櫠閻愬搫娅ゅù鍏济€?
+- 闁?HTTP sync 闁告粌鏈Λ?SSH fallback 闂侇喗鍨濈换姘舵偩濞嗘瑧绀夐梺顒€鐏濋崢銈夊棘娴煎瓨鎳犻悹渚灠閸ゎ參姊婚鈧。浠嬪籍閼稿灚娈婚柡澶嗗墲缁佸鎷犻弴銏℃嚑閻犱警鍨伴妵鎴﹀极?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?- `python -m compileall backend` 闂侇偅淇虹换?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
 
-閬楃暀闂锛?- 杩欐瀹炵幇鐨勬槸鈥滄洿鍍忎富娴佽仈鏈洪鏋垛€濈殑鐗堟湰锛屼絾杩樹笉鏄畬鏁寸殑鍥炴粴閲嶆紨寮?netcode
-- 褰撳墠鏈湴鏍℃鏄交閲忕籂鍋忥紝涓嶆槸涓ユ牸鎸夊凡纭杈撳叆閲嶆斁鏁存鍘嗗彶
-- 濡傛灉鍚庨潰缁х画寰€鏇翠笓涓氱殑鑱旀満鍚屾闈狅紝鍙互鍐嶈ˉ锛?  - 鏇村畬鏁寸殑杈撳叆鍘嗗彶鍥炴斁
-  - 鏇寸粏鐨勬椂闂存埑瀵归綈
-  - 鏇寸ǔ瀹氱殑杩滅浜嬩欢纭鏈哄埗
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?- 閺夆晜鐟﹂鑲┾偓鍦仧楠炲洭鎯冮崟顒佇﹂柍銉︾矋濞插潡宕撹箛搴＄槣婵炵繝娴囨禒鍫ュ嫉濞差亶鈧洭寮搁崹娑掑亾濠靛牊鐣遍柣妤€鐗婂﹢浼存晬鐏炶偐绋婚弶鈺偯肩粭澶愬及椤栨氨鏆氶柡浣割嚟濞堟垿宕堕悙瀵告硦闂佹彃绉电槐銊ヮ嚕?netcode
+- 鐟滅増鎸告晶鐘诲嫉椤掆偓濠€鎾冀閳╁喚鍔€闁哄嫷鍨垫禍銈夋煂韫囨洜鐪伴柛瀣獜缁辨繃绋夊鍡樞﹀☉鎾卞劜閻楁悂骞愭径濠傚殥缁绢収鍠涢缁樻綇閹惧啿寮抽梺鎻掔У閺備線寮€涙﹩鍞介柛妯烘瑜?
+- 濠碘€冲€归悘澶愬触鎼淬劍妗ㄧ紓浣堝懐鏁剧€垫壋鍋撻柡鍥╃節缁楁挻绋夊杈ㄧ暠闁艰鲸姊瑰┃鈧柛姘湰椤掔偤妫冮悪鍛闁告瑯鍨禍鎺楀礃瀹ュ煻澶愭晬?  - 闁哄洦娼欓悾顒勫极鐎靛憡鐣遍弶鍫熸尭閸欏棝宕㈤崱妤€钑夐柛銉у仦閺?
+  - 闁哄洤顕划蹇涙儍閸曨剚顦ч梻鍌氱摠閸╂垹鈧潧缍婄紞?
+  - 闁哄洤顕彊閻庤姘ㄥ▓鎴炴交濠婂拋浼傚ù婊冾儎濞嗐垻娑甸娆惧悋闁哄牆鎼崺?
 
-## 鍏抽敭闀挎湡绾︽潫鎬荤粨
+## 闁稿繑濞婇弫顓㈡⒐閹稿孩鍩傜紒鎾呴檮濞碱偊骞€閼姐倗娉?
 
-杩欎簺绾︽潫璐┛浜嗘暣涓疄鐜拌繃绋嬶紝涔熷簲璇ョ户缁繚鎸侊細
+閺夆晜鐟ょ花铏圭棯閿旇姤灏嗛悹鎰靛灣閳规稒绂嶉崱妯绘濞戞搩浜滈悿鍕偝閹峰瞼绠栫紒瀣儜缁辨繃绋婇悢椋庡畨閻犲洢鍎抽幋椋庣磼椤撴繄绠介柟闀愮筏缁?
 
-1. SSH / 浜戠鎺у埗閫昏緫鐣欏湪 Python backend锛屼笉杩涘墠绔€?2. 榛樿灏介噺灏戞敼鏂囦欢銆佸皯鎵╂暎鏀瑰姩锛屾柟渚夸氦鎺ャ€?3. 鑰侀摼璺紭鍏堜繚鐣欎綔鍏滃簳锛岄櫎闈炵敤鎴锋槑纭姹傚垹闄ゃ€?4. UI 瑕佹寔缁淮鎸佸渾瑙掋€佹煍鍜屻€佺幇浠ｆ闈㈡劅锛屼笉鑳介€€鍖栨垚鏅€氬悗鍙版ā鏉裤€?5. 鍧﹀厠娓告垙寤惰繜娴嬭瘯妯″紡鐨勪紭鍖栧繀椤婚殧绂伙紝涓嶈椤烘墜褰卞搷姝ｅ紡瑙嗛 / 鎺у埗閾捐矾銆?6. 鎵撳寘鍚庤灏介噺鍗虫彃鍗崇敤锛宐ackend sidecar 鐢熷懡鍛ㄦ湡蹇呴』璺熶富绋嬪簭缁戝畾銆?
-## 涓嬩竴娆＄户缁啓鏃ュ織鏃跺缓璁€庝箞璁?
-寤鸿姣忔澶ф敼鎸夎繖涓ā鏉垮湪鏈熬杩藉姞锛?
+1. SSH / 濞存粍鍨归顒勫箳瑜嶉崺妤呮焻閺勫繒甯嗛柣锝嗙懃濠€?Python backend闁挎稑濂旂粭澶嬫交濞戞ê顤呯紒鏃戝灛閳?2. 濮掓稒顭堥鑽や焊娴犲娅ら悘蹇斿灦閺佸ジ寮崶锔筋偨闁靛棔绀侀惃顖炲箥閳哄倹娈犻柡鈧悷鏉啃楅柨娑樻湰閺岀喐绗熸径鍛婂攭闁规亽鍎埀?3. 闁奸绶氶幗鑲╂崉椤栨瑧鍠橀柛蹇撶墔缁绘岸鎮惧▎搴ｇ▕闁稿繑绮岀花鎶芥晬瀹€鍕彑闂傚牏鍋熼弫銈夊箣闁垮顫栫痪顓у枦椤╋箑效閸屾艾鐏╅梻鍕╁€戦埀?4. UI 閻熸洑鐒︾€垫梻绱掗鐘虫▕闁归晲绀佸〒鍓ф喆閹哄鍋撴担鍦帳闁告粌琚埀顑胯兌楠炲洦绂掗敐鍡╂斀闂傚牄鍨洪崝鍛存晬鐏炶偐鐟濋柤鍏呯矙閳ь兘鍋撻柛鏍ㄧ墬閸ㄦ岸寮查鈧埀顒佽壘閹宕ｉ悧鍩線寮剁憗銈傚亾?5. 闁秆嶇畱閸樼姴銆掗崨濠傜亞鐎点倖鍎肩换婊兠圭€ｎ厾妲告俊顖椻偓宕囩闁汇劌瀚槐顓㈠礌閺嵮呯畱濡炪倕顭峰▓褏绮嬫导娆戠濞戞挸绉烽々锔姐亜閻戞ê顤佺憸鏉垮船閹煎嘲顫㈤敐鍛閻熸瑥妫濋。?/ 闁硅矇鍐ㄧ厬闂佺偓宕橀惌楣冨Υ?6. 闁瑰灚鎸哥€垫﹢宕ユ惔銈庢矗閻忓繋绮欓崳娲础閾忣偄绲婚柛妤€纾弫銈夋晬鐎规亞ckend sidecar 闁汇垻鍠庨幊锟犲川閵婏附鍩傞煫鍥ф嚇閵嗗繒鎹勯悢璺虹槣缂佸顑呯花顓犵磼閹存繄鏆伴柕?
+## 濞戞挸顑勭粩鏉戔枎閿涘嫭鍩涚紓渚囧幖閸熸捇寮妷銉х闁哄啳娉涚紓鎾舵媼椤旇В鍋撴惔婵堢杽閻?
+鐎点倝缂氶鍛掕箛鏃戝仹濠㈠爢鍕毉闁圭顦崇换鏍ㄧ▔椤忓惀渚€寮堕崹顔借含闁哄牜鍋勯悢顒佹交閽樺顫ｉ柨?
 ```md
-## 闃舵 N锛氭爣棰?
-涓昏鐩爣锛?
+## 闂傚啳鍩栭?N闁挎稒纰嶉悥锝嗭紣?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
 - ...
 
-涓昏缁撴灉锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
 - ...
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - ...
 
-鍏抽敭鍐崇瓥锛?
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
 - ...
 
-閬楃暀闂锛?
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?
 - ...
 ```
 
-## 闃舵 23锛氳缁冩ā寮忓姞鍏ユ湰鍦扮數鑴戠帺瀹?
-涓昏鐩爣锛?
-- 鐢ㄦ埛甯屾湜蹇€熼獙璇佲€滃拰鐢佃剳鐜╁瀵规垬鈥濈殑鍩烘湰鎵嬫劅
-- 閫夋嫨鏈€浣庨闄╂柟妗堬紝鍙湪璁粌妯″紡鍔犲叆涓€涓畝鍗?AI
-- 涓嶇浜戠瑙嗛銆佹帶鍒朵俊鍙枫€佹湇鍔＄鐞嗐€佸欢杩熸祴璇曢摼璺?
-涓昏缁撴灉锛?
-- 鍦?`TankTroublePanel.tsx` 鐨勬湰鍦拌缁冨紩鎿庨噷鏂板涓€涓湰鍦扮數鑴戠帺瀹?`CPU-1`
-- 鐢佃剳鐜╁浼氭墽琛屽熀纭€鐨勮浆鍚戙€佽拷鍑汇€佹媺寮€璺濈銆佸崱澧欏悗鐭殏鍊掕溅銆佺瀯鍑嗗紑鐏?- 鐢佃剳鐜╁浣跨敤鐙珛瀛愬脊鍒楄〃涓庢湰鍦扮鎾為€昏緫锛屽彲鍑讳腑鐜╁銆侀澏瀛愬拰鑷繁
-- 鐜╁瀛愬脊鐜板湪涔熶細涓庣數鑴戠帺瀹跺彂鐢熷懡涓垽瀹氾紝鍑绘瘉鍚庣珛鍒婚噸鐢?- 璁粌妯″紡娓叉煋涓細鏄剧ず鐢佃剳鐜╁鍧﹀厠鍜?`CPU-1` 鏍囩
-- 鐢佃剳鐜╁鐩稿叧缁熻浼氳鍏ユ湰鍦拌缁冨揩鐓т腑鐨勫瓙寮规暟閲?
-鍏抽敭鏂囦欢锛?
+## 闂傚啳鍩栭?23闁挎稒淇洪鍕磼閸愨敔浣割嚕韫囨挸顫ｉ柛蹇嬪劜濠€浼村捶閹殿喗鏆╅柤瀛樺灩鐢櫣鈧?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 闁活潿鍔嶉崺娑氭暜鐏炵偓绠块煫鍥跺亰閳ь剛鍠栭悰娆戞嫚娴ｆ祴鍋撳鍐╁闁活澀绲婚崜鎶芥偝閳轰緡鍟€閻庝絻顫夐崹顒勫灳濠靛牊鐣遍柛鈺冨劋濠€浼村箥鐎ｎ偄濡?
+- 闂侇偄顦扮€氥劑寮甸埀顒佹媴鎼搭煈妫戦梻鍕ㄦ櫆閺岀喎顩奸崼顒傜闁告瑯浜滃﹢顏嗘媼椤撶姷鐭婃俊顖椻偓宕囩闁告梻濮撮崣鍡樼▔閳ь剚绋夐鍡欐殕闁?AI
+- 濞戞挸绉堕～顐ｇ閹寸媭浼傞悷娆忔椤ｅ爼濡存担鐟颁粯闁告帗婀规穱濠囧矗閺嬵偀鍋撴担瑙勭疀闁告棑绱曢鎼佹偠閸℃劏鍋撴担鍛婎偨閺夆晝鍠愮粊瀵告嫚閺囥垺鎳犻悹?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁?`TankTroublePanel.tsx` 闁汇劌瀚﹢浼村捶閹峰矈鍞茬紓浣稿暙缁扁晠骞欐惔銊ユ闁哄倹婢橀·鍐╃▔閳ь剚绋夐鍛嫳闁革附澹嗛弫鎼佹嚇閹寸姴璐熼悗?`CPU-1`
+- 闁活澀绲婚崜鎶芥偝閳轰緡鍟€濞村吋纰嶆晶鐣屾偘鐏炵晫鍞ㄧ痪顓涘亾闁汇劌瀚ù鍡涘触閹存瑢鍋撴担鑺ュ闁告垶鐪归埀顑跨劍婵搫顕ｉ埀顒傛崉濠靛牜鐎查柕鍡曠瀹曡鲸鏅跺▎蹇斿€甸柣顓у幗濞堝繘宕愰幒鏇熺盃闁靛棔鑳堕悗顖炲礄閸℃纾婚柣?- 闁活澀绲婚崜鎶芥偝閳轰緡鍟€濞达綀娉曢弫銈夋偑椤掑倻褰岄悗娑欏姇閼村﹪宕氬Δ鍕┾偓鍐╃▔鎼淬垺鎷遍柛锔藉椤偊骞橀悙琛″亾閺勫繒甯嗛柨娑樿嫰瑜版煡宕欑拋瀹犲幀闁绘壕鏅涢宥夊Υ娓氣偓濠㈠繒鈧稒鍔曢幏浼存嚊椤忓嫮绠?
+- 闁绘壕鏅涢宥団偓娑欏姇閼村﹪鎮抽弶鎸庤含濞戞梻鍠嶇槐鐗堢▔鎼达絾鏆╅柤瀛樺灩鐢櫣鈧娉涜ぐ鍌炴偨閻旈攱鍤掑☉鎿冨幖閸ㄧ晫鈧鐔槐婵嬪礄缂佹妲堥柛姘捣閻濇盯宕氭繝姘闁?- 閻犱緡鍘剧划灞轿熼垾宕囩婵炴挸寮堕悡瀣▔椤撴繄绐楅柡鍕⒔閵囨岸鎮芥担鍐ㄥ闁绘壕鏅涢宥夊锤閿曗偓閸樼娀宕?`CPU-1` 闁哄秴娲ㄩ?
+- 闁活澀绲婚崜鎶芥偝閳轰緡鍟€闁烩晝顭堥崣褏绱掗悢娲诲悁濞村吋淇洪鎼佸礂閵夛附鎷遍柛锔藉椤斿嫮绱掗崘銊﹀渐闁绘挆鍌濆幀闁汇劌瀚悺娆忣嚕鐟欏嫭娈堕梺?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-鍏抽敭鍐崇瓥锛?
-- 涓嶆柊澧炴柊妯″潡锛岀户缁妸鏀瑰姩鏀舵暃鍦ㄧ幇鏈?`TankTroublePanel.tsx`锛屾柟渚夸氦鎺?- 鐢佃剳鐜╁鍙湪 `latencyOnly === false` 鐨勮缁冮€昏緫涓洿鏂帮紝寤惰繜娴嬭瘯妯″紡瀹屽叏涓嶅彈褰卞搷
-- 鐩存帴澶嶇敤鐜版湁鏈湴鍦板浘銆佺鎾炪€佸瓙寮广€侀噸鐢熸満鍒讹紝閬垮厤鎵╂暎鍒颁簯绔埧闂撮€昏緫
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 濞戞挸绉甸弻濠冩櫠閻愬瓨鐓€婵☆垪鈧櫕鍋ラ柨娑樼灱閹撮绱掗鐔肺╅柡鈧悷鏉啃楅柡鈧懜鍨異闁革负鍔庨獮鍥嫉?`TankTroublePanel.tsx`闁挎稑鏈弻鐔哥瑹婢跺憡鍞夐柟?- 闁活澀绲婚崜鎶芥偝閳轰緡鍟€闁告瑯浜滃﹢?`latencyOnly === false` 闁汇劌瀚鍕磼閸愵喒鍋撻弰蹇曞竼濞戞搩鍘藉ú鍧楀棘鐢喚绀夌€点倖鍎肩换婊兠圭€ｎ厾妲告俊顖椻偓宕囩閻庣懓鑻崣蹇旂▔瀹ュ懎缍€鐟滄澘宕幖?
+- 闁烩晛鐡ㄧ敮瀛樺緞瀹ュ洦鏆忛柣婊呭濠€渚€寮甸鈧﹢鎾捶閺夋寧绂堥柕鍡曡兌椤偊骞橀悙顏佸亾娴ｅ摜鎽嶇€殿喖绠嶉埀顑跨窔閸ｆ悂鎮介悢鍛婄皻闁告帟顔愮槐婵嬫焼閸喖甯抽柟纰樻櫆閺嗗酣宕氭０浣洪殬缂佹棏鍨遍崺褔姊婚幘顔瑰亾閺勫繒甯?
 
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
 
-閬楃暀闂锛?
-- 褰撳墠鐢佃剳鐜╁鏄€滃鐢ㄥ氨琛屸€濈殑鍩虹閫昏緫锛岃繕涓嶅寘鍚璺€侀鍒ゅ弽寮广€侀毦搴﹀垎绾?- 濡傛灉鍚庣画瑕佸仛姝ｅ紡鑱旀満瀵规垬 AI锛屽缓璁彟寮€闅旂閾捐矾锛屼笉瑕佹妸璁粌 AI 娣疯繘浜戠鏉冨▉鍚屾
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?
+- 鐟滅増鎸告晶鐘绘偨娴ｅ啫澹嬮柣婧炬櫅椤斿秹寮伴妞诲亾濠婂喚妾柣顫妼濮樸劎鎮扮仦绯曞亾濠靛牊鐣遍柛鈺勬椤㈠懘鏌呴弰蹇曞竼闁挎稑鐭佺换鏇熺▔瀹ュ懎鐦堕柛姘煎亜椤曟壆鎹勯妯峰亾娓氣偓椤ｂ晠宕氶妶鍛唨鐎殿喖绠嶉埀顑跨窔濮ｏ附鎯旈敃鈧崹搴ｇ棯?- 濠碘€冲€归悘澶愬触鎼达絿鏁鹃悷鏇氱娴犳稑顫㈤敐鍛闁艰鲸姊瑰┃鈧悗浣冾潐閸?AI闁挎稑鑻紓鎾舵媼椤旂厧缍楃€殿喒鍋撻梻鍛⒒椤洭鏌ч幑鎰唴闁挎稑濂旂粭澶屾啺娴ｇ懓惟閻犱緡鍘剧划?AI 婵烇絿鏌夌换妯荤閹寸媭浼傞柡澶婂暙閳诲宕ョ仦缁㈠妱
 
-## 闃舵 24锛氱粺涓€鐐脊瑙勫垯鍒?5 鍙?/ 10 绉?/ 1.85 鏍兼瘡绉?
-涓昏鐩爣锛?
-- 鎶婂綋鍓嶅潶鍏嬫父鎴忕殑鐐脊瑙勫垯鏀规垚鏇存帴杩戠洰鏍囩帺娉?- 淇濊瘉鏈湴璁粌妯″紡鍜屼簯绔欢杩熸祴璇曟ā寮忎娇鐢ㄥ悓涓€濂楃偖寮逛笂闄愪笌瀵垮懡
-- 缁х画淇濇寔鏀瑰姩闆嗕腑锛屼笉鍘荤瑙嗛銆佹帶鍒朵俊鍙锋垨鏈嶅姟绠＄悊閾捐矾
+## 闂傚啳鍩栭?24闁挎稒姘ㄧ划鐑樼▔閳ь剟鎮欓鑹板墾閻熸瑥瀚崹顖炲礆?5 闁?/ 10 缂?/ 1.85 闁哄秴鍚嬮惁锛勭矓?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 闁硅泛锕ょ紞瀣礈瀹ュ懏钑夐柛蹇擃儐閻栧爼骞嬭箛鏇熺暠闁绘劦鍠栭懘濠勬喆閸曨偄鐏熼柡鈧憴鍕亣闁哄洤鐡ㄧ敮瀛樻交閹寸姵绐楅柡宥呮川鐢搫鈻?- 濞ｅ洦绻嗛惁澶愬嫉椤掆偓濠€瀵告媼椤撶姷鐭婃俊顖椻偓宕囩闁告粌濂旂花顖滅博椤栨碍顐介弶鈺冨枑缁佸鎷犻弴鐔屼礁顕ｈ箛搴♀枏闁活潿鍔岄幃鎾寸▔閳ь剚绺藉Δ鍐ㄤ粡鐎殿噣鈧稓鐟愰梻鍕姃缁楀瞼鈧潧鐏濋幊?
+- 缂備綀鍛暰濞ｅ洦绻冪€垫棃寮ㄩ悷鏉啃楅梻鍡楁閼垫垿鏁嶇仦鑲╃憹闁告宕甸～顐ゆ喆閸℃侗鏆ラ柕鍡曠劍鐢爼宕氶張鍏哥箚闁告瑩鏀遍崹銊╁嫉瀹ュ懎顫ょ紒鐙呯磿閹﹪鏌ч幑鎰唴
 
-涓昏缁撴灉锛?
-- 鍗曚釜鐜╁鍚屾椂鍦ㄥ満椋炶鐨勭偖寮逛笂闄愪粠 12 鏀逛负 5
-- 鐐脊瀵垮懡浠?3.9 绉掓敼涓?10 绉?- 鐐脊閫熷害鏀逛负 1.85 鏍兼瘡绉?- 鍓嶇鏈湴寮曟搸涓庝簯绔?`tank_trouble_room.py` 閮戒娇鐢ㄥ悓涓€濂楁柊瑙勫垯
-- 浜戠寤惰繜娴嬭瘯鍙戝皠鏃舵柊澧炰簡鈥滃綋鍓嶆椿鍔ㄧ偖寮规暟 < 5鈥濆垽鏂紝閬垮厤鏉冨▉绔拰鏈湴绔鍒欎笉涓€鑷?
-鍏抽敭鏂囦欢锛?
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁告娲戦柌婊堟偝閳轰緡鍟€闁告艾鏈鍌炲捶閵娿儲绨氬瀣仩椤㈡垿鎯冮崟顓炰粡鐎殿噣鈧稓鐟愰梻鍕姃缁?12 闁衡偓闁稖绀?5
+- 闁绘劦鍠栭懘濠勨偓闈涚仢閹斥剝绂?3.9 缂佸甯楅弫鍏肩▔?10 缂?- 闁绘劦鍠栭懘濠囨焻閻斿嘲顔婇柡鈧柅娑滅 1.85 闁哄秴鍚嬮惁锛勭矓?- 闁告挸绉堕顒勫嫉椤掆偓濠€鏉戭嚕閺囩喐鎯涘☉鎾崇凹缁垳绮?`tank_trouble_room.py` 闂侇喗鍨濇繛鍥偨閵娿儲鍊卞☉鎾亾濠靛倹顨嗛弻濠勬喆閸曨偄鐏?
+- 濞存粍鍨归顒€顕欓幆鎵婵炴潙顑堥惁顖炲矗閹存繄娈搁柡鍐煐閺屽﹥鏅堕悙鎵晩闁炽儲绮岀紞瀣礈瀹ュ棙銇熼柛鏂诲妿閸嬫牕顕ｇ憴鍕 < 5闁炽儲绻傞崹浠嬪棘椤撱劎绀夐梺顒€鐏濋崢銈夊级閸愩劉鏋嗙紒鏃戝灠閹蜂即寮甸鈧﹢瀵哥博椤栨繍娼愰柛鎺撶懁缁楀绋夐埀顒勬嚊?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-鍏抽敭鍐崇瓥锛?
-- 褰撳墠宸ョ▼閲岀殑鈥滄牸鈥濆厛鏄犲皠涓鸿缁冨湴鍥鹃€昏緫缃戞牸鐨勭煭杈瑰昂瀵革紝杩欐牱鍦ㄧ幇鏈夐潪姝ｆ柟褰㈡垬鍦洪噷鍓嶅悗绔畾涔変竴鑷?- 娌℃湁鏀瑰姩寮€鐏喎鍗淬€佸弽寮规鏁般€佸懡涓垽瀹氾紝鍙敹鏁涗慨鏀圭敤鎴锋槑纭寚瀹氱殑涓夋潯瑙勫垯
-- 杩欑粍瑙勫垯琚涓哄綋鍓嶅潶鍏嬫父鎴忕殑搴曞眰鍩虹瑙勫垯锛涚幇闃舵鎵€鏈夊疄闄呭甫鎴樻枟鍒ゅ畾鐨勬ā寮忛兘蹇呴』鏈嶄粠瀹冿紝鑰屼笉鏄彧鏀规煇涓€涓祴璇曟ā寮?
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 鐟滅増鎸告晶鐘差啅閵壯€鏌ら梺鎻掔灱濞堟垿鍨惧鍕闁炽儲绻傞崢娑㈠及閻樿尙娈稿☉鎾荤細椤斿嫮绱掗崘銊﹀嬀闁搞儵绠栭埀顒佹缁额偆绱旈幋鐐靛闁汇劌瀚悡顓熸綇閻熺増妲€閻庣敻娼荤槐婵囨交濞嗘劗澹夐柛锔哄妿楠炲洭寮垫径鎰婵繐绲鹃弻鐔汇亹閵忊€崇仜闁革附妞介崳鐑藉礈瀹ュ懏鍊电紒鏃戝灠閻ｇ偓绋婃径澶岊伇闁?- 婵炲备鍓濆﹢渚€寮ㄩ悷鏉啃楃€殿喒鍋撻柣蹇ｅ亜閸犲酣宕″ǎ顑藉亾娴ｇ鍐€鐎殿喛顫夐濂稿极閼割兘鍋撴担鍛婂殥濞戞搩鍘奸崹鐣屸偓瑙勭啲缁辨繈宕ｉ鍛毆闁轰焦绋愰幈銊╁绩閸︻厽鏆忛柟鎾敱濡叉垹娑甸钘夌樄閻庤姘ㄥ▓鎴炵▔婢跺钂嬮悷娆忓閸?
+- 閺夆晜鐟х划宥囨喆閸曨偄鐏熼悶姘煎亯椤绋夐崫鍕Ъ闁告挸绉村鍫曞礂鐎ｎ偆鍩楅柟鏉戠箳濞堟垶鎯旈弴鐐垫勾闁糕晞娅ｉ、鍛喆閸曨偄鐏熼柨娑欑〒楠炲洭姊奸懜娈垮斀闁圭鍋撻柡鍫濐槸閻ゅ嫰姊介崨顓犳暔闁瑰瓨蓱閺嬬喖宕氶妶鍛毎闁汇劌瀚啯鐎殿喖绻橀崗妯跨疀閸涙番鈧繘寮靛鍕煠閻庣懓鍠涚槐婵嬫嚀鐏炶偐鐟濋柡鍕靛灠瑜把囧绩鐟欏嫮鍘欏☉鎾亾濞戞搩浜濈粊瀵告嫚閺囩唽浣割嚕?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-閬楃暀闂锛?
-- 濡傛灉鍚庣画浣犲笇鏈涒€滄牸鈥濇敼鎴愬埆鐨勫畾涔夛紝姣斿鎸夋í鍚戝崟鍏冨搴︺€佺旱鍚戝崟鍏冮珮搴︼紝鎴栬€呮樉寮忓浐瀹氬儚绱犲崟浣嶏紝闇€瑕佸啀缁熶竴璋冩暣鍓嶅悗绔父閲?
-## 闃舵 25锛氬潶鍏嬮€熷害闄嶅埌 1.6 鏍兼瘡绉?+ 寤惰繜妯″紡鏀逛负鏈湴缃戦〉棰勮
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?
+- 濠碘€冲€归悘澶愬触鎼达絿鏁惧ù锝囧Т缁楀洭寮靛☉鎺嗗亾濠婂嫮澹愰柍銉︾箖閺佸ジ骞嬮幇顒€鐒奸柣銊ュ閻ｇ偓绋婃径娑氱婵絾鏌ㄩ々褔骞愭径瀣咁參宕ラ幋婵嗙闁稿繐鍟鏃€鎯旈敂琛″亾娴ｇ儤妫婚柛姘灥瀹曠喖宕楅崘顔惧蒋閹艰揪璁ｇ槐婵嬪箣閺嶎兘鍋撻崨顔解枖鐎殿喖绻愬ù鎰偓瑙勮壘閸庢氨妲愰悩鎻掔濞达絽绋勭槐婵嬫閳ь剛鎲版担绋挎櫃缂備胶鍠嶇粩瀵告嫬閸愨晜娈婚柛鎾崇Т閹绮╅姘卞煑闂?
+## 闂傚啳鍩栭?25闁挎稒鑹惧鍫曞礂鐎ｎ喒鍋撻悢宄邦唺闂傚嫬绉撮崺?1.6 闁哄秴鍚嬮惁锛勭矓?+ 鐎点倖鍎肩换婊兾熼垾宕囩闁衡偓闁稖绀嬮柡鍫墮濠€瀵哥磾閹达负鈧锛愰崟顕呮綌
 
-涓昏鐩爣锛?
-- 鎶婂潶鍏嬪簳灞傜Щ鍔ㄩ€熷害缁熶竴涓嬭皟鍒?`1.6 鏍?绉抈
-- 鍙栨秷鍓嶇褰撳墠浣跨敤涓殑鈥滀簯绔厠闅嗗潶鍏嬪欢杩熸祴璇曗€濊〃鐜?- 鎶娾€滄祴璇曞欢杩熲€濆叆鍙ｆ敼鎴愨€滄湰鍦板崟鍧﹀厠 + 鏈満缃戦〉棰勮鈥?- 缃戦〉绔彧鏄剧ず鎴樺満鍦板浘鍜岃鍒嗘澘锛屼笉鏄剧ず鍏朵粬鎺у埗鍙?UI
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 闁硅泛锕ゅ鍫曞礂鐎ｎ亞淇洪悘鐐插€讳簺闁告柣鍔戦埀顒傚枎鐎瑰磭绱掗悢鍓侇伇濞戞挸顑堥惃鐔煎礆?`1.6 闁?缂佸濡?
+- 闁告瑦鐗楃粔鐑藉礈瀹ュ浂浼傜憸鐗堟尭婢х姵鎷呯捄銊︽殢濞戞搩鍘惧▓鎴﹀灳濠娾偓缁垳绮╅姘脯闂傚懎妫楀鍫曞礂鐎ｎ亝顐介弶鈺冨枑缁佸鎷犻弴妞诲亾濠靛鈧啴鎮?- 闁硅泛艌閳ь剚绮嶇粊瀵告嫚閺囩偞顐介弶鈺冨暱閳ь剚绻傞崣鍡涘矗閿濆棙鏆柟瀛樺姀閳ь剚绮嶅﹢浼村捶閺夊灝绀嬮柛褝绠戦崢?+ 闁哄牜鍓氬┃鈧紓鍐╁灴閵嗗锛愰崟顕呮綌闁?- 缂傚啯鍨块妴澶岀博椤栨艾娑ч柡鍕⒔閵囨岸骞嬪Ο鐑樼皻闁革附婢樺ù姗€宕畝鍐惧悁闁告帒妫欏姗€鏁嶇仦鑲╃憹闁哄嫬澧介妵姘跺礂閺堢數閾傞柟璨夊啫鐓戦柛?UI
 
-涓昏缁撴灉锛?
-- 鍓嶇 `TankTroublePanel.tsx` 鐨?`PLAYER_SPEED` 鏀逛负鍩轰簬閫昏緫缃戞牸鐨?`1.6 鏍?绉抈
-- 浜戠 `tank_trouble_room.py` 閲岀殑 `PLAYER_SPEED` 涔熷悓姝ユ敼鎴愬悓涓€瑙勫垯锛岄伩鍏嶆湭鏉ラ噸鏂板惎鐢ㄦ棫閾捐矾鏃舵暟鍊兼紓绉?- 鍓嶇 latency 妯″紡涓嶅啀鍚姩鏃х殑浜戠 clone 鍚屾娴佺▼
-- latency 妯″紡鐜板湪浼氬叧闂湰鍦扮數鑴戠帺瀹讹紝鍙繚鐣欎竴涓湰鍦扮帺瀹跺潶鍏?- 鏂板鏈満缃戦〉棰勮椤?`/tank-trouble/preview`
-- 鍓嶇鍦?latency 妯″紡涓嬩細鍛ㄦ湡鎶婂綋鍓嶆父鎴忕敾闈㈠抚銆佽鍒嗘澘銆佸湴鍥炬爣绛俱€佽繍琛岀粺璁℃帹閫佸埌鏈満 backend
-- 娴忚鍣ㄩ瑙堥〉鍙覆鏌撯€滄垬鍦哄湴鍥?+ 璁″垎鏉库€濊繖涓ら儴鍒?- 鏃х殑浜戠 latency API 鍜?`tank_trouble_room.py` 鐩稿叧閫昏緫鏆傛椂淇濈暀锛屼絾褰撳墠鍓嶇鍏ュ彛涓嶅啀浣跨敤
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁告挸绉堕?`TankTroublePanel.tsx` 闁?`PLAYER_SPEED` 闁衡偓闁稖绀嬮柛鈺勬〃缁剟鏌呴弰蹇曞竼缂傚啯鍨堕悧鎼佹儍?`1.6 闁?缂佸濡?
+- 濞存粍鍨归?`tank_trouble_room.py` 闂佹彃鐬煎▓?`PLAYER_SPEED` 濞戞梻鍠庨幃鎾愁潰閵夛附鏆柟瀛樺姇閹挻绋夐埀顒傛喆閸曨偄鐏熼柨娑樼焸娴尖晠宕楀鍡樺紦闁哄鍎甸崳鎼佸棘閺夋寧鍎欓柣顫妽濡偊鏌ч幑鎰唴闁哄啳鍩栭弳鐔煎磹閸忚偐纾界紒?- 闁告挸绉堕?latency 婵☆垪鈧磭纭€濞戞挸绉撮崯鈧柛姘煎灠婵晠寮濞堟垶绂嶉幋鐙€浼?clone 闁告艾鏈鐐裁规担琛℃煠
+- latency 婵☆垪鈧磭纭€闁绘粍婢樺﹢顏呭濮橆剙褰犻梻鍌ゅ幗濠€浼村捶閹殿喗鏆╅柤瀛樺灩鐢櫣鈧顔愮槐婵嬪矗椤忓啰绠介柣锝嗙懁缁斿瓨绋夐鍛嫳闁革附澹嗙敮铏光偓纭呮硾濞煎爼宕?- 闁哄倹婢橀·鍐嫉椤掍焦绨氱紓鍐╁灴閵嗗锛愰崟顕呮綌濡?`/tank-trouble/preview`
+- 闁告挸绉堕顒勫捶?latency 婵☆垪鈧磭纭€濞戞挸顑勭槐浼村川閵婏附鍩傞柟璺猴工缂嶅宕滃鍡欏煑闁规潙绻掗弫楣冩閵忕姵濮庨柕鍡曟祰椤撴悂宕氶崱妯荤凡闁靛棔绀佸﹢鎾炊閻愵剛鍨肩紒娑楀嫎閳ь兛娴囩换宥囨偘瀹€鈧划铏规媼閳╁啫鑵归梺顐＄閸╁矂寮甸浣圭皻 backend
+- 婵炴潙绻楅～宥夊闯閵娾晩鏆曢悷娆忕墦閵嗗宕ｉ鍛邦洬闁哄本鎸撮埀顒佺矋閸剟宕烽崫鍕嬀闁?+ 閻犱讲鈧啿鐎婚柡澶婄氨閳ь剚绻嗙换鏍ㄧ▔閵堝鍔ラ柛?- 闁哄唲鍛暠濞存粍鍨归?latency API 闁?`tank_trouble_room.py` 闁烩晝顭堥崣褔鏌呴弰蹇曞竼闁哄棗鍊瑰鍌涚┍濠靛牊娈岄柨娑樺缁叉崘銇愰幘鍐差枀闁告挸绉堕顒勫礂閵夈儱缍撳☉鎾崇Т閸熲偓濞达綀娉曢弫?
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/api/cloudApi.ts`
 - `backend/main.py`
@@ -1538,47 +5776,47 @@ Verification:
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-鍏抽敭鍐崇瓥锛?
-- 涓轰簡灏介噺灏戝姩鏂囦欢锛屾病鏈夊交搴曞垹闄ゆ棫 latency clone 浠ｇ爜锛屽彧鏄妸褰撳墠鍓嶇鍏ュ彛浠庨偅鏉￠摼璺垏璧?- 缃戦〉棰勮娌℃湁閲嶅啓涓€濂楃嫭绔嬫父鎴忔覆鏌撳櫒锛岃€屾槸鐩存帴澶嶇敤妗岄潰绔綋鍓?canvas 杈撳嚭锛岄檷浣庢敼鍔ㄨ寖鍥村拰鍚屾椋庨櫓
-- 鏈満缃戦〉棰勮褰撳墠榛樿渚濊禆鏈湴 backend 鍦板潃锛屽洜姝ゆ洿鍍忊€滄湰鏈烘祻瑙堝櫒瑙傛祴椤碘€濓紝涓嶆槸瀵瑰鍏綉澶氫汉瑙傜湅椤?
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 濞戞捁妗ㄧ花锛勪焊娴犲娅ら悘蹇斿灥婵晠寮崶锔筋偨闁挎稑鏈惀鍛村嫉婢跺﹣姘﹂幖瀛樻礀閸ㄥ綊姊介妶鍡橈紜 latency clone 濞寸媴绲块悥婊堟晬鐏炶棄娑ч柡鍕靛灡婵℃瓕銇愰幘鍐差枀闁告挸绉堕顒勫礂閵夈儱缍撳ù鐘查叄閸嬪懘寮堕敓鐘虫嚑閻犱警鍨伴崹蹇曟導?- 缂傚啯鍨块妴澶嬶紣閸曨噮娼旀繛灞稿墲濠€渚€鏌屽鍛櫢濞戞挴鍋撳┑鍌涱殘鐎氼厾绮╃€ｎ偆鍩楅柟鏉戠箲鐟曞棝寮婚幘铏彜闁挎稑鐭侀埀顒€鏈Σ鎼佹儎鐎涙ê澶嶅璺虹Ф閺併倕顩煎畝鍕〃缂佹棏鍨扮紞瀣礈?canvas 閺夊牊鎸搁崵顓㈡晬瀹€鍕€栧ù锝呭閺佸ジ宕濋妸銊ョ槺闁搞儲娼欓幏浼村触鐏炵虎鍔勫瀣叄濞?
+- 闁哄牜鍓氬┃鈧紓鍐╁灴閵嗗锛愰崟顕呮綌鐟滅増鎸告晶鐘愁渶濡鍚囧〒姘箚缁傚棝寮甸鈧﹢?backend 闁革附婢樺鍐晬鐏炶姤绀堟慨婵勫€栧ú鍧楀磽韫囧ň鍋撳鍕嫳闁哄牏鍎ょ粊鑽ゆ喆閸繃鐝ら悷娆忓€圭粊瀛樸亜绾版ǚ鍋撳┑鎾剁濞戞挸绉靛Σ鍝モ偓鐢垫嚀椤﹀宕楅鍌滅Ч濠㈣埖鐭Ч澶屾喆閸屾粍绠欏?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-閬楃暀闂锛?
-- 鏃х殑浜戠 latency 璺敱鍜屾ā鍨嬩粛鍦ㄥ伐绋嬩腑锛屽悗缁鏋滅‘璁ら暱鏈熶笉鐢紝鍙互鍐嶅仛涓€娆℃竻鐞?- 褰撳墠缃戦〉棰勮浣跨敤鏈湴甯ф帹閫佹柟妗堬紝閫傚悎璋冭瘯鍜岃瀵燂紱濡傛灉鍚庣画杩芥眰鏇撮珮甯х巼鎴栬法璁惧棰勮锛屽彲浠ュ啀鏀规垚鐘舵€佸悓姝ユ垨娴佸紡浼犺緭
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?
+- 闁哄唲鍛暠濞存粍鍨归?latency 閻犱警鍨抽弫閬嶅椽鐏炵伕渚€宕圭€ｂ晝鐭濋柛锔哄妼娴兼劗绮欑€ｂ晞鍘柨娑樿嫰閹绱掗鐑嗘搐闁哄绮庨垾妯兼媼閵堝姣愰柡鍫㈠枍缁楀鎮介…鎺旂闁告瑯鍨禍鎺楀礃瀹ュ懍绮靛☉鎾亾婵炲棌鍓濈粩濠氭偠?- 鐟滅増鎸告晶鐘电磾閹达负鈧锛愰崟顕呮綌濞达綀娉曢弫銈夊嫉椤掆偓濠€瀵告暜瑜庣敮褰掓焻娴ｈ鐓欐俊妤€鐗炵槐婵嬫焻閸屾碍鍊ら悹瀣暢閻︻垶宕畝鍐炬綆閻庣數鍣︾槐杈ㄤ繆閸屾稓浜柛姘捣閻㈢粯娼婚懞銉ф勾闁哄洦鎸抽悵顔炬暜瑜忓濂稿箣閺嶎剚纭堕悹浣瑰劤椤︻剚锛愰崟顕呮綌闁挎稑鑻ぐ鍙夌閵夈儱鏅欓柡鈧憴鍕亣闁绘鍩栭埀顑跨閹挸顫㈤妷锕€鐏楁繛缈犵缁扁剝瀵奸悩铏圭炕
 
-## 闃舵 26锛氱綉椤甸瑙堥摼璺瑙勫寲涓?scene 鐘舵€佸悓姝?viewer
+## 闂傚啳鍩栭?26闁挎稒姘ㄧ紞澶嬨亜閻㈠壊鏆曢悷娆忕墦閹借偐鎹勯娑卞妧閻熸瑥瀚€靛弶绋?scene 闁绘鍩栭埀顑跨閹挸顫?viewer
 
-涓昏鐩爣锛?
-- 鎶婃湰鍦扮綉椤甸瑙堜粠鈥滄帹鎴浘甯?+ `<img>` 鍒锋柊鈥濆崌绾ф垚姝ｅ紡鐨勭姸鎬佸悓姝?viewer
-- 璁?backend 绔殑 preview payload銆佺姸鎬佺紦瀛樸€佹祻瑙堝櫒娓叉煋鑱岃矗娓呮櫚鍒嗗眰
-- 淇濇寔 latency 妯″紡浠嶇劧鍙綔鐢ㄤ簬鍧﹀厠娓告垙娴嬭瘯閾捐矾锛屼笉褰卞搷鎺у埗 / 瑙嗛姝ｅ紡閾捐矾
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 闁硅泛锕ュ﹢浼村捶閹殿喚绉瑰銈囨暬椤ｂ晝鎲撮崼婊呯煠闁炽儲绮嶇敮褰掑箣椤忓嫭绂堥悽?+ `<img>` 闁告帡鏀遍弻濠囧灳濠靛棗纾崇紒鐙欏嫬鐏囨慨婵撶到缁憋繝鎯冮崟顓炐﹂柟顑跨閹挸顫?viewer
+- 閻?backend 缂佹棏鍨冲▓?preview payload闁靛棔鑳舵慨鎼佸箑娴ｈ櫣澶勯悗娑櫱滈埀顑跨劍缁佽崵鎲撮崼婵囩彜婵炴挸寮堕悡瀣嚂瀹€鍐厬婵炴挸鎳忓▍姘跺礆閸℃婀?
+- 濞ｅ洦绻冪€?latency 婵☆垪鈧磭纭€濞寸姴绉堕崝褔宕ｉ鍐▕闁活潿鍔嬬花顒勫锤閿曗偓閸樼姴銆掗崨濠傜亞婵炴潙顑堥惁顖炴煣閹规劗鐔呴柨娑樺缁楀銇愰崡鐐存儥闁硅矇鍐ㄧ厬 / 閻熸瑥妫濋。璺侯潰閿濆懐纭€闂佺偓宕橀惌?
 
-涓昏缁撴灉锛?
-- `frontend/src/types/cloud.ts` 鏂板浜?Tank Trouble preview 鐩稿叧鏄惧紡绫诲瀷锛?  - `TankTroublePreviewSceneState`
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- `frontend/src/types/cloud.ts` 闁哄倹婢橀·鍐╃?Tank Trouble preview 闁烩晝顭堥崣褔寮伴幆褏纭€缂侇偉顕ч悗鐑芥晬?  - `TankTroublePreviewSceneState`
   - `TankTroublePreviewPushRequest`
   - `TankTroublePreviewClearRequest`
-- `frontend/src/api/cloudApi.ts` 涓嶅啀鐢?`Record<string, unknown>` 鎺?preview锛岃€屾槸鏀规垚鏄惧紡 preview request 绫诲瀷
-- `frontend/src/components/TankTroublePanel.tsx` 缁х画鍦?latency 妯″紡涓嬫瘡 `50ms` 鎺?preview锛屼絾鍐呭浠庘€滄埅鍥惧抚鈥濇寮忔敼鎴愮粨鏋勫寲 `scene`
-- `backend/models.py` 鏂板浜?preview 鐩稿叧 Pydantic 妯″瀷锛?  - `TankTroublePreviewRow`
+- `frontend/src/api/cloudApi.ts` 濞戞挸绉撮崯鈧柣?`Record<string, unknown>` 闁?preview闁挎稑鐭侀埀顒€鏈Σ鎼佸绩鐟欏嫬鐏囬柡鍕劤缁?preview request 缂侇偉顕ч悗?
+- `frontend/src/components/TankTroublePanel.tsx` 缂備綀鍛暰闁?latency 婵☆垪鈧磭纭€濞戞挸顑嗛惁?`50ms` 闁?preview闁挎稑濂旂徊楣冨礃閸涱収鍟囧ù鐘茬岸閳ь剚绮嶉崺鍛村炊閹勫闁炽儲绻冮婊冾嚕韫囨梹鏆柟瀛樺姉缁劑寮搁崟顐㈩嚙 `scene`
+- `backend/models.py` 闁哄倹婢橀·鍐╃?preview 闁烩晝顭堥崣?Pydantic 婵☆垪鈧磭鈧兘鏁?  - `TankTroublePreviewRow`
   - `TankTroublePreviewSceneState`
   - `TankTroublePreviewPushRequest`
   - `TankTroublePreviewClearRequest`
   - `TankTroublePreviewState`
-- `backend/main.py` 閲岀殑 preview 鐘舵€佺紦瀛樹笉鍐嶄繚瀛?`frame_data_url`锛屾敼涓轰繚瀛樼粨鏋勫寲 `scene`
-- `backend/main.py` 瀵?preview rows / scene 鍋氫簡闀垮害鍜屼富棰樼瓑鍩虹褰掍竴鍖栵紝閬垮厤鏃犵晫 payload 鐩存帴杩涘叆缂撳瓨
-- 鏂板 `backend/tank_trouble_preview_page.py`
-- `/tank-trouble/preview` 鐜板湪鐢?`backend/tank_trouble_preview_page.py` 鐢熸垚鐙珛 viewer 椤甸潰
-- 杩欎釜 viewer 浼氳疆璇?`/api/games/tank-trouble/preview/state`锛屽苟鍦ㄦ祻瑙堝櫒鏈湴 `<canvas>` 涓婃覆鏌擄細
-  - 鎴樺満鍦板浘
-  - 鍧﹀厠
-  - 瀛愬脊
-  - 闈跺瓙
-  - 澧欎綋娉㈢汗
-  - 瀛愬脊娣″嚭鐗规晥
-  - 鍙充晶璁″垎鏉?
-鍏抽敭鏂囦欢锛?
+- `backend/main.py` 闂佹彃鐬煎▓?preview 闁绘鍩栭埀顑胯兌缁憋妇鈧稒眉缁楀宕樺鍕閻?`frame_data_url`闁挎稑鏈弫鍏肩▔鏉炴壆绠介悗娑欘焽缁劑寮搁崟顐㈩嚙 `scene`
+- `backend/main.py` 閻?preview rows / scene 闁稿鐭花锟犳⒐閸喖顔婇柛婊冨鐎靛本锛愬Ο鑲╂惣闁糕晞娅ｉ、鍛般亹閹哄秶顏遍柛鏍ㄧ壄缁辨繈鏌嗛崹顔煎赋闁哄啰濮烽弲?payload 闁烩晛鐡ㄧ敮瀛樻交濞戞ê寮崇紓鍌涙尭閻?
+- 闁哄倹婢橀·?`backend/tank_trouble_preview_page.py`
+- `/tank-trouble/preview` 闁绘粍婢樺﹢顏堟偨?`backend/tank_trouble_preview_page.py` 闁汇垻鍠愰崹姘舵偑椤掑倻褰?viewer 濡炪倗鏁诲?
+- 閺夆晜鐟ら柌?viewer 濞村吋淇洪悿鍡欐嫚?`/api/games/tank-trouble/preview/state`闁挎稑鑻懟鐔煎捶閵婏妇銈婚悷娆忕墕濞呮帡寮甸鈧﹢?`<canvas>` 濞戞挸锕ョ憰鍡涘蓟閹垮嫮绐?
+  - 闁瑰瓨锚濠р偓闁革附婢樺ù?
+  - 闁秆嶇畱閸?
+  - 閻庢稒鍔曢懘?
+  - 闂傚牐娉涢悺?
+  - 濠⒀勭懁缂嶅鈻旈姀銏＄潖
+  - 閻庢稒鍔曢懘濠偳庨垾鍐叉瘔闁绘顫夐弲?
+  - 闁告瑥鍘栭弲鍓佹媼閳ュ啿鐎婚柡?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/api/cloudApi.ts`
 - `frontend/src/types/cloud.ts`
@@ -1588,55 +5826,55 @@ Verification:
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-鍏抽敭鍐崇瓥锛?
-- 涓嶅啀娌跨敤鎴浘鍒锋柊鐨勮皟璇曞瀷瀹炵幇锛岀洿鎺ユ敹鎴愨€滅粨鏋勫寲鐘舵€?+ 娴忚鍣ㄦ湰鍦版覆鏌撯€濈殑姝ｅ紡鏂规
-- preview viewer 淇濇寔鍙锛屽彧璐熻矗鐪嬫垬鍦哄拰璁″垎鏉匡紝涓嶆妸妗岄潰鎺у埗鍙?UI 澶嶅埗杩涚綉椤?- 鏃?latency WebSocket / HTTP sync / clone 璺緞缁х画淇濈暀涓哄巻鍙插疄楠屼唬鐮侊紝浣嗗綋鍓嶅墠绔叆鍙ｄ笉鍐嶄緷璧栧畠
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 濞戞挸绉撮崯鈧繛宀冩硶閺併倝骞嬮鍕闁告帡鏀遍弻濠囨儍閸曨喚娈堕悹鍥ㄦ礀閻庨鈧湱鍋熼獮鍥晬瀹€鈧ú鍧楀箳閵夛附鏆柟瀛樺姀閳ь剚绮庣划銊╁几閸曨偄顕ч柣妯垮煐閳?+ 婵炴潙绻楅～宥夊闯閵婏附鎷遍柛锔惧鐟曞棝寮婚幘顖楀亾濠靛牊鐣辨慨婵撶到缁憋繝寮憴鍕垫敵
+- preview viewer 濞ｅ洦绻冪€垫棃宕ｉ鍥跺殺闁挎稑鑻ぐ褏鎷归悢鑽ょ厬闁活亜顑嗛崹顒勫捶閸濆嫭瀚查悹浣测偓鍐茬€婚柡澶婂皡缁辨繃绋夊鍡椢╂俊妤€鐭傚浼村箳瑜嶉崺妤呭矗?UI 濠㈣泛绉撮崺妤佹交濞戞氨绉瑰?- 闁?latency WebSocket / HTTP sync / clone 閻犱警鍨扮欢鐐电磼瑜忛悽缁樼┍濠靛牊娈屽☉鎾虫惈瀹稿宕ｉ幓鎺旀澖濡ょ姴濂旈崬顒勬儘娓氬﹦绀夊ù锝呮缂嶅宕滃鍛枀缂佹棏鍨伴崣鍡涘矗閿濆嫮鐟濋柛鎰С缁堕鎸ч弽褏鏆?
 
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-鍚庣画鎻愰啋锛?
-- `backend/main.py` 閲屾棫鐨勫唴鑱?preview HTML 浠嶇劧杩樺湪鏂囦欢涓紝浣嗚繍琛屽叆鍙ｅ凡缁忓垏鍒?`backend/tank_trouble_preview_page.py`
-- 濡傛灉浠ュ悗纭涓嶅啀闇€瑕佸巻鍙插疄鐜帮紝鍙互鍐嶅仛涓€娆″彧閽堝 preview 浠ｇ爜鐨勬竻鐞嗛噸鏋?
-## 闃舵 27锛歱review 鑱岃矗缁х画鍚庣Щ鍒?backend锛屽墠绔彧涓婃姤鐜╁鍧﹀厠蹇収
+闁告艾娴烽悽濠氬箵閹版澘鏅柨?
+- `backend/main.py` 闂佹彃鏈Λ顐︽儍閸曨偄鏁堕柤?preview HTML 濞寸姴绉堕崝褎娼诲Ο鐑樿含闁哄倸娲ｅ▎銏＄▔椤撱劎绀夊ù锝呮缁诲秶鎮扮仦钘夊汲闁告瑱绲介崙锛勭磼韫囨挸鐎奸柛?`backend/tank_trouble_preview_page.py`
+- 濠碘€冲€归悘澶嬬閵夈儲鍊电痪顓у枦椤撶粯绋夊鍛櫃闂傚洠鍋撻悷鏇氱瀹稿宕ｉ幓鎺旀澖闁绘粌搴滅槐婵嬪矗椤栨瑤绨伴柛鎰Т娴犳稒绋夐埀顒€鈻庨垾鍐叉锭闂佽棄鐗嗛?preview 濞寸媴绲块悥婊堟儍閸曨剛顏搁柣鐐叉閸ｆ悂寮?
+## 闂傚啳鍩栭?27闁挎稒顒猺eview 闁煎崬鐭侀惌妤冪磼瑜忛悽濠氬触鎼达及鈺呭礆?backend闁挎稑鑻晶鐘电博椤栨艾娑у☉鎾筹攻婵倝鎮抽埡渚囧晙闁秆嶇畱閸樼姾绠涢銈呭季
 
-涓昏鐩爣锛?
-- 杩涗竴姝ユ敹绱?preview 鑱岃矗杈圭晫
-- 涓嶅啀璁╁墠绔帹 `scene / rows / map_label / runtime_summary`
-- 鏀规垚鐢?backend 涓撻棬缁存姢 preview session銆乺oom cache 鍜?viewer state
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 閺夆晜绋愮粩鏉戭潰閵夛附鏆紒?preview 闁煎崬鐭侀惌妤佹綇閸︻厽娅?
+- 濞戞挸绉撮崯鈧悹浣叉櫅婢х姷绮╅娑樿吂 `scene / rows / map_label / runtime_summary`
+- 闁衡偓鐟欏嫬鐏囬柣?backend 濞戞挻鎹囧Λ顒傜磼鐎涙ê袘 preview session闁靛棔璐璷om cache 闁?viewer state
 
-涓昏缁撴灉锛?
-- `frontend/src/components/TankTroublePanel.tsx` 涓嶅啀鏋勯€?preview `scene`
-- 鍓嶇 latency 妯″紡涓嬬幇鍦ㄥ彧浼氭寜鍥哄畾棰戠巼鎺ㄩ€侊細
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- `frontend/src/components/TankTroublePanel.tsx` 濞戞挸绉撮崯鈧柡瀣閳?preview `scene`
+- 闁告挸绉堕?latency 婵☆垪鈧磭纭€濞戞挸顑囬獮鍥捶閵娿儱娑уù鍏肩鐎垫粓宕堕崫鍕毎濡増鍨瑰濂稿箳閵娾斁鍋撴笟濠勭獥
   - `session_id`
   - `room`
   - `player_id`
   - `country_code`
-  - `tank`锛堥鑹层€佸潗鏍囥€佹湞鍚戙€佸崐寰勩€乫lash锛?- `frontend/src/types/cloud.ts` 鍜?`frontend/src/api/cloudApi.ts` 瀵瑰簲鏀规垚鏂扮殑 preview push request 缁撴瀯
-- `backend/models.py` 閲岀殑 `TankTroublePreviewPushRequest` 鏀规垚鈥滅帺瀹跺潶鍏嬪揩鐓ц姹傗€濇ā鍨?- 鏂板 `backend/tank_trouble_preview_runtime.py`
-- 杩欎釜 runtime 涓撻棬璐熻矗锛?  - 缂撳瓨 room sync 缁撴灉
-  - 绠＄悊 preview session
-  - 鎸夋埧闂?map seed 鐢熸垚澧欎綋
-  - 鍦ㄦ湇鍔＄鐢熸垚 preview 闈跺瓙
-  - 鐢熸垚 rows / map_label / runtime_summary
-  - 缁勮鏈€缁堣繑鍥炵粰 viewer 鐨?`scene`
-- `backend/main.py` 閲岀殑 tank room sync / vote / leave 鐜板湪浼氬悓姝ュ埛鏂?preview runtime 鐨?room cache
-- `backend/main.py` 鐨?preview push / clear / state 閫昏緫鏀逛负濮旀墭缁?`TankTroublePreviewRuntime`
+  - `tank`闁挎稑鐗撻·渚€鎳濈仦鍌楀亾娴ｅ憡缍忛柡宥呮储閳ь兛鐒﹀﹢鐐哄触閹存瑢鍋撴担绋跨９鐎垫澘瀚ㄩ埀顑垮叕lash闁?- `frontend/src/types/cloud.ts` 闁?`frontend/src/api/cloudApi.ts` 閻庣數鎳撶花鏌ュ绩鐟欏嫬鐏囬柡鍌涘濞?preview push request 缂備焦鎸婚悗?
+- `backend/models.py` 闂佹彃鐬煎▓?`TankTroublePreviewPushRequest` 闁衡偓鐟欏嫬鐏囬柍銉︾矌鐢櫣鈧娉涘鍫曞礂鐎ｎ亝褰ラ柣鎾楀棭鍤炴慨鐟板€甸埀顒佺箖鑶╅柛?- 闁哄倹婢橀·?`backend/tank_trouble_preview_runtime.py`
+- 閺夆晜鐟ら柌?runtime 濞戞挻鎹囧Λ顒傛嫻閻旇崵鐓戦柨?  - 缂傚倹鎸搁悺?room sync 缂備焦鎸婚悘?
+  - 缂佺媴绱曢幃?preview session
+  - 闁圭顦伴崺褔姊?map seed 闁汇垻鍠愰崹姘櫠濞嗗海绉?
+  - 闁革负鍔嶅﹢鍥礉閿涘嫷浼傞柣銏㈠枑閸?preview 闂傚牐娉涢悺?
+  - 闁汇垻鍠愰崹?rows / map_label / runtime_summary
+  - 缂備礁瀚ˉ濠囧嫉閳ь剛绱掗崼锝囩闁搞儳鍋熺划?viewer 闁?`scene`
+- `backend/main.py` 闂佹彃鐬煎▓?tank room sync / vote / leave 闁绘粍婢樺﹢顏呭濮橆剚鍊辨慨婵勫劚閸╂盯寮?preview runtime 闁?room cache
+- `backend/main.py` 闁?preview push / clear / state 闂侇偅妲掔欢顐﹀绩闁稖绀嬪┑顔芥⒐婢ь厾绱?`TankTroublePreviewRuntime`
 
-褰撳墠鑱岃矗杈圭晫锛?
-- 鍓嶇璐熻矗锛氭湰鍦版父鎴忚繍琛屻€佺帺瀹跺潶鍏嬪揩鐓т笂浼?- backend 璐熻矗锛歱review 浼氳瘽鐘舵€併€佹埧闂寸紦瀛樸€乿iewer 鐘舵€佹嫾瑁?- browser viewer 璐熻矗锛氳鍙?backend state 骞舵湰鍦版覆鏌?canvas
+鐟滅増鎸告晶鐘绘嚂瀹€鍐厬閺夊牆婀遍弲顐︽晬?
+- 闁告挸绉堕顒傛嫻閻旇崵鐓戦柨娑欑濠€浼村捶閻楀牏鍩楅柟鏉戠箺缁诲秶鎮扮仦鐑╁亾娴ｅ搫璐熼悗纭呮硾濞煎爼宕楃€ｎ亝褰ラ柣鎾楀倻鐟愬ù?- backend 閻犳劗鍠曢惌妤呮晬濮濈湕eview 濞村吋淇洪惁浠嬫偐閼哥鍋撴担纰樺亾娴ｇ懓鐓ｉ梻鍌氼嚟缁憋妇鈧稒菧閳ь兛绠峣ewer 闁绘鍩栭埀顑跨劍鐎氬墽鎲?- browser viewer 閻犳劗鍠曢惌妤呮晬濮樻剚鍤㈤柛?backend state 妤犵偠鍩栧﹢浼村捶閻楀牐顩柡?canvas
 
-褰撳墠 viewer 鐨勫凡鐭ュ彇鑸嶏細
+鐟滅増鎸告晶?viewer 闁汇劌瀚崙锟犳儗閵夈儱绲块柤绋跨▌缁?
 
-- 鍥犱负鍓嶇涓嶅啀涓婁紶 whole scene锛寁iewer 褰撳墠涓嶅啀渚濊禆鍓嶇鎻愪緵鐨勫瓙寮?/ 娉㈢汗 / fade 鐗规晥
-- 鐜伴樁娈?backend 鐢熸垚鐨?preview scene 閲嶇偣鏄細
-  - 鍦板浘
-  - 褰撳墠鐜╁鍧﹀厠
-  - 鏈嶅姟绔敓鎴愮殑闈跺瓙
-  - 璁″垎鏉垮拰杩愯鐘舵€?- 杩欐洿绗﹀悎鈥滄湇鍔＄涓撻棬鍒嗛厤浣嶇疆銆佸墠绔彧涓婃姤鐜╁鍧﹀厠淇℃伅鈥濈殑瑕佹眰
+- 闁搞儳濮崇拹鐔煎礈瀹ュ浂浼傚☉鎾崇Т閸熲偓濞戞挸锕ｇ槐?whole scene闁挎稑鐦塱ewer 鐟滅増鎸告晶鐘崇▔瀹ュ懎鏅欏〒姘箚缁傚棝宕滃鍥朵紓闁圭粯鍔掔欢鐢告儍閸曨偆鎽嶇€?/ 婵炲鍨诲Ч?/ fade 闁绘顫夐弲?
+- 闁绘粈鍗冲Ο浣糕枔?backend 闁汇垻鍠愰崹姘舵儍?preview scene 闂佹彃绉堕崑锝夊及椤栥倗绐?
+  - 闁革附婢樺ù?
+  - 鐟滅増鎸告晶鐘绘偝閳轰緡鍟€闁秆嶇畱閸?
+  - 闁哄牆绉存慨鐔虹博椤栨粍鏅搁柟瀛樺姉濞堟垿妫冪捄铏规憤
+  - 閻犱讲鈧啿鐎婚柡澶婄仢閹风増娼婚幇顖ｆ斀闁绘鍩栭埀?- 閺夆晜鐟﹀ú璺ㄧ箔閿曗偓閹酣鍨惧鍕疀闁告棑绱曢顒佺▔閹剧粯锛岄柛鎺戞閸樸倖鎷呭鍥╂瀭闁靛棔绀佹晶鐘电博椤栨艾娑у☉鎾筹攻婵倝鎮抽埡渚囧晙闁秆嶇畱閸樼姵绌遍埄鍐х礀闁炽儲绻勫▓鎴犳啺娴ｅ湱婀?
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/components/TankTroublePanel.tsx`
 - `frontend/src/types/cloud.ts`
 - `frontend/src/api/cloudApi.ts`
@@ -1646,84 +5884,84 @@ Verification:
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-## 闂冭埖顔?28閿涙atency preview 閺堝秴濮熺粩顖氱摍瀵懓鎷伴棃璺虹摍閻樿埖鈧浇藟姒绘劧绱濇穱顔筋劀閸э箑鍘犻張婵嗘倻
+## 闂傚倸鍟抽崺鏍敊?28闂佹寧绋掗顩噒ency preview 闂佸搫鐗嗙粔瀛樻叏閻旇櫣鍗氭い鏍ㄦ皑閹藉秶鈧鍠氶幊鎾诲箯娴煎瓨顥堥悹楦挎閹藉秹鏌ｅΟ鍨厫闁逞屽厸濞村洩妫㈡慨鎺旂帛閸斞呮濠靛洨鈹嶆い鏃傜摂閸斺偓闂佺宥囩暠闁告濞€瀵潧鈹戦崱妯衡偓?
 
-娑撴槒顩﹂惄顔界垼閿?
-- 娣囶喗顒滃宀勬桨濞撳憡鍨欓崪?browser preview 閸э箑鍘犵紒妯哄煑閺堟繂鎮滈崣宥勭啊閻ㄥ嫰妫舵０?
-- 鐠佲晜绁荤憴鍫濇珤 preview 閻喐顒滈惇瀣煂閺堝秴濮熺粩顖濐潒鐟欐帞娈戠€涙劕鑴婃鐐额攽閸滃矂娼伴弶璺ㄧ埠鐠?
-- 鐞涖儱鍙忛棃璺虹摍鐞氼偄鍤稉?-> 闁插秶鏁撻惃鍕杽閺冭埖鈧焦娲块弬?
-- 鏉炶浜曟导妯哄 preview 閹恒劑鈧?/ 鏉烆喛顕楅懞鍌氼殧閿涘苯鍣虹亸鎴犵秹妞ょ數顏潪璇蹭簳閹哄鎶氭担鍡曠瑝瀵洖鍙嗘潻鍥у婢舵牗甯归妴浣告礀闁偓閹存牠顥濈粔?
+婵炴垶鎸诲Σ鎺椼€呴敃鍌涘剮妞ゆ梻鏅崹濂告煥?
+- 婵烇絽娴傞崰妤咁敆濠婂喚娴栫€光偓閸曨剚銆冨┑鐐存尭閹诧繝宕瑰▎鎾虫そ?browser preview 闂佺宥囩暠闁告濮风槐鎺懳熼崫鍕幀闂佸搫鐗婄换鍌炲箖濠婂牆鐭楃€广儱瀚崯濠囨煟閵娿儱顏俊顐ュ煐閿?
+- 闁荤姳璁查弲婊呯矈閼姐倖鍠嗛柛顐ｇ箖閻?preview 闂佹椿浜為崰鎰邦敆濠婂牊鍎戦悗锝庝簻閻撳倿鏌￠崼婵埿㈠┑顔惧枔缁晠顢涘┑鎰秺闁荤喐鐟︾敮鐐测枔閹寸姭鍋撳☉娆忓闁兼潙锕ラˇ浼存倷妫版繃鏂€闂佸憡绮岄惌鍌氼焽娴兼潙绾ч悹鎭掑妿閸╃娀鎮?
+- 闁荤偞绋忛崕閬嶅矗韫囨稒顥堥悹楦挎閹藉秹鎮跺鐓庝簻闁搞値鍠楃粙?-> 闂備焦褰冪粔鍫曞极閹剧粯鍎嶉柛鏇ㄥ亞閺変粙鏌￠崘顓炵厫闁逞屽厸閻掞箑煤閸ф妫?
+- 闁哄鍋犻褎绂嶉弴鐔奉嚤婵☆垰鎼?preview 闂佽浜介崝鎴﹀焵?/ 闁哄鍎愰崰娑㈩敋濡ゅ懏鍤嶉柛灞惧嚬濞堁囨煥濞戞瀚伴柛锝堟娴滄悂骞嬮悩鐢敌ф俊鐐€楅弫鎼侇敂椤掍焦濮滈悹鍥紦缁ㄦ娊鏌熼崫鍕垫Ц闁硅埖纰嶉幏鍛村幢閺囩姷鎲归悗娈垮枟濞叉牠宕ｉ崱妯讳氦闁搞儜鍐惧敽婵犮垼鍩栭悧妤冩暜瑜版帒违濞达絽鎲＄粈鈧梻渚囧亐閸嬫捇鏌熺€涙澧垫い銉︾箘缁?
 
-娑撴槒顩﹂弨鐟板З閿?
+婵炴垶鎸诲Σ鎺椼€呴敃鍌氱哗闁荤喐婢樿闂?
 - `frontend/src/components/TankTroublePanel.tsx`
-  - `drawTankSprite()` 閻?`rotate()` 閺€瑙勫灇 `tank.angle + Math.PI / 2`
-  - `buildPreviewPlayerSnapshot()` 閺傛澘顤?`shots`
-  - preview push 閺傜増澧楅幖鍝勭敨 `snapshot_seq`
-  - preview push 閸旂姳绨￠梼鎻掔垻缁夘垶鈧槒绶敍灞芥倱閺冭泛褰ч崗浣筋啅娑撯偓娑擃亣顕Ч鍌氭躬鐠烘埊绱濋崥搴″煂閻ㄥ嫬鐣鹃弮璺烘珤閸掗攱鏌婃导姘値楠炴湹璐熼張鈧弬鐗堚偓浣稿晙閸欐埊绱濋柆鍨帳鐠囬攱鐪伴幒鎺楁Е閸滃奔璐℃惔?
+  - `drawTankSprite()` 闂?`rotate()` 闂佽　鍋撻悷娆忓閻?`tank.angle + Math.PI / 2`
+  - `buildPreviewPlayerSnapshot()` 闂佸搫鍊瑰姗€路?`shots`
+  - preview push 闂佸搫鍊绘晶妤佹櫠濡ゅ懎绠归柛婵嗗閺?`snapshot_seq`
+  - preview push 闂佸憡姊绘慨宕囪姳閿熺姵鈷撻柟缁樺笧閸ㄨ崵绱掓径妯虹仸闁逞屽墯濡叉帞娆㈤锔芥櫖閻忕偠濮ら崐閬嶆煛閸愵厽纭剧憸鎶婂洤绀傚ù锝囩摂閸熷懎鈽夐幘顖氫壕婵炴垶鎼╂禍锝夘敋椤掆偓鏁堥柛灞剧闊剟鎮归悜妯虹厐缂佽鲸绻堝畷銉︽償閳ュ磭鍘掗梺姹囧妼鐎氼剟鎮炬ィ鍐ㄧ睄閻犺櫣鍎ら悵銈夋煕閹烘鏁遍柡灞斤攻鐎电厧顫濋浣糕偓銈嗩殽閻愬瓨鏋勯悹鎰枛瀵敻鍩€椤掑嫬妫橀柣妤€鐗冮崑鎾存媴缁嬫寧娅冮梺鍛婄懄閸╁﹦妲愬┑瀣劶闁割煈鍠栫敮鎶芥偣閸ヮ剚鏁遍柣顏冨嵆楠炴帡骞掑Δ浣囨洟鏌涘鍐殭閻犳劏鍓濋幆?
 - `frontend/src/types/cloud.ts`
-  - `TankTroublePreviewPlayerSnapshot` 閺傛澘顤?`shots`
-  - `TankTroublePreviewPushRequest` 閺傛澘顤?`snapshot_seq`
+  - `TankTroublePreviewPlayerSnapshot` 闂佸搫鍊瑰姗€路?`shots`
+  - `TankTroublePreviewPushRequest` 闂佸搫鍊瑰姗€路?`snapshot_seq`
 - `backend/models.py`
-  - preview push 濡€崇€烽崥灞绢劄閺€顖涘瘮 `shots` 閸?`snapshot_seq`
+  - preview push 濠碘槅鍨埀顒€纾埀顒傚厴瀹曘儳浠︾紒銏犲Ρ闂佽　鍋撴い鏍ㄧ☉閻?`shots` 闂?`snapshot_seq`
 - `backend/tank_trouble_preview_runtime.py`
-  - preview runtime 閺傛澘顤?server-side 鐎涙劕鑴婃导姘崇樈閻樿埖鈧緤绱濋崠鍛 `bullets / last_snapshot_seq / last_reported_shots / last_reported_at_ms / last_simulated_ms / wall_ripples / bullet_fades`
-  - 閸氬海顏悳鏉挎躬閺嶈宓?`shots` 婢х偤鍣洪悽鐔稿灇 preview 鐎涙劕鑴婇敍灞肩瑝閸愬秳绶风挧鏍у缁旑垯绗傛导?whole scene
-  - `get_state()` 娑撳褰傞崜宥勭窗閸忓牊濡?preview 娴兼俺鐦藉Ο鈩冨珯閸?`now`閿涘矁顔€ browser 缁旑垳婀呴崚鎵畱鐎涙劕鑴婇弴纾嬬箾鐠?
-  - server-side preview 娴兼俺鍤滃鍗烆槱閻炲棴绱扮€涙劕鑴婄粔璇插З閵嗕礁寮藉骞库偓浣圭Х娴溌扳偓渚€娼伴弶璺ㄢ€樻稉顓炴倵闁插秶鏁撻敍灞间簰閸欏﹦甯虹€?flash 閸欏秹顩?  - `_build_state()` 閻滄澘婀导姘殺 `bullets / wallRipples / bulletFades / targets` 閸忋劑鍎寸紒鍕棅鏉╂柨娲栫紒?viewer
+  - preview runtime 闂佸搫鍊瑰姗€路?server-side 闁诲孩绋掗崝鏇㈡嚇婵犲啫顕辨慨妯虹－濡牓鏌ｅΟ鍨厫闁逞屽厸缁躲倗妲愬┑瀣闁告侗鍠栭?`bullets / last_snapshot_seq / last_reported_shots / last_reported_at_ms / last_simulated_ms / wall_ripples / bullet_fades`
+  - 闂佸憡鑹惧ù鐑筋敂椤掑嫭鍋濋柡澶嬪闊剟鏌″鍫綈鐎?`shots` 婵犫拃鍛槐闁革絾妞介幃浠嬫偄缁嬭法浜?preview 闁诲孩绋掗崝鏇㈡嚇婵犲洦鏅悘鐐跺亹閻熸繈鏌涢幇顒傂＄紒鍫曨棑閹秆囧冀瑜嶉·鍛磼閺冩垵鐏熺紒妤€鍊圭€?whole scene
+  - `get_state()` 婵炴垶鎸搁鍛般亹閸岀偛绀堢€广儱瀚粣妤呮煕韫囨挾澧涘┑?preview 婵炴潙鍚嬫穱娲儊閽樺）鐔煎焺閸愩劎褰查梺?`now`闂佹寧绋戦惌渚€顢欓埀?browser 缂備焦妫忛崹鍐诧耿閸涙潙绀嗛柟娈垮枟閻ｉ亶鎮楀☉娆忓闁兼潙锕瀵稿鐎ｎ剛顔曢柣?
+  - server-side preview 婵炴潙鍚嬫穱娲吹濠婂喚鍟呴柛妤冨剱濡查亶鏌ｉ悙鍙夛紨缂佽鲸澹嗛埀顒佺⊕閸旀洟鎳樻繝鍕煋閻犲洦褰冭闂侀潧妫旂粈浣割嚕閽樺鍤曟鐐茬氨閸嬫挻鎷呴崷顓夈儱霉濠у本澹嬮崑鎾寸瑹閳ь剙顭囨导鏉戠骇閻犳亽鍔夐埀顒伾戠粙澶愵敇閻愭潙鈧敻姊洪幓鎺斝ら柡浣规崌閺佸秶浠﹂梻瀵搁瀺闂佸憡鐟ラ敃锔炬暜閾忓厜鍋?flash 闂佸憡鐟ョ粔褰掋€?  - `_build_state()` 闂佺粯绮嶅妯猴耿椤忓懎顕辨慨姗嗗墰濞?`bullets / wallRipples / bulletFades / targets` 闂佺绻堥崝鎴﹀磿鐎靛摜纾奸柛鏇ㄥ櫘濡懘寮堕埡鍌涚叆婵炲弶鐗滅槐?viewer
 - `backend/tank_trouble_preview_page.py`
-  - `drawTank()` 閻?`rotate()` 閺€瑙勫灇 `tank.angle + Math.PI / 2`
-  - 鏉烆喛顕楁０鎴犲芳娴?`60ms` 鐠嬪啫鍩?`45ms`
-  - tank / bullet smoothing 缁粯鏆熸潪璇蹭簳閹绘劙鐝?  - browser 鐎涙劕鑴婄紒妯哄煑閺傛澘顤冮惌顓＄獩缁?trail閿涘矁顔€鏉炪劏鎶楅弴瀛樻閺?
+  - `drawTank()` 闂?`rotate()` 闂佽　鍋撻悷娆忓閻?`tank.angle + Math.PI / 2`
+  - 闁哄鍎愰崰娑㈩敋濡や緤绱ｉ柟瀵稿Т閼哄啿霉?`60ms` 闁荤姴顑呴崯顐﹀春?`45ms`
+  - tank / bullet smoothing 缂備緡鍨崇划顖炲汲閻斿憡濮滈悹鍥紦缁ㄦ娊鏌熺紒妯哄闁?  - browser 闁诲孩绋掗崝鏇㈡嚇婵犲嫮纾兼俊顖氭惈閻撴垿鏌￠崒娑欑凡妞ゃ倕鍟撮幆宀勵敇閿涘嫮宕虹紓?trail闂佹寧绋戦惌渚€顢欓埀顒勫级閻愵亜濮€闁硅埖顨婂瀵糕偓娑櫳戦～鏍煛?
 
-瑜版挸澧?preview 闁炬崘鐭鹃敍?
-- 閸撳秶顏?latency 濡€崇础閸欘亜鎮?backend 閹恒劑鈧胶甯虹€硅泛娼堕崗瀣彥閻撗嶇窗`session_id / room / player_id / country_code / snapshot_seq / tank / updated_at_ms`
-- backend preview runtime 閸︺劍婀囬崝锛勵伂缂佸瓨濮?preview-only scene
-- browser preview 缂佈呯敾娴ｆ粈璐熼崣顏囶嚢 viewer閿涘本婀伴崷鎷岀枂鐠?state 閸氬氦鍤滃杈ㄨ閺?canvas
+閻熸粎澧楅幐鍛婃櫠?preview 闂備胶鍋撳畷姗€鎯屾ィ鍐╂櫖?
+- 闂佸憡鎸哥粔鍫曨敂?latency 濠碘槅鍨埀顒€纾涵鈧梺鍛婄懐娴滄粓骞?backend 闂佽浜介崝鎴﹀焵椤戣儻鍏岄悽顖濇閳ь剛顢婂▔娑橆焽閸洖绀傞悗锝庝簼瑜般儵鏌ｉ幘妤€绉剁粣姊巗ession_id / room / player_id / country_code / snapshot_seq / tank / updated_at_ms`
+- backend preview runtime 闂侀潻璐熼崝宥咃耿閸ヮ剙绀夐柨娑樺娴煎倻绱撴担鍝ユ憼濠?preview-only scene
+- browser preview 缂傚倷缍€閸涱垱鏆版繛杈剧稻缁牏鎷归悢鐓庣煑妞ゅ繐娴傞崵?viewer闂佹寧绋戦張顒€锕㈡导鏉戞嵍闁瑰嘲鐬奸弸鍌炴偣?state 闂佸憡鑹惧锕傚吹濠婂喚鍟呴弶鍫涘姀椤╊偊鏌?canvas
 
-鏉堝湱鏅敍?
-- 閸欘亜濮╅崸锕€鍘犲〒鍛婂灆閸?browser preview 鏉╂瑦娼ù瀣槸/鐟欏倸鐧傞柧鎹愮熅
-- 娑撳秶顫憴鍡涱暥閹恒劍濯哄ù浣碘偓浣规簚濮婃媽鍣﹂幒褍鍩楅妴浣风隘缁?control signaling 缁涘顒滃蹇涙懠鐠?
+闁哄鐗嗗﹢閬嶅疾椤愶附鏅?
+- 闂佸憡鐟禍婊勬叏閳哄懎閿ら柨鏇楀亾闁告濮撮妴鎺楀川婵犲倻浜為梺?browser preview 闁哄鏅滈悷锕€顭囬姣湱鈧綆鍘惧Σ?闁荤喐鐟ラ崐鎼佹儌閸岀偞鐓ｉ柟瑙勫姉閻?
+- 婵炴垶鎸哥粔鍫曪綖椤愩倖鍠嗛柛鈩冧緱閺嗐儵鏌熼幁鎺戝濠殿垰鎼湁濞达絿顣介崑鎾存媴鐟欏嫮鐨诲┑顔硷攻婵粙宕抽敃鍌氱鐟滃秹宕哄Δ鍛ュù锝夘棑闂呮绱?control signaling 缂備焦绋戦ˇ浼搭敆濠婂喚鍤曢煫鍥ㄧ⊕閹崇娀鎮?
 
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-## 闃舵 29锛欸itHub 鑷洿鏂板叆鍙?+ 鑷姩鍙戝竷宸ヤ綔娴?
-涓昏鐩爣锛?
-- 璁╂闈㈢▼搴忓湪妫€娴嬪埌 GitHub 鏈€鏂扮増楂樹簬鏈湴鐗堟湰鏃讹紝鐩存帴鍦ㄧ▼搴忓唴鐐瑰嚮鏇存柊
-- 璁╁悗缁?Windows 鍙戝竷灏介噺璧?GitHub Actions锛岃€屼笉鏄户缁緷璧栨湰鍦版墜宸ユ墦鏂扮増 `exe`
-- 淇濇寔杩欐潯閾捐矾鍙綔鐢ㄤ簬妗岄潰澹冲眰锛屼笉纰扮幇鏈変簯绔棰戙€佹帶鍒朵俊鍙峰拰娓告垙閫昏緫閾捐矾
+## 闂傚啳鍩栭?29闁挎稒顑搃tHub 闁煎浜濆ú鍧楀棘閺夊灝寮抽柛?+ 闁煎浜滄慨鈺呭矗閹存繄顏寸€规悶鍎扮紞鏂棵?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?
+- 閻犱讲鏅滈、鎴︽閵忊懇鏌ら幖鏉戠箰濠€顏勎涢埀顒€霉鐎ｎ亜鐓?GitHub 闁哄牃鍋撻柡鍌涘婢ф顨囧Ο鍦壘闁哄牜鍓欏﹢鎾偋閸喐鎷遍柡鍐啇缁辨繈鎯勭€涙ê澶嶉柛锔哄妿閳诲吋鎯旇箛鎾虫暥闁绘劗鎳撻崵顕€寮寸€涙ɑ鐓€
+- 閻犱讲鏅涢幃妤冪磼?Windows 闁告瑦鍨电粩椋庝焊娴犲娅ら悹?GitHub Actions闁挎稑鐭侀埀顒€濂旂粭澶愬及椤栨粍鍩涚紓渚囧幒缁堕鎸ч弽銊︽嫳闁革妇澧楁晶婊冾啅閵夛箑鈪甸柡鍌涘婢?`exe`
+- 濞ｅ洦绻冪€垫梹娼诲▎鎰拫闂佺偓宕橀惌楣冨矗椤忓啰绋婇柣顫妺缁剙顩煎畝鍕〃濠㈢懓鍟块惇浼存晬鐏炶偐鐟濈痪鐗堝楠炲洭寮垫径澶岄殬缂佹棏鍨甸～瀣紣閹存瑢鍋撴担鐟颁粯闁告帗婀规穱濠囧矗瀹勭増瀚叉繛鎾虫啞閸ㄦ瑩鏌呴弰蹇曞竼闂佺偓宕橀惌?
 
-涓昏缁撴灉锛?
-- 鍓嶇鏂板 `frontend/src/hooks/useAppUpdater.ts`
-  - 鍦?Tauri 鐜涓嬪姩鎬佹帴鍏?`@tauri-apps/api/updater`
-  - 搴旂敤鍚姩鏃舵鏌?GitHub 鏈€鏂?release
-  - 缁存姢 `available / installing / currentVersion / latestVersion / error / message`
-- 鍓嶇鏂板 `frontend/src/components/UpdateAction.tsx`
-  - 鍦嗗舰鏇存柊鎸夐挳
-  - 鐧诲綍椤靛拰涓绘帶鍒跺彴閮戒細鏄剧ず鍦ㄤ富棰樺垏鎹㈡寜閽乏杈?  - 鍙湁鍙戠幇鏂扮増鎴栨鍦ㄥ畨瑁呮椂鎵嶆樉绀?- `frontend/src/App.tsx`
-  - 鎸傝浇 updater hook
-  - 鎶?updater 鐘舵€佸拰瀹夎鍔ㄤ綔缁熶竴閫忎紶缁?`LoginPage` 鍜?`DashboardPage`
+濞戞挻妲掗々锔剧磼閹惧浜柨?
+- 闁告挸绉堕顒勫棘閺夋鏉?`frontend/src/hooks/useAppUpdater.ts`
+  - 闁?Tauri 闁绘粠鍨伴。銊︾▔鐎ｎ亜袟闁诡兛鐒︾敮鎾礂?`@tauri-apps/api/updater`
+  - 閹煎瓨姊婚弫銈夊触椤栨艾袟闁哄啳鍩栭ˉ鍛村蓟?GitHub 闁哄牃鍋撻柡?release
+  - 缂備礁鐡ㄦ慨?`available / installing / currentVersion / latestVersion / error / message`
+- 闁告挸绉堕顒勫棘閺夋鏉?`frontend/src/components/UpdateAction.tsx`
+  - 闁革箑妫楅懜浼村即鐎涙ɑ鐓€闁圭顦甸幐?
+  - 闁谎嗩嚙缂嶅秵銇勯棃娑欏濞戞挾绮敮鍫曞礆鐠哄搫閰遍梺顔藉灊缁变即寮伴崜褋浠涢柛锔哄妺鐎靛本锛愬Ο鍝勭€奸柟骞垮灪鐎垫粓鏌﹂闂寸閺?  - 闁告瑯浜濆﹢渚€宕ｉ幋鐘茬疀闁哄倹澹嗘晶妤呭箣閺嶎煈鍔€闁革负鍔岄悾銊ф啑閸涱喗顦ч柟闈涚У濡绮?- `frontend/src/App.tsx`
+  - 闁圭鍊藉ù?updater hook
+  - 闁?updater 闁绘鍩栭埀顑跨閹锋壆鈧懓顦抽ˉ濠囧礉閵娿倗绋婄紓浣哄枍缁旀挳鏌呰箛搴ｇ倞缂?`LoginPage` 闁?`DashboardPage`
 - `frontend/src/pages/LoginPage.tsx`
-  - 鐧诲綍椤靛彸涓婅鎺ュ叆鏇存柊鎸夐挳
+  - 闁谎嗩嚙缂嶅秵銇勯棃娑樼濞戞挸锕ㄩ～妤呭箳閵夈儱寮抽柡鍥х摠閺屽﹪骞愭径鎰唉
 - `frontend/src/components/Topbar.tsx`
-  - 涓绘帶鍒跺彴椤堕儴鎿嶄綔鍖烘帴鍏ユ洿鏂版寜閽?- `frontend/src/styles/globals.css`
-  - 鏂板鏇存柊鎸夐挳鏍峰紡銆佽剦鍐叉彁绀哄拰瀹夎鏃嬭浆鐘舵€?- `frontend/src/styles/theme.css`
-  - 琛ラ綈娣辫壊妯″紡涓嬫洿鏂版寜閽牱寮?- `src-tauri/tauri.conf.json`
-  - 寮€鍚?Tauri updater
-  - 鍐欏叆 GitHub `latest.json` endpoint
-  - 鍐欏叆 updater 鍏挜
+  - 濞戞挾绮敮鍫曞礆鐠哄搫閰卞銈呯埣閸庢挳骞欏鍕▕闁告牜鍎ょ敮鎾礂閵夛附绾柡鍌滃鐎垫粓鏌?- `frontend/src/styles/globals.css`
+  - 闁哄倹婢橀·鍐即鐎涙ɑ鐓€闁圭顦甸幐鎶藉冀瀹勬壆纭€闁靛棔娴囬崜锕傚礃閸欏绲圭紒鈧崫鍕閻庣懓顦抽ˉ濠囧籍鐎ｎ厽绁柣妯垮煐閳?- `frontend/src/styles/theme.css`
+  - 閻炴稏鍎电紞鍫澢庢潏顐㈩棌婵☆垪鈧磭纭€濞戞挸顑嗗ú鍧楀棘閻楀牆鐦婚梺绛嬪枟閻楀崬顕?- `src-tauri/tauri.conf.json`
+  - 鐎殿喒鍋撻柛?Tauri updater
+  - 闁告劖鐟ラ崣?GitHub `latest.json` endpoint
+  - 闁告劖鐟ラ崣?updater 闁稿浚鍓熼幐?
 - `src-tauri/Cargo.toml`
-  - 缁?`tauri` 澧炲姞 `updater` feature
-- 鏂板 `scripts/update_versions.py`
-  - 缁熶竴鍚屾 `package.json / frontend/package.json / frontend/package-lock.json / src-tauri/Cargo.toml / src-tauri/tauri.conf.json`
-- 鏂板 `.github/workflows/release-windows.yml`
-  - `push main` 鎴栨墜鍔ㄨЕ鍙戝悗鑷姩鍋?Windows release
-  - 鑷姩瀹夎鍓嶇渚濊禆銆佸悗绔緷璧栥€丳yInstaller
-  - 鍥犱负 `beforeBuildCommand` 浼氳繍琛?`scripts/make_icon.py`锛屾墍浠ユ瀯寤虹幆澧冧篃闇€瑕?`Pillow`
-  - 鑷姩璁＄畻鐗堟湰鍙?  - 鑷姩璋冪敤 `tauri-apps/tauri-action@action-v0.6.2` 鍙戝竷 `nsis + updater`
+  - 缂?`tauri` 濠⒀呭仜婵?`updater` feature
+- 闁哄倹婢橀·?`scripts/update_versions.py`
+  - 缂備胶鍠嶇粩鎾触鐏炵虎鍔?`package.json / frontend/package.json / frontend/package-lock.json / src-tauri/Cargo.toml / src-tauri/tauri.conf.json`
+- 闁哄倹婢橀·?`.github/workflows/release-windows.yml`
+  - `push main` 闁瑰瓨鐗楁晶婊堝礉閵娿剱鏇㈠矗閹存繃鍊甸柤濂変簻婵晠宕?Windows release
+  - 闁煎浜滄慨鈺冣偓鐟邦槼椤ュ﹪宕滃鍥朵紓濞撴碍绻嗙粋鍡涘Υ娴ｅ憡鍊电紒鏃戝灟缁堕鎸ч弽銉㈠亾娑撶Installer
+  - 闁搞儳濮崇拹?`beforeBuildCommand` 濞村吋淇虹换宥囨偘?`scripts/make_icon.py`闁挎稑鏈晶宥嗙閵夛妇鈧垰顕欓搹鐟扮畾濠⒀冨暕缁″啴妫侀埀顒傛啺?`Pillow`
+  - 闁煎浜滄慨鈺冩媼閿涘嫮鏆柣妤€鐗婂﹢浼村矗?  - 闁煎浜滄慨鈺冩嫬閸愵亝鏆?`tauri-apps/tauri-action@action-v0.6.2` 闁告瑦鍨电粩?`nsis + updater`
 
-鍏抽敭鏂囦欢锛?
+闁稿繑濞婇弫顓㈠棘閸ワ附顐介柨?
 - `frontend/src/hooks/useAppUpdater.ts`
 - `frontend/src/components/UpdateAction.tsx`
 - `frontend/src/App.tsx`
@@ -1740,291 +5978,291 @@ Verification:
 - `frontend/README.md`
 - `frontend/IMPLEMENTATION_LOG.md`
 
-鍏抽敭鍐崇瓥锛?
-- 杩欐娌℃湁鑷繁鎵嬫悡鈥滆闂?GitHub API + 涓嬭浇 exe + 鍚姩瀹夎鍣ㄢ€濈殑绉佹湁鏇存柊鍣紝鑰屾槸浼樺厛鎺?Tauri 瀹樻柟 updater
-- 鏇存柊妫€娴嬮€昏緫鍙湪 Tauri 杩愯鏃跺惎鐢紱娴忚鍣ㄥ紑鍙戞ā寮忎笅涓嶄細鎶ラ敊锛屼篃涓嶄細鏄剧ず鏇存柊鎸夐挳
-- 鏇存柊鎸夐挳鍋氭垚鐙珛缁勪欢锛岄伩鍏嶇櫥褰曢〉鍜屼富鎺у埗鍙板悇鍐欎竴浠界姸鎬佸垎鏀?- 鐗堟湰鍙峰悓姝ユ娊鎴愬崟鐙剼鏈紝缁欐湰鍦版墦鍖呭拰 GitHub Actions 鍏辩敤
-- GitHub 宸ヤ綔娴佸厛鍋氭垚鈥滆嚜鍔?Windows release鈥濓紝鑰屼笉鏄户缁鏈湴宸ヤ綔鍖烘壙鎷呮寮忓彂甯冭亴璐?
-楠岃瘉缁撴灉锛?
-- `frontend` 涓嬫墽琛?`npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
-- 鏈湴 `Tauri` 鎵撳寘宸茬粡浜у嚭锛?  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.exe`
+闁稿繑濞婇弫顓㈠礃瀹曞洨鎽滈柨?
+- 閺夆晜鐟﹂鐓庘柦閳╁啯绠掗柤濂変簻缁讳線骞嶇€ｎ偅鍋傞柍銉︾矎椤旀牠姊?GitHub API + 濞戞挸顑堝ù?exe + 闁告凹鍨版慨鈺冣偓鐟邦槼椤ュ﹪宕抽妸鈶╁亾濠靛牊鐣辩紒澶夌劍濠€渚€寮寸€涙ɑ鐓€闁革綆鐓夌槐婵嬫嚀鐏炵偓笑濞村吋锚閸樻盯骞?Tauri 閻庤蓱閺?updater
+- 闁哄洤鐡ㄩ弻濠偽涢埀顒€霉鐎ｎ喒鍋撻弰蹇曞竼闁告瑯浜滃﹢?Tauri 閺夆晜鍔橀、鎴﹀籍鐠虹儤鍎欓柣銏╃厜缁卞崬霉韫囨凹娼旈柛锝冨妼缁辨垿宕ｉ幋鐏戒礁顕ｈ箛搴ｇ憮濞戞挸绉崇槐浼村箮閵夆晜鏅╅柨娑樺缁″啯绋夊鍕獥闁哄嫬澧介妵姘跺即鐎涙ɑ鐓€闁圭顦甸幐?
+- 闁哄洤鐡ㄩ弻濠囧箰婢舵劖灏﹂柛瀣閸ㄦ岸鎮鍌滃綄缂備礁瀚▎銏ゆ晬瀹€鍕級闁稿繐绉跺▍銉ㄣ亹閺囶潿鈧宕仦鐓庣槣闁硅矇鍐ㄧ厬闁告瑦婢橀幃鍥礃濞嗗海顏卞ù鐘垫櫕婵悂骞€娴ｇ鐎婚柡鈧?- 闁绘鐗婂﹢浼村矗瀹勭増鍊辨慨婵勫劜婵炲﹪骞嬮幇顒€绀嬮柣娆樺墲閸撳ジ寮甸濠勭缂備焦鐟﹀﹢浼村捶閻楀牆鈪甸柛鏍ф噹閹?GitHub Actions 闁稿繗浜弫?
+- GitHub 鐎规悶鍎扮紞鏂棵规担绋垮弗闁稿纰嶉崹姘跺灳濠婂棗娈伴柛?Windows release闁炽儲绻愮槐婵嬫嚀鐏炶偐鐟濋柡鍕靛灣閹撮绱掗鈽嗗敤闁哄牜鍓欏﹢鏉戭啅閵夈倗绋婇柛鏍劋婢规瑩骞忛崨顕呭妧鐎殿喖绻愯ぐ鍌滄暜閸愵厺鎹嶉悹?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `frontend` 濞戞挸顑嗘晶鐣屾偘?`npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
+- 闁哄牜鍓欏﹢?`Tauri` 闁瑰灚鎸哥€垫ê顔忛懠顒傜梾濞存籂鍐ㄦ瘔闁?  - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.exe`
   - `src-tauri/target/release/bundle/nsis/Cloud Service Console_0.3.1_x64-setup.nsis.zip`
 
-閬楃暀闂锛?
-- 鏈湴杩欐娌℃湁鐩存帴鐪嬪埌 `latest.json` 鍜?`.sig` 钀界洏锛屾墍浠モ€淕itHub Release 涓?updater 娓呭崟鏄惁瀹屾暣鐢熸垚鈥濅粛闇€瑕侀娆?Actions 鐪熸満杩愯纭
-- 涔熷氨鏄锛屼唬鐮佷晶鍜屽伐浣滄祦渚ч兘宸茬粡鎺ヤ笂浜嗭紝浣嗚繕宸竴娆?GitHub 涓婄殑鐪熷疄 release 杩愯鏉ュ仛鏈€缁堥棴鐜獙璇?
-## 闃舵 30锛歍ank Trouble 寤惰繜棰勮鍒囧埌 authoritative scene
-涓昏鐩爣锛?- 瑙ｅ喅寤惰繜娴嬭瘯妯″紡閲屾祻瑙堝櫒棰勮鍙窡寰椾笂鍧﹀厠锛屼絾瀛愬脊鍜岄澏瀛愪笉鍚屾鐨勯棶棰?- 瑙ｅ喅棰勮瀛愬脊鐪嬭捣鏉ュ亸鎱€佸亸閽濈殑闂
-- 淇濇寔淇敼鍙惤鍦?Tank Trouble 鐨?preview/latency 閾捐矾锛屼笉纰拌棰戝拰鎺у埗淇″彿閾捐矾
+闂侇剚顨堥弳鈧梻鍌ゅ櫍椤ｄ粙鏁?
+- 闁哄牜鍓欏﹢瀛樻交濞嗘劦鍋ф繛灞稿墲濠€渚€鎯勭€涙ê澶嶉柣顏勵儏閸?`latest.json` 闁?`.sig` 闁解偓閻ｅ本纾搁柨娑樻湰婢у秵绂掗妷鈶╁亾濞ｆ槼tHub Release 濞?updater 婵炴挸鎳庡畷鐔煎及椤栨碍鍎婇悗鐟版湰閺嗭綁鎮介悢绋跨亣闁炽儲绻€缁盯妫侀埀顒傛啺娓氣偓椤╄鈻?Actions 闁活亞鍠愬┃鈧弶鈺傚姌椤㈡垹娑甸娆惧悋
+- 濞戞梻鍠庡銊╁及椤栨繍鍤涢柨娑樺閸烆剟鎯嶆担閿嬫珷闁告粌鑻导鎰媴濠婂嫮銈﹀〒姘€鍥у幋鐎规瓕灏欑划锟犲箳閵夈倗鐟愬ù婊冩４缁辨繃鎷呴崱姘辩鐎瑰壊鍠曠粩鏉戔枎?GitHub 濞戞挸锕﹀▓鎴︽儑閻旈鏉?release 閺夆晜鍔橀、鎴﹀级閵夈儰绮甸柡鍫氬亾缂備礁鐗撳Λ鎾偝椤栫偟宕ｉ悹?
+## 闂傚啳鍩栭?30闁挎稒鐡朼nk Trouble 鐎点倖鍎肩换婊勶紣閸曨噮娼旈柛鎺戞搐閸?authoritative scene
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?- 閻熸瑱绲介崰鍛嚈閹壆绠挎繛鏉戭儓閻︻垰螣閳ュ磭纭€闂佹彃鏈粊鑽ゆ喆閸繃鐝ゅΛ鏉垮椤秹宕ｉ鍥╊€€鐎电増銇炵粭鍌炲锤閿曗偓閸樼娀鏁嶇仦鑲╃ɑ閻庢稒鍔曢懘濠囧椽瀹€鍕珐閻庢稒鍔掔粭澶愬触鐏炵虎鍔勯柣銊ュ濡埖锛?- 閻熸瑱绲介崰鍛紣閸曨噮娼旈悗娑欏姇閼村﹪鎯囩€ｎ厽宕抽柡澶堝劚娴滄悂骞堥～顑藉亾娴ｉ晲鐒婇梺鑺ョ箘濞堟垿姊婚鈧。?
+- 濞ｅ洦绻冪€垫梹绌遍鑺ユ毉闁告瑯浜ｉ幆銈夊捶?Tank Trouble 闁?preview/latency 闂佺偓宕橀惌楣冩晬鐏炶偐鐟濈痪鐗堝椤锛愰幋婵囧闁硅矇鍐ㄧ厬濞ｅ洠鈧啿濞囬梺鐐礃閻?
 
-涓昏瀹炵幇锛?- `frontend/src/components/TankTroublePanel.tsx`
-  - 鎶?preview push 浠?`tank + shots` 鍗囩骇涓?`authoritative_scene + theme + tank + bullets + targets`
-  - 鏂板 `buildPreviewSnapshot()`锛岀洿鎺ヨ鍙栨湰鍦板紩鎿庨噷鐨勭湡瀹炲瓙寮瑰拰鐪熷疄闈跺瓙鐘舵€?- `frontend/src/types/cloud.ts`
-  - `TankTroublePreviewBulletState` 鏂板 `vx / vy`
-  - `TankTroublePreviewPlayerSnapshot` 鏂板 `score / hits`
-  - `TankTroublePreviewPushRequest` 鏂板 `authoritative_scene / theme / bullets / targets`
+濞戞挻妲掗々锔锯偓鍦仧楠炲洭鏁?- `frontend/src/components/TankTroublePanel.tsx`
+  - 闁?preview push 濞?`tank + shots` 闁告娲ㄦ鍥ㄧ▔?`authoritative_scene + theme + tank + bullets + targets`
+  - 闁哄倹婢橀·?`buildPreviewSnapshot()`闁挎稑鐬煎ú鍧楀箳閵夘煈鍤㈤柛娆愮墬濠€浼村捶閺夎法绌块柟鍨叄閸ｇ兘鎯冮崟顓熷焸閻庡湱鍋涢悺娆忣嚕閻熺増瀚查柣顏嗗枎閻ゅ嫰妫冪捄铏规憤闁绘鍩栭埀?- `frontend/src/types/cloud.ts`
+  - `TankTroublePreviewBulletState` 闁哄倹婢橀·?`vx / vy`
+  - `TankTroublePreviewPlayerSnapshot` 闁哄倹婢橀·?`score / hits`
+  - `TankTroublePreviewPushRequest` 闁哄倹婢橀·?`authoritative_scene / theme / bullets / targets`
 - `backend/models.py`
-  - 涓庡墠绔悓姝ュ瓧娈碉紝淇濊瘉 FastAPI / Pydantic request model 鍙洿鎺ユ帴鏀舵柊鐨?preview payload
+  - 濞戞挸楠告晶鐘电博椤栨碍鍊辨慨婵勫劚閻⊙冣枔绾板绀夊ǎ鍥ㄧ箚閻?FastAPI / Pydantic request model 闁告瑯鍨冲ú鍧楀箳閵夛箑澶嶉柡鈧懜鍨厐闁?preview payload
 - `backend/tank_trouble_preview_runtime.py`
-  - 鏂板 authoritative scene 鍒嗘敮
-  - authoritative 妯″紡涓嬩笉鍐嶆牴鎹?`shots` 鏈湴鐢熸垚瀛愬脊锛屼篃涓嶅啀鏈湴鎺ㄦ紨 target respawn
-  - 鐩存帴缂撳瓨鍓嶇涓婁紶鐨?bullets / targets / score / hits / theme
-  - 鏃ч€昏緫淇濈暀浣滃吋瀹瑰厹搴?- `backend/tank_trouble_preview_page.py`
-  - viewer 璇诲彇 `vx / vy`
-  - 鍚屼竴浠藉揩鐓у瓨娲绘湡闂存寜閫熷害鍦ㄦ湰鍦拌繛缁帹杩涘瓙寮?  - 鍙湁鍦ㄦ柊蹇収鍒拌揪鏃舵墠鍋氳交閲忎綅缃牎姝ｏ紝閬垮厤瑙傛劅涓娾€滄參鍗婃媿鈥?
-鍏抽敭缁撴灉锛?- 娴忚鍣ㄩ瑙堢殑 tank / bullets / targets 鐜板湪鏉ヨ嚜鍚屼竴浠?authoritative 鍦烘櫙婧?- 闈跺瓙鍛戒腑銆侀噸鐢熴€佸瓙寮逛綅缃拰閫熷害涓嶅啀鐢卞悗绔寽娴?- 棰勮椤靛瀛愬脊鐨勮鎰熸瘮涔嬪墠鏇存帴杩戞闈㈢鏈湴杩愯鏁堟灉
+  - 闁哄倹婢橀·?authoritative scene 闁告帒妫欓弫?
+  - authoritative 婵☆垪鈧磭纭€濞戞挸顑勭粭澶愬礃瀹ュ棛澹岄柟?`shots` 闁哄牜鍓欏﹢鎾偨閻旂鐏囬悗娑欏姇閼村﹪鏁嶇仦鑲╃槏濞戞挸绉撮崯鈧柡鍫墮濠€鎾箳閵婏妇宸?target respawn
+  - 闁烩晛鐡ㄧ敮瀵哥磽閹惧磭鎽犻柛鎾崇Ф椤忣剚绋夋繝浣虹倞闁?bullets / targets / score / hits / theme
+  - 闁哄唲鍥ｅ亾閺勫繒甯嗗ǎ鍥ㄧ箘閺嗏偓濞达絾绮岄崥瀣偓鍦嚀閸樿鎯?- `backend/tank_trouble_preview_page.py`
+  - viewer 閻犲洩顕цぐ?`vx / vy`
+  - 闁告艾濂旂粩瀛樼閽樺褰ラ柣鎾楀啰鎽犳繛鑼帛濠€锟犳⒒鐎涙ê鐦婚梺顐ゅ枎鐎规娊宕烽妸锔芥嫳闁革附濯界换娑氱磼椤撶喎鑵归弶鈺傜☉閻℃瑥顕?  - 闁告瑯浜濆﹢渚€宕烽妸锔界厐闊浂鍋嗛崣搴ㄥ礆閹峰本褰ч柡鍐煐婢х娀宕戝鍏呮唉闂佹彃绻嬬紞鍛磾椤旂晫澧℃慨婵撶秶缁辨繈鏌嗛崹顔煎赋閻熸瑥鍊归崝鍛▔婵為敮鍋撳鍕籍闁告锕ユ刊鍧楀灳?
+闁稿繑濞婇弫顓犵磼閹惧浜柨?- 婵炴潙绻楅～宥夊闯閵娾晩鏆曢悷娆忕墢濞?tank / bullets / targets 闁绘粍婢樺﹢顏堝级閵夈劌娈伴柛姘缁斿瓨绂?authoritative 闁革妇鍎ゅ▍娆忊攦?- 闂傚牐娉涢悺娆撳川閹存帟鍘柕鍡曠窔閸ｆ悂鎮介悢绮瑰亾娴ｅ摜鎽嶇€殿噣鈧稓绉寸紓鍐惧枛閹蜂即鏌呴悢宄邦唺濞戞挸绉撮崯鈧柣銏犲船閹绮╅婊冾嚥婵?- 濡澘瀚～宥嗐亜闂堟侗鍤犻悗娑欏姇閼村﹪鎯冮崟顕呮綆闁规壆鍠愰惁顔界▕鐎ｎ亜顤呴柡鍥х摠鐢瓨娼婚幋鐑嗘斀闂傚牄鍨婚顒勫嫉椤掆偓濠€瀛樻交閹邦垼鏀介柡浣哥墛閻?
 
-楠岃瘉缁撴灉锛?- `cmd /c npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
-- 棰濆瀵?`TankTroublePreviewRuntime` 鍋氫簡 authoritative push 鑷祴锛岀‘璁よ繑鍥?state 涓凡鍖呭惈鐪熷疄 `theme / score / bullets / targets / vx / vy`
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?- `cmd /c npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
+- 濡増绻傞ˇ鑽も偓?`TankTroublePreviewRuntime` 闁稿鐭花?authoritative push 闁煎浜濈粊鎾晬瀹€鈧垾妯兼媼閵堝牏绠查柛?state 濞戞搩鍘奸崙锟犲礌閸涱厽鍎撻柣顏嗗枎閻?`theme / score / bullets / targets / vx / vy`
 
-## 闃舵 31锛氫慨澶嶇▼搴忓唴鏇存柊鏃?backend 鏂囦欢鍗犵敤
-涓昏鐩爣锛?- 瑙ｅ喅绋嬪簭鍐呮洿鏂版椂 NSIS 瀹夎鍣ㄨ鐩?`cloud-console-backend.exe` 澶辫触鐨勯棶棰?- 璁╂洿鏂板畨瑁呭墠鍏堜富鍔ㄩ噴鏀?sidecar backend 鐨勬枃浠跺彞鏌?
-涓昏瀹炵幇锛?- `src-tauri/src/main.rs`
-  - `BackendRuntime` 鏂板 `port`
-  - 鏂板 `terminate_backend_child()` 鍜?`wait_for_backend_stop()`
-  - 鏂板 `prepare_update_install` command
-  - 鏇存柊鍓嶅厛 kill backend sidecar锛屽啀绛夊緟鐩戝惉绔彛鍏抽棴鍜屾枃浠堕攣閲婃斁
+## 闂傚啳鍩栭?31闁挎稒鐭幈銊﹀緞瀹ュ洠鏌ら幖鏉戠箰閸炴挳寮寸€涙ɑ鐓€闁?backend 闁哄倸娲ｅ▎銏ゅ础閻樺灚鏆?
+濞戞挻妲掗々锕傛儎椤旂晫鍨奸柨?- 閻熸瑱绲介崰鍛矙鐎ｎ亞纰嶉柛鎰噺濞插潡寮悧鍫燁槯 NSIS 閻庣懓顦抽ˉ濠囧闯閵婎煈娲柣?`cloud-console-backend.exe` 濠㈡儼绮剧憴锕傛儍閸曨垱锛栧Λ?- 閻犱讲鏅滃ú鍧楀棘閺夎法鏆旈悷浣告噹婢х娀宕楅崼婊冪槣闁告柣鍔戦崳鎾绩?sidecar backend 闁汇劌瀚弸鍐╃鐠哄搫缍栭柡?
+濞戞挻妲掗々锔锯偓鍦仧楠炲洭鏁?- `src-tauri/src/main.rs`
+  - `BackendRuntime` 闁哄倹婢橀·?`port`
+  - 闁哄倹婢橀·?`terminate_backend_child()` 闁?`wait_for_backend_stop()`
+  - 闁哄倹婢橀·?`prepare_update_install` command
+  - 闁哄洤鐡ㄩ弻濠囧礈瀹ュ懎甯?kill backend sidecar闁挎稑鑻崯鈧紒娑橆槸缁剁喖鎯勯幋婵囧剶缂佹棏鍨拌ぐ娑㈠礂閹惰姤锛旈柛婊冩湰閺嬪啯绂掗崼鏇熸暁闂佹彃锕ラ弬?
 - `frontend/src/hooks/useAppUpdater.ts`
-  - 閲嶅啓 updater hook锛屾竻鐞嗗師鏈変贡鐮佸瓧绗︿覆
-  - 鏂板 `preparing` 鐘舵€?  - 璋冪敤 `prepare_update_install` 鍚庡啀鎵ц `installUpdate()`
+  - 闂佹彃绉撮崯?updater hook闁挎稑鏈粩濠氭偠閸℃鏂ч柡鍫濐槷鐠愶繝鎯嶆担鍝ユ憻缂佹缂氱憰?
+  - 闁哄倹婢橀·?`preparing` 闁绘鍩栭埀?  - 閻犲鍟伴弫?`prepare_update_install` 闁告艾楠搁崯鈧柟绗涘棭鏀?`installUpdate()`
 
-楠岃瘉缁撴灉锛?- `cmd /c npm run build` 閫氳繃
-- `cargo check --manifest-path src-tauri/Cargo.toml` 閫氳繃
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?- `cmd /c npm run build` 闂侇偅淇虹换?
+- `cargo check --manifest-path src-tauri/Cargo.toml` 闂侇偅淇虹换?
 
-鍏煎璇存槑锛?- 淇鍚庣殑鐗堟湰鍙樉钁楅檷浣庡悗缁▼搴忓唴鏇存柊澶辫触鐨勬鐜?- 浣嗗凡缁忓畨瑁呯殑鏃х増鏈鏋滄病鏈夆€滄洿鏂板墠鍏堝仠 backend鈥濈殑閫昏緫锛岀涓€娆″崌绾у埌杩欎釜淇鐗堟椂锛屼粛鍙兘闇€瑕佹墜鍔ㄥ叧闂▼搴忔垨缁撴潫 backend 杩涚▼鍚庡啀鐐瑰畨瑁呭櫒鐨勨€滈噸璇曗€?
-## 闃舵 17锛歍ank Trouble 浠庢湰鍦拌缁冨叆鍙ｅ垏鎹负鍦ㄧ嚎鎴块棿
+闁稿繒鍘ч鎰嫚鐎涙ɑ顫栭柨?- 濞ｅ浂鍠栭ˇ鏌ュ触鎼达絾鐣遍柣妤€鐗婂﹢浼村矗椤栨稒鈻旈柦浣诡殜濡鹃攱鎷呮惔鈩冨€电紓渚囧幘閳诲吋鎯旇箛鎾虫暥闁哄洤鐡ㄩ弻濠冨緞鏉堫偉袝闁汇劌瀚々褔鎮?- 濞达絽妫楅崙锛勭磼韫囨挾鏆旈悷浣告噽濞堟垿寮婢ф寮甸鈧々褔寮稿鍕⒕闁哄牆顦埀顒佺矋濞插潡寮弶鍨枀闁稿繐鐗嗘禒?backend闁炽儲绻勫▓鎴︽焻閺勫繒甯嗛柨娑樼灱椤戝洦绋夐埀顒€鈻庨垾鍐茬３缂佺嫏鍐ㄧ厒閺夆晜鐟ら柌婊勭┍椤旂⒈妲婚柣妤€鐗婂鍌炴晬鐏炶偐鐭濋柛娆樺灥閸忔﹢妫侀埀顒傛啺娴ｇ懓顤侀柛鏂诲妼閸櫻囨⒒椤撶姭鏌ら幖鏉戠箲閸ㄣ劎绱掗幘瀛樺皢 backend 閺夆晜绋撻埢濂稿触鎼粹€虫櫃闁绘劗鎳撻悾銊ф啑閸涱厽鐝ら柣銊ュ閳ь剚绮撻崳鍝ユ嫚閺囨せ鍋?
+## 闂傚啳鍩栭?17闁挎稒鐡朼nk Trouble 濞寸姴瀛╁﹢浼村捶閹峰矈鍞茬紓浣稿暙閸欏棝宕ｉ敐鍛€奸柟璇℃線鐠愮喖宕烽妸褍娈犻柟鏉戞健濡?
 
-鏈樁娈电洰鏍囷細
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 鎶?`寮€濮嬫父鎴廯 浠庡師鏉ョ殑鏈湴璁粌鍏ュ彛鏀规垚鐩存帴鍔犲叆浜戠鍦ㄧ嚎瀵瑰眬銆?- 淇濈暀 `娴嬭瘯寤惰繜` 鍏ュ彛锛屼絾涓嶈瀹冮樆濉炶繖娆″湪绾挎埧闂翠富閾捐矾鏀归€犮€?- 璁╅鑹插崰鐢ㄣ€佹埧闂存弧鍛樸€佸湪绾胯鍒嗐€佺鍦烘竻鍒嗐€佹浜￠噸鐢熴€佹崲鍥炬姇绁ㄨ繖浜涜鍒欑湡姝ｈ惤鍒颁簯绔潈濞佺姸鎬佷笂銆?
-鏈樁娈靛墠绔敼鍔細
+- 闁?`鐎殿喒鍋撳┑顔碱儐閻栧爼骞嬪?濞寸姴楠哥敮顐﹀级閵壯勭暠闁哄牜鍓欏﹢瀵告媼椤撶姷鐭婇柛蹇嬪劚瑜版盯寮ㄧ憴鍕亣闁烩晛鐡ㄧ敮鎾礉閻樻彃寮冲ù婊勫灩椤忣剟宕烽妸褍娈犻悗鐢垫嚀閻剟濡?- 濞ｅ洦绻勯弳鈧?`婵炴潙顑堥惁顖氼嚈閹壆绠縛 闁稿繈鍎辫ぐ娑㈡晬鐏炶偐绋诲☉鎾崇Х椤斺偓閻庣懓鍟村Ο鍡樼箙閻愬墎绠规繛鍡忊偓铏含缂佺偓瀵ч崺褔姊荤紙鐘茬槣闂佺偓宕橀惌楣冨绩瑜版巻鍋撻悩顔瑰亾?- 閻犱讲鏅犻·渚€鎳濋幓鎺戠獥闁活潿鍔婇埀顑跨劍閸┭囨⒒鐎涙ê濮柛娑櫱滈埀顑跨濠€顏嗙棯閼愁垼鍚€闁告帒妫庨埀顑胯兌椤洭宕烽悜妯碱伕闁告帒妫庨埀顑跨劍椤掑瓨绂嶉敓鐘叉闁汇垻鍠嗛埀顑跨劍瀹曟煡宕堕悙顒€顫岀紒浣靛姀缁绘牗绂嶅☉婊庢綈闁告帗鐟у﹢鈥愁潰閿濆牊鍎伴柛鎺楊暒缁垳绮╅娑欑秬濠电偘鑳舵慨鎼佸箑娴ｉ鐟愰柕?
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灡閺佸ジ宕濋…鎺旂獥
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - `GameSessionMode` 浠?`training | latency` 鏀规垚浜?`online | latency`銆?  - 澶у巺闃舵鏂板 `room/status` 杞锛屽彧鏌ョ湅鎴块棿鐘舵€侊紝涓嶆彁鍓嶅姞鍏ユ埧闂淬€?  - `寮€濮嬫父鎴廯 鐜板湪浼氬厛璋冪敤涓€娆?`match/sync`锛屾嬁鍒伴甯у湪绾跨姸鎬佸悗鍐嶈繘鍏ュ灞€銆?  - 鏂板 `createOnlineTankTroubleEngine(...)`锛屼笓闂ㄦ覆鏌撴湇鍔″櫒鏉冨▉杩斿洖鐨勭帺瀹躲€佸瓙寮广€佺洰鏍囧拰鍒嗘暟銆?  - 鍦ㄧ嚎妯″紡鏂板鏈湴 WebSocket 闀胯繛鎺ワ紝瀵规湰鍦?backend 鎸佺画鍙戦€侀敭鐩樿緭鍏ュ拰 `fire_seq`銆?  - 棰滆壊閫夋嫨澧炲姞浜嗕袱绉嶄氦浜掞細
-    - 宸插崰鐢ㄩ鑹茶繘鍏ュ懠鍚哥伅涓嶅彲閫夋€併€?    - 鐐瑰嚮宸插崰鐢ㄩ鑹茶Е鍙戞姈鍔ㄥ弽棣堛€?  - 褰?4 涓鑹查兘琚崰鐢ㄦ椂锛宍寮€濮嬫父鎴廯 鎸夐挳浼氱鐢ㄥ苟鏄剧ず `娓告垙宸叉弧`銆?  - 鍦ㄧ嚎妯″紡涓嬫帓琛屾涓嶅啀缁х画娌跨敤鏈湴缂撳瓨鍒嗘暟锛岃€屾槸鐩存帴浣跨敤鏈嶅姟鍣ㄨ繑鍥炵殑 `active_players`銆?  - 鎹㈠浘鎸夐挳涓嬫柊澧炴墍鏈夊凡鎶曠エ鐜╁鐨勯鑹叉爣璁帮紝骞跺湪鍏ㄥ憳鎶曠エ鍚庤繘鍏ユ洿寮虹殑鍊掕鏃惰瑙夋€併€?- `frontend/src/api/cloudApi.ts`
-  - 鏂板 `getTankTroubleRoomStatus(...)`
-  - 鏂板 `syncTankTroubleMatch(...)`
-  - 鏂板 `leaveTankTroubleMatch(...)`
-  - 鏂板 `openTankTroubleMatchSocket()`
+  - `GameSessionMode` 濞?`training | latency` 闁衡偓鐟欏嫬鐏囧ù?`online | latency`闁?  - 濠㈠爢鍐ㄦ硾闂傚啳鍩栭宀勫棘閺夋鏉?`room/status` 閺夌儐鍠涢妤呮晬鐏炶棄娑ч柡灞诲劤濠€鍛村箣閸ф锛熼柣妯垮煐閳ь兛绶ょ槐婵囩▔瀹ュ棗绲归柛鎾崇Т婵偤宕楅妷锕€鐓ｉ梻鍌涚暘閳?  - `鐎殿喒鍋撳┑顔碱儐閻栧爼骞嬪?闁绘粍婢樺﹢顏呭濮橆剙甯ラ悹瀣暟閺併倖绋夐埀顒€鈻?`match/sync`闁挎稑鏈€ｄ線宕氭导鎼禃閻㈩垎鍐╄含缂佹崘娉曟慨鎼佸箑娴ｅ憡鍊甸柛鎰Х缁绘﹢宕楅妷銉殸閻忕偐鍋撻柕?  - 闁哄倹婢橀·?`createOnlineTankTroubleEngine(...)`闁挎稑濂旂粭鎾绘⒒閵婏箒顩柡灞炬尰濠€鍥礉閳ヨ櫕鐝ら柡澶婂暙閳诲娼婚弬鎸庣闁汇劌瀚敮铏光偓纭呯堪閳ь兛绀侀悺娆忣嚕楠炲簱鍋撴担鐑樼獥闁哄秴娲ら幏浼村礆閸℃ɑ娈堕柕?  - 闁革负鍔庨崵搴∥熼垾宕囩闁哄倹婢橀·鍐嫉椤掆偓濠€?WebSocket 闂傗偓閼愁垳绠鹃柟鎭掑劵缁辨繄鈧絻顫夊﹢浼村捶?backend 闁归晲鑳堕悽濠氬矗閹达腹鍋撴笟鈧弫顓㈡儎濡法缈婚柛蹇嬪劚閹?`fire_seq`闁?  - 濡増绮忔竟濠囨焻婢跺顏ュ褏鍋涙慨鐐寸閸℃洝鈷堢紒澶婄С濮橈附绂嶉幒鐐电獥
+    - 鐎瑰憡褰冨畷浼存偨閵娾晩鏉归柤纭呭蔼缁绘﹢宕楅妷銉﹀殤闁告艾鎽滄导鍛▔瀹ュ懎璁查梺顐㈩槹閳ь兛闄嶉埀?    - 闁绘劗鎳撻崵顔碱啅閹绘帒绐楅柣顫姂椤や線鎳濋懠缂庢洟宕ｉ幋鐐差潔闁告柣鍔屽鑺ワ純閸稈鍋?  - 鐟?4 濞戞搩浜·渚€鎳濋弻銉ュ幋閻炴凹鍋勫畷浼存偨閵婏附顦ч柨娑樼暛鐎殿喒鍋撳┑顔碱儐閻栧爼骞嬪?闁圭顦甸幐铏濮橀硸娲ｉ柣顫妼閼荤喖寮伴崜褋浠?`婵炴挸鎲￠崹娆忣啅閸欏濮琡闁?  - 闁革负鍔庨崵搴∥熼垾宕囩濞戞挸顑嗙敮鎾舵偘鐏炵虎娓峰☉鎾崇Т閸熲偓缂備綀鍛暰婵炲矁娉曢弫銈夊嫉椤掆偓濠€瀵哥磽閹惧磭鎽犻柛鎺戞閺嗙喖鏁嶅畝鍐ｅ亾鐏炵偓笑闁烩晛鐡ㄧ敮瀛樻媴鐠恒劍鏆忛柡鍫濈Т婵喖宕抽妸銊х闁搞儳鍋熷▓?`active_players`闁?  - 闁瑰箍鍨瑰ù姗€骞愭径鎰唉濞戞挸顑嗛弻濠冩櫠閻愭潙顣查柡鍫濐槸閸戯繝骞庨弴鐘亶闁绘壕鏅涢宥夋儍閸曨垼鏉归柤鐟板级閻栵絿鎷嬬敮顔剧妤犵偠娉涘﹢顏堝礂閵娿儲鍠呴柟鑸垫礈閵堛劑宕ユ惔銈囩闁稿繈鍎插ú鍨嚕閾忚鐣遍柛濠冨笩椤撴悂寮幆閭︽綊閻熸瑥顦伴埀顑块檷閳?- `frontend/src/api/cloudApi.ts`
+  - 闁哄倹婢橀·?`getTankTroubleRoomStatus(...)`
+  - 闁哄倹婢橀·?`syncTankTroubleMatch(...)`
+  - 闁哄倹婢橀·?`leaveTankTroubleMatch(...)`
+  - 闁哄倹婢橀·?`openTankTroubleMatchSocket()`
 - `frontend/src/types/cloud.ts`
-  - 鏂板鍦ㄧ嚎鎴块棿銆佸湪绾跨帺瀹躲€佸湪绾垮瓙寮广€佸湪绾跨洰鏍囥€佸湪绾挎姇绁ㄧ瓑绫诲瀷瀹氫箟銆?- `frontend/src/styles/globals.css`
-  - 鏂板棰滆壊鍗犵敤鎬併€侀鑹叉姈鍔ㄣ€佹姇绁ㄧ偣闃点€佸€掕鏃舵寜閽己鍖栫姸鎬併€?- `frontend/src/styles/theme.css`
-  - 涓烘繁鑹叉ā寮忚ˉ榻愪笂杩版柊鏍峰紡銆?
-鏈樁娈?backend 鏀瑰姩锛?
+  - 闁哄倹婢橀·鍐捶閵娧冩疇闁规潙娼″Λ鍧楀Υ娴ｅ憡韬紒鎹愭硶鐢櫣鈧缈伴埀顑跨濠€顏嗙棯閸喚鎽嶇€殿喖绠嶉埀顑跨濠€顏嗙棯鐠恒劍绐楅柡宥呮储閳ь兛绀佸﹢顏嗙棯閹稿骸顫岀紒浣靛妿閻℃垹鐚剧拠鑼偓椋庘偓瑙勭煯缁犵喖濡?- `frontend/src/styles/globals.css`
+  - 闁哄倹婢橀·鍐╋紣濠婂棗顥忛柛妤冨Х閺併倝骞€娴ｇ鍋撴笟鈧·渚€鎳濋崣澶婎潔闁告柣鍔婇埀顑跨劍婵洨绮婇妸褍浠梻鍐仯閳ь兛绀侀埀顒佸笩椤撴悂寮懜闈涚樆闂佺瓔鍠栧閬嶅礌閺嶎偄笑闁诡兛闄嶉埀?- `frontend/src/styles/theme.css`
+  - 濞戞挾鍎ょ换渚€鎳濋崣澹炰礁顕ｈ箛姣稿顬囬幇顏嗙憪閺夆晝澧楅弻濠囧冀瀹勬壆纭€闁?
+闁哄牜鍓熷Ο浣糕枔?backend 闁衡偓閻熸澘袟闁?
 - `backend/models.py`
-  - 鏂板 `TankTroubleRoomStatusRequest`
-  - 鏂板 `TankTroubleMatchRequest / TankTroubleMatchState`
-  - 鏂板鍦ㄧ嚎鐜╁ / 瀛愬脊 / 鐩爣 / 鎶曠エ妯″瀷
+  - 闁哄倹婢橀·?`TankTroubleRoomStatusRequest`
+  - 闁哄倹婢橀·?`TankTroubleMatchRequest / TankTroubleMatchState`
+  - 闁哄倹婢橀·鍐捶閵娧冩疇闁绘壕鏅涢?/ 閻庢稒鍔曢懘?/ 闁烩晩鍠楅悥?/ 闁硅埖娲滈妶銊ノ熼垾宕団偓?
 - `backend/main.py`
-  - 鏂板 `POST /api/games/tank-trouble/room/status`
-  - 鏂板 `POST /api/games/tank-trouble/match/sync`
-  - 鏂板 `POST /api/games/tank-trouble/match/leave`
-  - 鏂板 `WS /api/games/tank-trouble/match/ws`
+  - 闁哄倹婢橀·?`POST /api/games/tank-trouble/room/status`
+  - 闁哄倹婢橀·?`POST /api/games/tank-trouble/match/sync`
+  - 闁哄倹婢橀·?`POST /api/games/tank-trouble/match/leave`
+  - 闁哄倹婢橀·?`WS /api/games/tank-trouble/match/ws`
 - `backend/tank_trouble_cloud.py`
-  - 鏂板鍦ㄧ嚎鎴块棿鐘舵€佹煡璇㈡ˉ鎺?  - 鏂板鍦ㄧ嚎瀵瑰眬鍚屾妗ユ帴
-  - 鏂板鍦ㄧ嚎瀵瑰眬绂诲満妗ユ帴
+  - 闁哄倹婢橀·鍐捶閵娧冩疇闁规潙娼″Λ鍧楁偐閼哥鍋撴担鍦弨閻犲洢鍨鸿棢闁?  - 闁哄倹婢橀·鍐捶閵娧冩疇閻庣數鎳撻惇顒勫触鐏炵虎鍔勬俊妞煎劜鐢?
+  - 闁哄倹婢橀·鍐捶閵娧冩疇閻庣數鎳撻惇顒傜矉鐠囧弶绨氭俊妞煎劜鐢?
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - 鎴块棿鐘舵€佹枃浠舵柊澧烇細
+  - 闁规潙娼″Λ鍧楁偐閼哥鍋撴担瑙勭€ù鐘哄煐閺屽﹥鏅堕悜鍥╃獥
     - `targets`
     - `bullets`
     - `next_bullet_id`
     - `snapshot_seq`
     - `last_tick_ms`
     - `player_revisions`
-  - 鏂板 `status` / `match_sync` / `match_leave` action
-  - 鍦ㄧ嚎鎴块棿鐜板湪浼氬湪浜戠鎺ㄨ繘锛?    - 鎵€鏈夊湪绾跨帺瀹剁Щ鍔ㄤ笌寮€鐏?    - 瀛愬脊瀵垮懡 / 鍙嶅脊 / 鍛戒腑
-    - 鐩爣鍒锋柊
-    - 鍒嗘暟 / 鍛戒腑 / 姝讳骸
-    - 1 绉掗噸鐢?    - 绂诲満鍚庝繚鐣欐棫鐐脊鑷劧娑堝け
-    - 鎹㈠浘鎶曠エ鍊掕鏃?
-鍏抽敭璁捐鍐崇瓥锛?
-- 鍦ㄧ嚎妯″紡涓嶅啀鎶婂浜虹粨鏋滀氦缁欏墠绔嚜宸辩畻锛岃€屾槸缁熶竴浜ょ粰浜戠鑴氭湰鎺ㄨ繘鏉冨▉鐘舵€併€?- 鍓嶇鏈湴浠嶄繚鐣欐覆鏌撳钩婊戝拰灞€閮ㄩ娴嬶紝杩欐牱鎵嬫劅涓嶄細閫€鍖栨垚鈥滅函绮圭瓑鏈嶅姟鍣ㄥ洖甯у啀鍔ㄢ€濄€?- 绂诲満鍚庢棫鐐脊缁х画椋烇紝浣嗛€氳繃 `player_revisions` 閬垮厤鍚?ID 鐜╁閲嶆柊鍔犲叆鍚庤鏃х偖寮圭户缁疮璁″垎鏁般€?- 杩欐鏀瑰姩鏄庣‘涓嶇瑙嗛閾捐矾鍜屾帶鍒朵俊鍙风洃鍚摼璺紝浣滅敤闈粎闄?Tank Trouble 娓告垙闈㈡澘銆?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+  - 闁哄倹婢橀·?`status` / `match_sync` / `match_leave` action
+  - 闁革负鍔庨崵搴ㄥ箣閸ф锛熼柣婊勬緲濠€顏呭濮橆剚韬ù婊勫灩椤忣剟骞掗妸銊х闁?    - 闁圭鍋撻柡鍫濐槸濠€顏嗙棯鐠恒劌璐熼悗鐟板浜涢柛鏂诲妺缁楀苯顕ｉ埀顒勬倶?    - 閻庢稒鍔曢懘濠勨偓闈涚仢閹?/ 闁告瑥绉撮懘?/ 闁告稒鍨濋懙?
+    - 闁烩晩鍠楅悥锝夊礆闁垮鐓€
+    - 闁告帒妫欓弳?/ 闁告稒鍨濋懙?/ 婵繆顔婃?
+    - 1 缂佸甯￠崳鎼佹偨?    - 缂佸倽顕у┃鈧柛姘凹缁绘岸鎮惧▎鎰紜闁绘劦鍠栭懘濠囨嚊椤忓棗濮ф繛鎴濈墕閵?
+    - 闁瑰箍鍨瑰ù姗€骞庨弴鐘亶闁稿﹥甯熼鎼佸籍?
+闁稿繑濞婇弫顓犳媼閹规劦鍚€闁告劕纾悺銉╂晬?
+- 闁革负鍔庨崵搴∥熼垾宕囩濞戞挸绉撮崯鈧柟璺猴工椤︽寧绂嶉搹鍦尝闁哄绮堝锔剧磼濞嗗繐顤呯紒鏃戝灥閸ゆ粌顔忔潏鈺冩毈闁挎稑鐭侀埀顒€鏈Σ鍝ョ磼閻斿墎顏卞ù婧垮€楃划鐗堢閹寸媭浼傞柤瀛樼濠€浼村箳閵娿劎绠婚柡澶婂暙閳诲鎮╅懜纰樺亾娴ｇ鍋?- 闁告挸绉堕顒勫嫉椤掆偓濠€瀛樼瀹ュ嫮绠介柣锝嗙懄鐟曞棝寮婚幘鎶芥尙婵犲﹥鍨甸幏鎵沪閳ь剟鏌堥妸鈺婃殨婵炴潙顑戠槐婵囨交濞嗘劗澹夐柟闈涱儐閸斿懏绋夊鍕獥闂侇偀鍋撻柛鏍ㄧ墬閸ㄦ岸鍨惧鍛毐缂侇喖婀遍悺鎴﹀嫉瀹ュ懎顫ら柛锝冨妼濞叉牜鏁閸熲偓闁告柣鍔夐埀顒佺缚閳?- 缂佸倽顕у┃鈧柛姘濡偊鎮欓鑹板墾缂備綀鍛暰濡炲鍎戠槐婵囨媴閸℃稈鍋撳宕囩畺 `player_revisions` 闂侇剙鐏濋崢銈夊触?ID 闁绘壕鏅涢宥夋煂瀹ュ棙鐓€闁告梻濮撮崣鍡涘触鎼淬値娼堕柡鍐勫懎浠忕€殿喖婀遍幋椋庣磼椤撶姷鏌堥悹浣测偓鍐茬€婚柡浣藉焽閳?- 閺夆晜鐟﹂濂稿绩閻熸澘袟闁哄嫬娴烽垾妯荤▔瀹ュ浂娼鹃悷娆忔椤ｅ爼鏌ч幑鎰唴闁告粌鏈敮鍫曞礆閺堝吀绻嗛柛娆擃棑濞插啴宕ラ鍕嚑閻犱警鍨界槐婵囨媴濠婂懏鏆忛梻鍫線缁酣姊?Tank Trouble 婵炴挸鎲￠崹娆撴閵忊剝绶查柕?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-## 闃舵 18锛歍ank Trouble 鍦ㄧ嚎鎴块棿瑙勫垯琛ヤ竵
+## 闂傚啳鍩栭?18闁挎稒鐡朼nk Trouble 闁革负鍔庨崵搴ㄥ箣閸ф锛熼悷娆忓閸垳鎮伴妷銈囶伈
 
-鏈樁娈电洰鏍囷細
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 鍦ㄥ凡缁忚仈鏈哄寲鐨?Tank Trouble 鍩虹涓婏紝鎶婇€€鍑洪噸杩涖€侀鑹插崰鐢ㄣ€佹弧鎴裤€佹崲鍥炬姇绁ㄨ繖鍑犳潯瑙勫垯鍐嶆敹绱т竴鐗堛€?- 淇濊瘉鈥滃悓 ID 绂诲満鍚庨噸鏂拌繘鍏モ€濈湡姝ｈ〃鐜版垚涓€涓柊浼氳瘽锛岃€屼笉鏄涓婁竴娆℃畫鐣欑偖寮圭户缁奖鍝嶃€?- 寮哄寲鎹㈠浘鎶曠エ鐨勫彲瑙嗗弽棣堬紝璁╂墍鏈夌帺瀹舵洿瀹规槗鐪嬫噦鐜板湪鏄皝鎶曚簡銆佹槸鍚﹀凡鍏ㄥ憳鎶曠エ銆佹槸鍚﹀凡杩涘叆 3 绉掑€掕鏃躲€?
-鏈樁娈靛墠绔敼鍔細
+- 闁革负鍔岄崙锛勭磼韫囨矮绮撻柡鍫濇惈鐎垫煡鎯?Tank Trouble 闁糕晞娅ｉ、鍛▔婵犲繒绀夐柟璺猴躬閳ь兘鍋撻柛鎴炴そ閸ｅ憡娼诲☉鏍ゅ亾娓氣偓椤や線鎳濋幓鎺戠獥闁活潿鍔婇埀顑跨劍瀵囧箣鐟併倐鍋撴担鐟板簥闁搞儳鍋撴慨鍥╃矈閵娿劎绠归柛鎴犲У濞碱垳鎲撮崟顐㈢仧闁告劕绉甸弫鍦瑜岀粩鎾偋閸稈鍋?- 濞ｅ洦绻嗛惁澶愬灳濠婂啯鍊?ID 缂佸倽顕у┃鈧柛姘叄閸ｆ悂寮幏宀€绠婚柛蹇嬪劗閳ь剚绻勫﹢鈥愁潰閿濆牄鈧啴鎮抽悧鍫濈亣濞戞挴鍋撳☉鎿冧簼閺屽﹥瀵煎宕囨▓闁挎稑鐭侀埀顒€濂旂粭澶愬及椤栨繍娼跺☉鎾筹梗缁旀潙鈻庨埄鍐殭闁伙絾鐟ч崑鏍ь嚕閸︻厽鍩涚紓渚囧幖婵傛牠宕鍐ｅ亾?- 鐎殿喖鎼€垫煡骞戦姀鐘崇闁硅埖娲滈妶銊╂儍閸曨偄璁查悷娆忔瀵姤锛冮崼顒傜閻犱讲鏅滄晶宥夊嫉婢跺苯璐熼悗纭呭煐濞茶法鈧顫夊Σ妤呮儑鐎ｎ偄娅愰柣婊勬緲濠€顏堝及椤栨繄娈遍柟鑸垫磻缁繝濡存担瑙勑﹂柛姘剧畱閸戯繝宕楅妸銉﹀枀闁硅埖娲滈妶銊╁Υ娴ｈ笑闁告熬绠戦崙鈩冩交濞戞ê寮?3 缂佸甯掗埀顒佸笩椤撴悂寮煬娴嬪亾?
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灡閺佸ジ宕濋…鎺旂獥
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - 淇濇寔 `寮€濮嬫父鎴?-> 鍦ㄧ嚎鍔犲叆鏈嶅姟鍣╜ 杩欐潯涓昏矾寰勩€?  - 澶у巺闃舵缁х画鍙蛋 `room/status`锛屼笉鎻愬墠娉ㄥ唽鐜╁銆?  - 褰撻鑹茶鍗犵敤鏃讹細
-    - 鑹茬偣淇濇寔鍛煎惛鐏姸鎬?    - 鐐瑰嚮瑙﹀彂鎶栧姩鎻愮ず
-  - 褰撴埧闂?4 涓鑹查兘宸插崰婊℃椂锛?    - `寮€濮嬫父鎴廯 绂佺敤
-    - 鎸夐挳鏂囨鏄剧ず `娓告垙宸叉弧`
-  - 缁欐崲鍥炬寜閽ˉ涓婃洿缁嗙殑鐘舵€佺被鍚嶏細
+  - 濞ｅ洦绻冪€?`鐎殿喒鍋撳┑顔碱儐閻栧爼骞?-> 闁革负鍔庨崵搴ㄥ礉閻樻彃寮抽柡鍫濈Т婵喖宕抽埡?閺夆晜鐟﹀顖涚▔閺勫繒鐔呯€垫澘瀚ㄩ埀?  - 濠㈠爢鍐ㄦ硾闂傚啳鍩栭宀€绱掕閻㈠宕ｉ鍥巢 `room/status`闁挎稑濂旂粭澶愬箵閹邦剙顤呮繛澶堝妼閸炰粙鎮抽埡渚囧晙闁?  - 鐟滅増鎹囬·渚€鎳濋懠棰濇蕉闁告濮烽弫銈夊籍鐠佸湱绐?
+    - 闁肩灏欓崑锝嗙┍濠靛洤鐦柛娑氬帶閹盯鎮橀婊冃﹂柟?    - 闁绘劗鎳撻崵顔炬喆閿曗偓瑜板倿骞庨弽褍袟闁圭粯鍔楅妵?
+  - 鐟滅増鎸婚崺褔姊?4 濞戞搩浜·渚€鎳濋弻銉ュ幋鐎瑰憡褰冨畷鏉款煥閳╁啯顦ч柨?    - `鐎殿喒鍋撳┑顔碱儐閻栧爼骞嬪?缂佸倷鑳堕弫?
+    - 闁圭顦甸幐鎶藉棘閸ヮ煈鏀抽柡鍕⒔閵?`婵炴挸鎲￠崹娆忣啅閸欏濮琡
+  - 缂備焦鐟﹀畷鏌ュ炊閻愵剙鐦婚梺绛嬪枦钘熷☉鎾筹攻濞茶法绱掗崱娆愮暠闁绘鍩栭埀顑胯兌鐞氼偊宕ュ蹇曠獥
     - `active`
     - `armed`
     - `countdown`
     - `countdown-3 / countdown-2 / countdown-1`
 - `frontend/src/styles/globals.css`
-  - 鏂板 `armed` 鐘舵€佹壂鍏夊拰鎶曠エ鍦嗙偣鍛煎惛鏁堟灉銆?  - 鏂板 `countdown` 鐘舵€佸姩鎬佸簳绾广€佸渾鐐归棯鐑佸拰鎸夌鍙樺揩鐨勫€掕鏃惰妭濂忋€?  - 缁欐姇绁ㄦ爣璁?badge 澧炲姞浜嗘洿鏄庢樉鐨勬偓鍋滃弽棣堛€?- `frontend/src/styles/theme.css`
-  - 涓烘繁鑹叉ā寮忚ˉ榻?`armed / countdown` 瀵瑰簲瑙嗚鏍峰紡銆?
-鏈樁娈靛悗绔敼鍔細
+  - 闁哄倹婢橀·?`armed` 闁绘鍩栭埀顑跨劍婢瑰倿宕楁径濠冨闁硅埖娲滈妶銊╁捶閸℃瑥浠柛娑氬帶閹盯寮崼鐔轰函闁?  - 闁哄倹婢橀·?`countdown` 闁绘鍩栭埀顑跨婵晠骞€娴ｅ摜淇虹紒鎯х畭閳ь兛绀佸〒楣冩倷瑜版帗锛忛柣鎴滅閹蜂即骞愭径宀婃健闁告瑦锚閹烩晠鎯冮崟顐熷亾閹烘洦鍚€闁哄啯鍎兼俊顓熺附韫囧鍋?  - 缂備焦鐟︽慨鍥╃矈閵婏妇鍨奸悹?badge 濠⒀呭仜婵偞绂嶉崱妯荤函闁哄嫬瀛╁Ο澶愭儍閸曨剙浜鹃柛瀣矊瀵姤锛冮崼娑掑亾?- `frontend/src/styles/theme.css`
+  - 濞戞挾鍎ょ换渚€鎳濋崣澹炰礁顕ｈ箛姣稿顬?`armed / countdown` 閻庣數鎳撶花鑼喆閸℃凹娼曢柡宥呭槻缁憋繝濡?
+闁哄牜鍓熷Ο浣糕枔闂堟稒鍊电紒鏃戝灡閺佸ジ宕濋…鎺旂獥
 
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - 鍦ㄧ嚎鍙戝皠涓婇檺缁熻鐜板湪鏀逛负鎸?`owner_id + owner_revision` 缁熻銆?  - 杩欐牱鍚屼竴涓?`player_id` 绂诲満鍚庡啀杩涘叆鏃讹細
-    - 涓婁竴杞畫鐣欑偖寮逛笉浼氱户缁崰鐢ㄨ繖涓€杞殑 `5 鍙戜笂闄恅
-    - 涓婁竴杞畫鐣欑偖寮逛笉浼氳閿欒鍒ゅ畾鎴愨€滄柊鑷繁鎵撲腑鏂拌嚜宸扁€濈殑鑷激
-  - 淇濈暀鏃ц鍒欙細
-    - 鐜╁绂诲満鍚庢棫鐐脊浠嶇劧鑷劧椋炶鐩村埌瀵垮懡缁撴潫
-    - 鐜╁姝讳骸鍚?1 绉掗噸鐢?    - 鍚?ID 閲嶈繘浠?0 鍒嗛噸鏂板紑濮?
-鍏抽敭缁撴灉锛?
-- 鍦ㄧ嚎鎴块棿鐨勨€滈€€鍑?-> 閲嶈繘鈥濊涓虹幇鍦ㄦ洿鎺ヨ繎姝ｅ紡澶氫汉瀵规垬璇箟銆?- 棰滆壊鍗犵敤銆佹弧鎴裤€佹姇绁ㄦ崲鍥句笁绫荤姸鎬侀兘鑳芥洿鐩磋鐪嬭銆?- 娌℃湁瑙︾瑙嗛閾捐矾鍜屾帶鍒朵俊鍙烽摼璺紝浣滅敤闈粛鐒跺彧鍦?Tank Trouble 灏忕▼搴忔父鎴忛潰鏉裤€?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
+  - 闁革负鍔庨崵搴ㄥ矗閹存繄娈稿☉鎾筹躬濡捐櫣绱掗悢娲诲悁闁绘粍婢樺﹢顏堝绩闁稖绀嬮柟?`owner_id + owner_revision` 缂備胶鍠曢鎼佸Υ?  - 閺夆晜鐟﹂悧閬嶅触鐏炶偐顏卞☉?`player_id` 缂佸倽顕у┃鈧柛姘閸熲偓閺夆晜绋戦崣鍡涘籍鐠佸湱绐?
+    - 濞戞挸锕ｇ粩瀛樻姜椤旂晫鏆欓柣锝嗙懅閸嬫牕顕ｉ柅娑氱憹濞村吋姘ㄩ幋椋庣磼椤撶偛绐楅柣顫姀缁绘牗绋夐埀顒佹姜椤旂偓鐣?`5 闁告瑦鍨崇粭鍌炴⒔閹?
+    - 濞戞挸锕ｇ粩瀛樻姜椤旂晫鏆欓柣锝嗙懅閸嬫牕顕ｉ柅娑氱憹濞村吋淇洪～锕傛煥濞嗘帩鍤栭柛鎺嬪€曢悾楣冨箣閹般劉鍋撳鍕厐闁煎浜滅换渚€骞嶉幘鑼跺幀闁哄倹濯介崵婊冾啅閹典讲鍋撳┑鍫熺暠闁煎浜欏┑鈧?
+  - 濞ｅ洦绻勯弳鈧柡鍐勫棭娼愰柛鎺撶懕缁?
+    - 闁绘壕鏅涢宥囩矉鐠囧弶绨氶柛姘濡偊鎮欓鑹板墾濞寸姴绉堕崝褔鎳涢鍡楀Ё濡炲鍋犻、鎴︽儎閺夋垵鐓傞悗闈涚仢閹筹紕绱掗幘瀛樺皢
+    - 闁绘壕鏅涢宥咁潰鐠佹娊顎楅柛?1 缂佸甯￠崳鎼佹偨?    - 闁?ID 闂佹彃绉风换妯荤?0 闁告帒妫濋崳鎼佸棘閺夎法纾诲┑?
+闁稿繑濞婇弫顓犵磼閹惧浜柨?
+- 闁革负鍔庨崵搴ㄥ箣閸ф锛熼柣銊ュ閳ь剚绮撻埀顑藉亾闁?-> 闂佹彃绉风换姗€鍨惧┑濠庢斀濞戞捁娅ｉ獮鍥捶閵婏附绾柟鎭掑劥缁诲骸顫㈤敐鍛濠㈣埖鐭Ч澶屸偓浣冾潐閸剛鎷犻婵堢枀闁?- 濡増绮忔竟濠囧础閻樺灚鏆忛柕鍡曠劍瀵囧箣鐟併倐鍋撴担鐟邦潓缂佷降鍔嶅畷鏌ュ炊閸欍儳鐟忕紒顐ュ吹婵悂骞€娓氣偓閸忔﹢鎳楅懞銉︾函闁烩晝顥愰～鍥儑鐎ｎ収娼岄柕?- 婵炲备鍓濆﹢浣烘喆閿旂虎娼鹃悷娆忔椤ｅ爼鏌ч幑鎰唴闁告粌鏈敮鍫曞礆閺堝吀绻嗛柛娆戝厴閹借偐鎹勯銈囩濞达絾绮庨弫銈夋椤厾鐭濋柣鎺曟硾瑜把囧捶?Tank Trouble 閻忓繐绻掗埢鍏兼償韫囨梻鍩楅柟鏉戠箻濞间即寮剁憗銈傚亾?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
 
-## 闃舵 19锛歍ank Trouble 鍦ㄧ嚎鍚屾鏀逛负鈥滄湰鏈烘湰鍦拌窇 + 浜戠鍒嗗彂浠栦汉鐘舵€佲€?
-鏈樁娈电洰鏍囷細
+## 闂傚啳鍩栭?19闁挎稒鐡朼nk Trouble 闁革负鍔庨崵搴ㄥ触鐏炵虎鍔勯柡鈧柅娑滅闁炽儲绮嶅﹢浼村嫉閻戞ɑ鎷遍柛锔藉缁?+ 濞存粍鍨归顒勫礆閸℃绲哄ù鐘崇墧濮瑰鎮╅懜纰樺亾娴ｆ祴鍋?
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 鎶婂湪绾挎ā寮忎粠鈥滄湰鏈鸿緭鍏ヤ笂浼?-> 浜戠鍥炰紶鏈満涓庝粬浜哄畬鏁存潈濞佺姸鎬?-> 鍓嶇鎸佺画绾犳鏈満鈥濇敼鎴愶細
-  - 鏈満鍧﹀厠鏈湴鎺ㄨ繘浣嶇Щ
-  - 鍓嶇涓婃姤鏈満浣嶇疆/鏈濆悜涓庡紑鐏簨浠?  - 浜戠鍙洖浼犲叾浠栫帺瀹躲€佺偖寮广€佺洰鏍囩姸鎬佸拰鏈満鎴樻灉/鐢熸鐘舵€?- 闄嶄綆鏈満鍧﹀厠鍥犱负浜戠鍥炲寘绾犳瀵艰嚧鐨勬嫋鎷芥劅鍜屽崱椤挎劅銆?
-鏈樁娈靛崗璁敼鍔細
+- 闁硅泛锕ゅ﹢顏嗙棯閹稿範浣割嚕韫囧海鐭ら柍銉︾矋濠€浼村嫉妤﹁法缈婚柛蹇嬪劙缁楀倹瀵?-> 濞存粍鍨归顒勫炊閻愭壆鐐婇柡鍫墯濠р偓濞戞挸绨肩划顒佺閸濆嫮鏆氶柡浣哥摠濞煎牊绻涙担鍝勑﹂柟?-> 闁告挸绉堕顒勫箰娴ｈ櫣鏁剧紒鍓уУ椤掓粓寮甸浣圭皻闁炽儲绻冮弫濂稿箣閹板墎绐?
+  - 闁哄牜鍓氬┃鈧柛褝绠戦崢鐘诲嫉椤掆偓濠€鎾箳閵娿劎绠诲ù锝呯Ф浜?
+  - 闁告挸绉堕顒佺▔婵犲啫袚闁哄牜鍓氬┃鈧ù锝呯Ф閻?闁哄牊绻傞幃婊勭▔鎼达紕纾婚柣蹇ｅ亗缁ㄣ劍绂?  - 濞存粍鍨归顒勫矗椤忓嫭绀€濞磋偐濮撮崣鐐閺嶎偄璐熼悗纭呯堪閳ь兛鑳堕崑鏍ь嚕楠炲簱鍋撴担鐑樼獥闁哄秴娲ㄦ慨鎼佸箑娴ｅ憡瀚查柡鍫墯濠р偓闁瑰瓨蓱閻?闁汇垻鍠愰鎾偐閼哥鍋?- 闂傚嫬绉崇紞鍡涘嫉椤掍焦绨氶柛褝绠戦崢鐘诲炊閻樿精绀嬪ù婊勫灩椤忣剟宕堕悙鎻掔樁缂佸墽濮甸婊呪偓浣冨閸ぱ囨儍閸曨剙鐝涢柟鐤Г閸斿懘宕仦钘夊耿濡炪倖瀵ч崝鍛村Υ?
+闁哄牜鍓熷Ο浣糕枔闂堟稑绀傞悹渚囧枟閺佸ジ宕濋…鎺旂獥
 
 - `backend/models.py`
-  - 鏂板 `TankTroubleMatchLocalPlayerSyncState`
-  - 鏂板 `TankTroubleMatchLocalState`
-  - `TankTroubleMatchRequest` 鏂板 `local_player`
-  - `TankTroubleMatchState` 鏂板 `local_state`
+  - 闁哄倹婢橀·?`TankTroubleMatchLocalPlayerSyncState`
+  - 闁哄倹婢橀·?`TankTroubleMatchLocalState`
+  - `TankTroubleMatchRequest` 闁哄倹婢橀·?`local_player`
+  - `TankTroubleMatchState` 闁哄倹婢橀·?`local_state`
 - `frontend/src/types/cloud.ts`
-  - 涓庡悗绔悓姝ユ柊澧炶仈鏈烘湰鏈虹姸鎬佺被鍨?- `frontend/src/components/TankTroublePanel.tsx`
-  - `TankTroubleEngine` 鏂板 `buildMatchSyncState()`
-  - 鍦ㄧ嚎鍚屾鏃舵妸鏈満鏈湴鍧﹀厠鐨?`x / y / angle / radius` 鍙戠粰鍚庣
+  - 濞戞挸楠搁幃妤冪博椤栨碍鍊辨慨婵勫劜閺屽﹥鏅堕悙鏈电矒闁哄牏鍎ゅ﹢浼村嫉閾忕懓笑闁诡兛鑳剁悮顐﹀垂?- `frontend/src/components/TankTroublePanel.tsx`
+  - `TankTroubleEngine` 闁哄倹婢橀·?`buildMatchSyncState()`
+  - 闁革负鍔庨崵搴ㄥ触鐏炵虎鍔勯柡鍐煐婵℃悂寮甸浣圭皻闁哄牜鍓欏﹢鎾锤閿曗偓閸樼娀鎯?`x / y / angle / radius` 闁告瑦鍨圭划浼村触鎼达綆浼?
 
-鏈樁娈典簯绔€昏緫鏀瑰姩锛?
+闁哄牜鍓熷Ο浣糕枔閸忓摜闅樼紒鏃戝灦閳ь剚妲掔欢顐﹀绩閻熸澘袟闁?
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - 鏂板 `normalize_match_local_player(...)`
-  - 鏂板 `apply_reported_match_player_state(...)`
-  - `match_sync` 涓嶅啀鎸夋柟鍚戦敭鍦ㄤ簯绔ā鎷熸湰鏈哄潶鍏嬬殑骞崇Щ/杞悜
-  - 浜戠鏀逛负鎺ユ敹鍓嶇涓婁紶鐨勬湰鏈轰綅缃笌鏈濆悜
-  - 浜戠缁х画璐熻矗锛?    - 鐐脊鐢熸垚涓庢帹杩?    - 鐐脊鍙嶅脊
-    - 鍛戒腑鍒ゅ畾
-    - 鍒嗘暟 / 鍛戒腑 / 姝讳骸缁熻
-    - 1 绉掗噸鐢?    - 鎴块棿鎶曠エ鎹㈠浘
-  - `build_match_state(...)` 鐜板湪锛?    - `players` 鍙繑鍥炲叾浠栫帺瀹?    - 鏈満鍗曠嫭璧?`local_state`
+  - 闁哄倹婢橀·?`normalize_match_local_player(...)`
+  - 闁哄倹婢橀·?`apply_reported_match_player_state(...)`
+  - `match_sync` 濞戞挸绉撮崯鈧柟绋款槹閺岀喖宕ラ幋锔芥殯闁革负鍔嬬花顖滅博椤栨丹渚€骞忛悢鍛婃嫳闁哄牆鎼鍫曞礂鐎ｎ剚鐣辨鐐茬－浜?閺夌儐鍓欓幃?
+  - 濞存粍鍨归顒勫绩闁稖绀嬮柟鎭掑劜閺佸綊宕滃鍥朵紓濞戞挸锕ｇ槐鍫曟儍閸曨剚鎷遍柡鍫ｆ〃缂嶅懐绱旈鑽ょ憿闁哄牊绻傞幃?
+  - 濞存粍鍨归顒傜磼瑜忛悽鑽ゆ嫻閻旇崵鐓戦柨?    - 闁绘劦鍠栭懘濠囨偨閻旂鐏囧☉鎾冲鐢娼?    - 闁绘劦鍠栭懘濠囧矗瀹ュ懓鍓?
+    - 闁告稒鍨濋懙鎴﹀礆閵堝懐鏆?
+    - 闁告帒妫欓弳?/ 闁告稒鍨濋懙?/ 婵繆顔婃鍝ョ磼閻旀椿鍚€
+    - 1 缂佸甯￠崳鎼佹偨?    - 闁规潙娼″Λ鍧楀箮閺囩姰鍋嶉柟骞垮灩濞?
+  - `build_match_state(...)` 闁绘粍婢樺﹢顏堟晬?    - `players` 闁告瑯浜ｇ换鎴﹀炊閻愭彃寰撳ù鐘崇墱鐢櫣鈧?    - 闁哄牜鍓氬┃鈧柛妤佹礈鐎氼厾鎸?`local_state`
 
-鏈樁娈靛墠绔湪绾垮紩鎿庢敼鍔細
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灠濠€顏嗙棯閸喚绌块柟鍨閺佸ジ宕濋…鎺旂獥
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - `createOnlineTankTroubleEngine(...)` 鏀逛负鏈満/浠栦汉鍒嗙缁撴瀯
-  - `localPlayer` 浣滀负鍗曠嫭鐨勬湰鍦板璞＄淮鎶?  - `players` Map 鍙繚鐣欏叾浠栫帺瀹?  - 鏈満鍧﹀厠鐨勪綅绉讳笌鏈濆悜瀹屽叏鐢辨湰鍦版帹杩?  - 浜戠鍙湪杩欎簺鏃舵満寮哄埗淇鏈満锛?    - 棣栨鍔犲叆
-    - 鍦板浘鍒囨崲
-    - 姝讳骸
-    - 閲嶇敓
-    - 婕傜Щ杩囧ぇ
-  - 鍏朵粬鐜╁缁х画璧颁簯绔姸鎬?+ 鏈湴鎻掑€煎钩婊?  - 鐐脊缁х画鐢变簯绔綅缃┍鍔紝浣嗗叏閮ㄧ敱鍓嶇鏈湴 Canvas 娓叉煋
+  - `createOnlineTankTroubleEngine(...)` 闁衡偓闁稖绀嬮柡鍫墯濠р偓/濞寸姵鐗斿Ч澶愬礆閸℃瑯鐎茬紓浣规尰閻?
+  - `localPlayer` 濞达絾绮堢拹鐔煎础閺囩姴顏柣銊ュ濠€浼村捶閺夋鍤犻悹鐑囩磿濞ｎ噣骞?  - `players` Map 闁告瑯浜欑换姘舵偩濞嗗繐寰撳ù鐘崇墱鐢櫣鈧?  - 闁哄牜鍓氬┃鈧柛褝绠戦崢鐘绘儍閸曨亞绉寸紒澶庮唺缁楀矂寮靛┑鍡樺€婚悗鐟拌嫰閸欏繘鎮芥潏銊︽嫳闁革妇澧楃敮瑙勬交?  - 濞存粍鍨归顒勫矗椤忓嫭韬弶鈺傜懁缁ㄦ椽寮懜鍨皻鐎殿喖鎼崺妤佺┍椤旂瓔鍔€闁哄牜鍓氬┃鈧柨?    - 濡絾鐗楅濂稿礉閻樻彃寮?
+    - 闁革附婢樺ù姗€宕氶崶銊ュ簥
+    - 婵繆顔婃?
+    - 闂佹彃绉堕弫?
+    - 婵犳洖鍊讳簺閺夆晛娲ら妵?
+  - 闁稿繑婀圭划顒勬偝閳轰緡鍟€缂備綀鍛暰閻犙囶暒缁垳绮╅婊冃﹂柟?+ 闁哄牜鍓欏﹢鎾箵閹烘垟鍋撻悡搴ㄦ尙婵?  - 闁绘劦鍠栭懘濠勭磼瑜忛悽濠氭偨閸欐闅樼紒鏃戝灟缂嶅懐绱旈鈧埞宥夊礉椤帞绀夊ù锝呮閸欏繘鏌堥妸褎鏆犻柛鎾崇Ф椤忣剟寮甸鈧﹢?Canvas 婵炴挸寮堕悡?
 
-鍏抽敭缁撴灉锛?
-- 鏈満鍧﹀厠涓嶅啀姣忎竴甯т緷璧栦簯绔洖鍖呯籂姝ｏ紝鎵嬫劅浼氭瘮涓婁竴鐗堟洿鎺ヨ繎鈥滄湰鍦扮洿鎺ユ搷浣溾€濄€?- 浜戠浠嶇劧淇濈暀鎴块棿鎴樻枟閫昏緫涓庤鍒嗘潈濞侊紝浣嗕笉鍐嶈礋璐ｆ湰鏈轰綅绉荤Н鍒嗐€?- 杩欐鏀瑰姩浠嶇劧鍙綔鐢ㄤ簬 Tank Trouble 娓告垙闈㈡澘锛屼笉瑙︾瑙嗛閾捐矾鍜屾帶鍒朵俊鍙烽摼璺€?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃
-- `python -m compileall backend` 閫氳繃
-## 闃舵 20锛歍ank Trouble 鍦ㄧ嚎妯″紡瑙嗚鍥炴涓庤繍鍔ㄦ牎姝ｅ噺鎶?
-- 闂鑳屾櫙锛?  - 鍦ㄧ嚎妯″紡鍦ㄥ墠涓€杞悓姝ユ敼閫犲悗锛岃鐢ㄤ簡鐙珛鐨勭畝鍖栨覆鏌撳垎鏀紝澧欎綋銆佺洰鏍囥€佸潶鍏嬫牱寮忓拰鐐鏈濆悜鍥為€€銆?  - 鍚屾椂鑱旀満涓诲惊鐜粛瀛樺湪鏈湴浣嶇疆涓庝簯绔姸鎬佷簰鐩告媺鎵€乣dt` 涓嬮檺杩囬珮銆佹秷鎭繘鏉ュ嵆 React 鍏ㄩ噺閲嶆覆鏌撶瓑闂锛岃〃鐜颁负鍗￠】銆佺灛绉汇€佺Щ閫熶笉鍑嗐€?- 鏈疆淇锛?  - 鍦ㄧ嚎妯″紡鎭㈠绉戞妧鎰熷浣撱€佹壂鎻忓厜銆佽妭鐐广€佺鎾炴尝绾瑰拰闈跺瓙缂栧彿绛夐珮绾ц瑙夋晥鏋溿€?  - 鍦ㄧ嚎鐜╁涓庢湰鏈虹帺瀹剁粺涓€鍥炲埌鍚屾楂樼骇鍧﹀厠绮剧伒锛屾仮澶嶆纭殑鐐鏈濆悜鍜屽墠杩涙柟鍚戙€?  - 娓叉煋寰幆鐨?`delta time` 涓嬮檺浠?`0.01` 闄嶅埌 `0.001`锛屼慨姝ｉ珮鍒疯澶囦笂鐨勭Щ閫熷亸宸€?  - 鏈満鍧﹀厠鍙湪杩涘叆銆佹崲鍥俱€佹浜?閲嶇敓鎴栬秴澶ф紓绉绘椂鎵嶅己鍒跺悆浜戠鍧愭爣锛屽钩鏃朵互鏈湴杩愬姩涓轰富銆?  - 杩滅鐜╁鍜屽瓙寮圭殑鎻掑€肩敱鍥哄畾绯绘暟鏀逛负鍩轰簬 `dt` 鐨勯樆灏煎紡鎻掑€硷紝鍑忓皯涓嶅悓甯х巼涓嬬殑鐬Щ鎰熴€?  - 鑱旀満 WebSocket 鍥炲寘鏀逛负浼樺厛鐩存帴鍠傜粰寮曟搸锛屾埧闂?UI 鍋氶檷棰戝埛鏂帮紝闄嶄綆 React 閲嶆覆鏌撳瀹炴椂瀵规垬鎵嬫劅鐨勫奖鍝嶃€?- 褰撳墠鐘舵€侊細
-  - `frontend` 宸查噸鏂版瀯寤洪€氳繃銆?  - `backend` 宸查噸鏂?`compileall` 閫氳繃銆?
-## 闃舵 21锛歍ank Trouble 鍦ㄧ嚎杩滅杩炵画妯℃嫙涓庤交鏍℃
+闁稿繑濞婇弫顓犵磼閹惧浜柨?
+- 闁哄牜鍓氬┃鈧柛褝绠戦崢鐘崇▔瀹ュ懎鏅欐慨锝呯箣缁斿鏁缁堕鎸ч弽锔鹃殬缂佹棏鍨板ú鏍礌閸涱垳鐪版慨婵撶秶缁辨繈骞嶇€ｎ偄濡冲ù鍏肩閻︻喗绋夋繝浣侯伇闁绘鐗婂ú鍧楀箳閵夈劎绠柍銉︾矋濠€浼村捶閹殿喗绾柟鎭掑劜閹奸攱鎷呭┃閿亾濠靛嫧鍋?- 濞存粍鍨归顒佺瀹ュ洤濮уǎ鍥ㄧ箘閺嗏偓闁规潙娼″Λ鍧楀箣濡粯鐏嶉梺顐ｆ缁额偅绋夋惔銈庡敹闁告帒妫欏鍫熺箾娓氬﹦绀夊ù锝呮缁楀宕樺鍫㈩槹閻犳劧绲惧﹢浼村嫉鏉炴壆绉寸紒澶庡吹琚ч柛鎺戞閳?- 閺夆晜鐟﹂濂稿绩閻熸澘袟濞寸姴绉堕崝褔宕ｉ鍐▕闁活潿鍔嬬花?Tank Trouble 婵炴挸鎲￠崹娆撴閵忊剝绶查柨娑樺缁楀鎲撮敂缁㈡骄閻熸瑥妫濋。鍫曟煣閹规劗鐔呴柛婊冩湰鐢爼宕氶張鍏哥箚闁告瑧鍏橀幗鑲╂崉椤栨ǚ鍋?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换?
+- `python -m compileall backend` 闂侇偅淇虹换?
+## 闂傚啳鍩栭?20闁挎稒鐡朼nk Trouble 闁革负鍔庨崵搴∥熼垾宕囩閻熸瑥妫滈～搴ㄥ炊閻愭惌鍔€濞戞挸姘︾换宥夊礉閵婏妇澧℃慨婵撶到閸ｆ椽骞?
+- 闂傚偆鍣ｉ。浠嬫嚄鐏炵偓鐝柨?  - 闁革负鍔庨崵搴∥熼垾宕囩闁革负鍔屾晶鐘崇▔閳ь剚娼鍏煎€辨慨婵勫劜閺佸ジ鏌呴悩鍙夊€甸柨娑樼焷椤曘倝鎮介妸銈囧晩闁绘瑯鍓涢悵娑㈡儍閸曨厾鏆嗛柛鏍ㄧ墬鐟曞棝寮婚幘鍐茬€婚柡鈧銈囩濠⒀勭懁缂嶅濡存担鐑樼獥闁哄秴娲㈤埀顑跨濞煎爼宕楃€ｎ偆澹夌€殿喖绻愰幏浼存倷椤旂⒈鏁婇柡鍫熺箓閹粓宕堕悙琛″亾閳ь剟濡?  - 闁告艾鏈鍌炴嚂閺冣偓濠р偓濞戞捁顕ч幆濠囨偝椤栨瑧鐭濋悗娑櫭﹢顏堝嫉椤掆偓濠€瀛樻媴瀹ュ洨鏋傚☉鎾崇凹缁垳绮╅婊冃﹂柟顑挎缁ㄤ即鎯勯崨濠傤€欓柟娈垮灛閳ь兛姊梔t` 濞戞挸顑夊鐑樻交閸ヮ剛褰柕鍡曠劍缁夌兘骞侀婵堢闁哄鍎卞畵?React 闁稿繈鍔戦崳娲煂瀹ュ棜顩柡灞炬尵閻℃垿姊婚鈧。浠嬫晬瀹€鍐︹偓鍐偝妫颁浇绀嬮柛妤嬬節閵嗘垿濡存担铏逛粶缂佸鐪归埀顑胯兌浜涢梺顐ゅ枍缁楀宕欓崱鎰ㄥ亾?- 闁哄牜鍓濋悿鍡樼┍椤旂⒈妲婚柨?  - 闁革负鍔庨崵搴∥熼垾宕囩闁诡厹鍨归ˇ鑼矓閹寸偛螚闁规壆鍠庨。鐐媴閹炬墎鍋撴担鐟邦棁闁硅绻愰崢婊堝Υ娴ｈ棄螡闁绘劕绠嶉埀顑胯兌椤偊骞橀悙鏉戠毦缂佸墽鎳撻幏浼存鐠鸿櫣鎽嶇紓鍌涚墪瑜拌法绮垫径鎰蒋缂佺嫏鍡╂綊閻熸瑥顦伴弲銉╁几濠у簱鍋?  - 闁革负鍔庨崵搴ㄦ偝閳轰緡鍟€濞戞挸瀛╁﹢浼村嫉閾忕懓璐熼悗鐟板缁儤绋夐埀顒勫炊閻愭彃鐓傞柛姘湰椤戞瑦顨囧Ο濂哥崜闁秆嶇畱閸樼姷鍒掗崜褌绱ラ柨娑樻湰娴狀喗寰勫鍡╁妧缁绢収鍠氬▓鎴︽倷椤旂⒈鏁婇柡鍫熺箓閹粓宕仦钘夘枀閺夆晜绋掗弻鐔煎触閹存瑢鍋?  - 婵炴挸寮堕悡瀣嚗椤忓棗绠氶柣?`delta time` 濞戞挸顑夊鐑樼?`0.01` 闂傚嫬绉撮崺?`0.001`闁挎稑濂旈幈銊ヮ潰閿濆褰柛鎺旀焿椤旀洘寰勯崶锔剧憪闁汇劌瀚簺闂侇偆鍠庢禍绋款啅椤旇　鍋?  - 闁哄牜鍓氬┃鈧柛褝绠戦崢鐘诲矗椤忓嫭韬弶鈺傜☉閸欏棝濡存担鐟板簥闁搞儰鍕橀埀顑跨劍椤掑瓨绂?闂佹彃绉堕弫鎾诲箣閺嶎剛孝濠㈠爢鍕＝缂佸绮鍌炲箥瀹ュ懎绻侀柛鎺曟硾閹棙绂嶉幋鐙€浼傞柛褎鍔栭悥锝夋晬鐏炰粙鎸柡鍐╂构娴滄帡寮甸鈧﹢瀛樻交閹邦剙袟濞戞捁妗ㄧ€靛矂濡?  - 閺夆晜绮庨顒勬偝閳轰緡鍟€闁告粌鑻悺娆忣嚕閸︻厽鐣遍柟缁樺笒閳ь剝鍋愰弫閬嶅炊閸濆嫮鏆扮紒顖滅帛閺嗙喖寮ㄩ柅娑滅闁糕晞妗ㄧ花?`dt` 闁汇劌瀚板Ο鍡欎焊閻撳海纭€闁圭粯甯掗埀顒傘€嬬槐婵嬪礄韫囨挾姣屽☉鎾崇Т閹挾鏁瀹稿吋绋夌€ｎ剚鐣遍柣顒夊墰浜涢柟鎵枂閳?  - 闁艰鲸姊瑰┃鈧?WebSocket 闁搞儳鍋涚€垫﹢寮ㄩ柅娑滅濞村吋锚閸樻盯鎯勭€涙ê澶嶉柛鐘插€荤划鏉款嚕閺囩喐鎯涢柨娑樻湰閸┭囨⒒?UI 闁稿宀稿閿嬶紣閹存繂鐓曢柡鍌氬簻缁辨繈姊藉鍕У React 闂佹彃绉电憰鍡涘蓟閹炬剚鍤犻悗鍦仦濡炲倻鈧絻顫夐崹顒勫箥鐎ｎ偄濡抽柣銊ュ婵傛牠宕鍐ｅ亾?- 鐟滅増鎸告晶鐘绘偐閼哥鍋撴笟濠勭獥
+  - `frontend` 鐎瑰憡鐓￠崳鎼佸棘閻楀牏鈧垰顕欏ú顏佸亾濮樺磭绠栭柕?  - `backend` 鐎瑰憡鐓￠崳鎼佸棘?`compileall` 闂侇偅淇虹换鍐Υ?
+## 闂傚啳鍩栭?21闁挎稒鐡朼nk Trouble 闁革负鍔庨崵搴㈡交濠婂拋浼傞弶鈺冨仧閻㈣螣閳╁啫鐝☉鎾虫唉娴溿倝寮介埄鍐惧妧
 
-鏈樁娈电洰鏍囷細
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 瑙ｅ喅鈥滅姸鎬侀噺寰堝皬浣嗗湪绾夸粛鐒跺崱鈥濈殑缁撴瀯鎬ч棶棰樸€?- 鎶婅繙绔帺瀹?/ 瀛愬脊浠庘€滆拷鏈嶅姟鍣ㄥ揩鐓р€濇敼鎴愨€滄湰鍦拌繛缁帹杩涳紝鏈嶅姟鍣ㄨ交鏍℃鈥濄€?- 缁х画淇濊瘉鏈鏀瑰姩鍙綔鐢ㄤ簬 Tank Trouble 鍦ㄧ嚎娓告垙閾捐矾锛屼笉纰拌棰戦摼璺拰鏈烘鑷傛帶鍒堕摼璺€?
-鍏抽敭鍒ゆ柇锛?
-- 鍗￠】涓嶆槸鍥犱负鐜╁銆佺偖寮广€侀澏瀛愩€佸嚮鏉€銆侀噸鐢熴€佽鍒嗐€佹姇绁ㄨ繖浜涘瓧娈靛お澶氥€?- 寤惰繜娴嬭瘯缃戦〉棰勮鑳戒繚鎸侀『婊戯紝璇存槑娴忚鍣ㄦ覆鏌撳拰灏忕姸鎬佸寘杞彂鏈韩涓嶆槸鐡堕銆?- 鍦ㄧ嚎妯″紡鍗￠】涓昏鏉ヨ嚜杩滅瀵硅薄琚洖鍖呰妭濂忛┍鍔細鏈嶅姟鍣ㄥ洖鍖呯◢寰笉鍧囧寑锛屽墠绔氨浼氳〃鐜颁负杩借刀銆侀】鎸垨鐬Щ銆?
-鏈樁娈靛崗璁敼鍔細
+- 閻熸瑱绲介崰鍛村灳濠婂懎笑闁诡兛绶氶崳鍝勵嚗閸繄姣堝ù锝呮濠€顏嗙棯婢跺摜鐭濋柣鎺曟硾瀹曢亶鍨惧┑鍫熺暠缂備焦鎸婚悗顖炲箑瑜斿Λ鑸碉紣濡硶鍋?- 闁硅泛锕ㄧ换娆戠博椤栨粌璐熼悗?/ 閻庢稒鍔曢懘濠冪鎼存ǚ鍋撳鍡樺闁哄牆绉存慨鐔煎闯閵娿儲褰ラ柣鎾椻偓閳ь剚绻冮弫濂稿箣閹般劉鍋撳鍕嫳闁革附濯界换娑氱磼椤撶喎鑵归弶鈺傚喕缁辨繈寮靛鍛潳闁革絻鍔忔禍銈夊冀閳╁喚鍔€闁炽儲绺块埀?- 缂備綀鍛暰濞ｅ洦绻嗛惁澶愬嫉椤掍緡鍋ч柡鈧悷鏉啃楅柛娆樹簷缂嶆棃鎮介妸銈囪壘 Tank Trouble 闁革负鍔庨崵搴°€掗崨濠傜亞闂佺偓宕橀惌楣冩晬鐏炶偐鐟濈痪鐗堝椤锛愰幋锔芥嚑閻犱警鍨伴幏浼村嫉閻戞﹩娼鹃柤宄板€圭敮鍫曞礆閸洘鎳犻悹渚灛閳?
+闁稿繑濞婇弫顓㈠礆閵堝棙鐒介柨?
+- 闁告绻濋妴鎴炵▔瀹ュ棙笑闁搞儳濮崇拹鐔兼偝閳轰緡鍟€闁靛棔鑳堕崑鏍ь嚕楠炲簱鍋撴笟鈧蹇曗偓娑欏姂閳ь兛绀侀崵顕€寮堕埀顒勫Υ娓氣偓閸ｆ悂鎮介悢绮瑰亾娴ｇ瓔鍚€闁告帒妫庨埀顑跨劍婵洨绮婇妸銊х濞存粍绋戦悺褍鈻撻棃娑栦喊濠㈣埖鍝庨埀?- 鐎点倖鍎肩换婊兠圭€ｎ厾妲哥紓鍐╁灴閵嗗锛愰崟顕呮綌闁艰櫕鍨濈换姘跺箰娓氣偓閵嗗骸顭ㄩ幋顖滅閻犲洤鐡ㄥΣ鎴澝硅箛姘兼綌闁革絻鍔嶇憰鍡涘蓟閹捐櫕瀚查悘蹇撶箳婵悂骞€娴ｇ鐦堕弶鐑嗗墮瑜板倿寮甸鍐叐濞戞挸绉靛Σ鎼佹偤閸洦鏆涢柕?- 闁革负鍔庨崵搴∥熼垾宕囩闁告绻濋妴鎴炵▔閺勫浚娲ｉ柡澶堝劥閸ゆ粍娼诲鍜佷紓閻庣數顢婇挅鍕偖椤愩垺绀€闁告牕鎳撴俊顓熺附韫囨稈鏀抽柛鏃戠厜缁变即寮靛鍛潳闁革絻鍔屽ú鏍礌閸涱垪妫︾€甸偊鍠曠粭澶愬锤閸パ冪槯闁挎稑鑻晶鐘电博椤栨碍鐨戝ù鍏间亢閵嗗啴鎮虫０浣界閺夆晛鈧喎鍨侀柕鍡曠窔閵嗘垿骞愰锝呯仐闁活剦鍓涗簺闁?
+闁哄牜鍓熷Ο浣糕枔闂堟稑绀傞悹渚囧枟閺佸ジ宕濋…鎺旂獥
 
 - `backend/models.py`
-  - `TankTroubleMatchPlayerState` 鏂板 `input` 鍜?`server_time_ms`銆?  - `TankTroubleMatchBulletState` 鏂板 `age`銆乣bounces_left` 鍜?`server_time_ms`銆?  - `TankTroubleMatchLocalState` 鏂板 `server_time_ms`銆?- `frontend/src/types/cloud.ts`
-  - 鍚屾涓婅堪瀛楁锛屽苟灏嗘柊澧炲瓧娈佃涓哄彲閫夛紝鏂逛究鍏煎灏氭湭鏇存柊鐨勬棫浜戠鑴氭湰銆?- `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - `build_match_state(...)` 鍥炲寘鏃朵笅鍙戣繙绔帺瀹跺綋鍓嶈緭鍏ョ姸鎬併€?  - 鍥炲寘鏃朵笅鍙戝瓙寮瑰勾榫勩€佸墿浣欏弽寮规鏁板拰鏈嶅姟鍣ㄦ椂闂淬€?
-鏈樁娈靛墠绔紩鎿庢敼鍔細
+  - `TankTroubleMatchPlayerState` 闁哄倹婢橀·?`input` 闁?`server_time_ms`闁?  - `TankTroubleMatchBulletState` 闁哄倹婢橀·?`age`闁靛棔姊梑ounces_left` 闁?`server_time_ms`闁?  - `TankTroubleMatchLocalState` 闁哄倹婢橀·?`server_time_ms`闁?- `frontend/src/types/cloud.ts`
+  - 闁告艾鏈鐐寸▔婵犲懎鐗氶悗娑欘殕椤斿矂鏁嶇仦鍊熷珯閻忓繐妫欓弻濠冩櫠閻愯尙鎽熸繛鍫滅祷椤旀洘绋夐崫鍕闂侇偄顧€缁辨繈寮柅娑氣敀闁稿繒鍘ч鎰焊濮橆厽寮撻柡鍥х摠閺屽﹪鎯冮崟顒侊紜濞存粍鍨归顒勬嚇濮橆厽鎷遍柕?- `backend/cloud_setup_bundle/tank_trouble_room.py`
+  - `build_match_state(...)` 闁搞儳鍋涚€垫﹢寮張鐢电憮闁告瑦鍨肩换娆戠博椤栨粌璐熼悗纭呮硾缂嶅宕滃鍫㈢炕闁稿繈鍎虫慨鎼佸箑娴ｇ鍋?  - 闁搞儳鍋涚€垫﹢寮張鐢电憮闁告瑦鍨甸悺娆忣嚕閻熸澘瀣€濮掝偄瀚ㄩ埀顑跨婢ф寧鎷呭▎蹇撳唨鐎殿喛顫夐濂稿极閺夋寧瀚查柡鍫濈Т婵喖宕抽妸锔筋槯闂傚倹鐣埀?
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灠缁扁晠骞欐惔銏℃毉闁告棏鐓夌槐?
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - 鍦ㄧ嚎娲昏穬鍚屾闂撮殧浠?`24ms` 璋冩暣涓?`16ms`銆?  - 鏂板 `normalizeMatchInputState(...)`锛岄槻姝㈡棫鏈嶅姟鍣ㄧ己瀛楁瀵艰嚧鍓嶇寮傚父銆?  - `OnlinePlayer` 淇濆瓨杩滅鐜╁鏈€鏂拌緭鍏ョ姸鎬併€?  - 杩滅鐜╁姣忓抚鎸?`forward / backward / left / right` 鍦ㄦ湰鍦拌繛缁帹杩涖€?  - 鏈嶅姟鍣ㄥ潗鏍囦粛浣滀负 `targetX / targetY`锛屼絾鏍℃寮哄害闄嶄綆銆?  - `OnlineBullet` 淇濆瓨 `age / bouncesLeft / serverTimeMs`銆?  - 鍦ㄧ嚎瀛愬脊姣忓抚鍏堟湰鍦版寜 `vx / vy` 鎺ㄨ繘锛屽苟鍦ㄥ墠绔鐞嗗浣撳弽寮瑰拰瑙嗚娉㈢汗銆?  - 鏈嶅姟鍣ㄥ瓙寮逛綅缃?/ 閫熷害缁х画浣滀负杞绘牎姝ｇ洰鏍囷紝婕傜Щ寰堝ぇ鏃舵墠寮哄埗鎷夐綈銆?
-鍏抽敭缁撴灉锛?
-- 杩滅瀵硅薄涓嶅啀瀹屽叏琚綉缁滃洖鍖呯殑鑺傚鎷栫潃璧般€?- 鏈嶅姟鍣ㄤ粛鐒朵繚鐣欒鍒欑‘璁ゃ€佸懡涓€佸垎鏁般€佹浜°€侀噸鐢熴€佹崲鍥炬姇绁ㄧ瓑鏉冨▉鑱岃矗銆?- 鏈湴鐢婚潰浼氭洿鍍忊€滄寔缁挱鏀剧粡鏈嶅姟鍣ㄧ‘璁ょ殑杞ㄨ抗鈥濓紝鑰屼笉鏄€滀竴鍖呬竴鍖呰拷鐘舵€佲€濄€?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃銆?
-## 闃舵 24锛歍ank Trouble 浜戠甯搁┗瑙傛垬椤典笌鈥滅洃鎺у湴鍥锯€濆叆鍙?
-鏃堕棿锛?026-05-03 14:02:54 +08:00
+  - 闁革负鍔庨崵搴∶洪弰蹇曗攬闁告艾鏈鐐烘⒒閹绢喗顓惧ù?`24ms` 閻犲鍟弳锝嗙▔?`16ms`闁?  - 闁哄倹婢橀·?`normalizeMatchInputState(...)`闁挎稑鐭傚Σ璇差潰閵忊剝锛嬮柡鍫濈Т婵喖宕抽妸褍绻侀悗娑欘殕椤斿瞼鈧絻澹堥崵褔宕滃鍥朵紓鐎殿喖鍊搁悥鍫曞Υ?  - `OnlinePlayer` 濞ｅ洦绻傞悺銊︽交濠婂拋浼傞柣婧炬櫅椤斿秹寮甸埀顒勫棘閹峰瞼缈婚柛蹇嬪劤婵悂骞€娴ｇ鍋?  - 閺夆晜绮庨顒勬偝閳轰緡鍟€婵絽绻愰幎姘跺箰?`forward / backward / left / right` 闁革负鍔嶅﹢浼村捶閹峰瞼绠剧紓渚囧幗鐢娼诲☉鏍ゅ亾?  - 闁哄牆绉存慨鐔煎闯閵娿儲缍忛柡宥呮矗缁稒鎷呭鈧拹?`targetX / targetY`闁挎稑濂旂徊楣冨冀閳╁喚鍔€鐎殿喖鎼€规娊姊藉鍕У闁?  - `OnlineBullet` 濞ｅ洦绻傞悺?`age / bouncesLeft / serverTimeMs`闁?  - 闁革负鍔庨崵搴ｂ偓娑欏姇閼村﹤袙韫囨挻濮庨柛蹇撶墛濠€浼村捶閻楀牆鐦?`vx / vy` 闁规亽鍔忕换姗€鏁嶇仦鍊熷珯闁革负鍔屾晶鐘电博椤栨凹妲遍柣鐐叉椤ｇ偓鎷呴幘鍐插唨鐎殿喚鎳撻幏鎵喆閸℃凹娼曟繛澶堝灮濮规濡?  - 闁哄牆绉存慨鐔煎闯閵娿儳鎽嶇€殿噣鈧稓绉寸紓?/ 闂侇偆鍠庣€瑰磭绱掕閻㈢粯鎷呭鈧拹鐔告姜缂佹澧℃慨婵撶悼濞蹭即寮介崶椋庣婵犳洖鍊讳簺鐎垫澘鐗嗛妵鍥籍閼搁潧顤呯€殿喖鎼崺妤呭箯婢舵劗绉烽柕?
+闁稿繑濞婇弫顓犵磼閹惧浜柨?
+- 閺夆晜绮庨顒傗偓鐢殿攰閽栧嫭绋夊鍛櫃閻庣懓鑻崣蹇曟偖椤愩倗绉圭紓浣圭矊濞叉牠宕犻崨顖涚暠闁煎搫鍊搁〃鏃堝箯閺嶎偅绲婚悹褑鍩囬埀?- 闁哄牆绉存慨鐔煎闯閵娿倗鐭濋柣鎺撴构缁绘岸鎮惧▎鎺濇綈闁告帗鐟ч垾妯兼媼閵堝啠鍋撴担鍛婂殥濞戞搩鍘归埀顑跨閸ㄥ酣寮懜顑藉亾娴ｈ鍔ュù婧屾壋鍋撴笟鈧崳鎼佹偨閻旂补鍋撴担鐟板簥闁搞儳鍋撴慨鍥╃矈閵娧呮惣闁哄鍟埢澶愭嚂瀹€鍐厬闁?- 闁哄牜鍓欏﹢鎾偨婵犳碍妗ㄥù鍏肩濞插潡宕撹箛濞惧亾濠婂嫬鐦紓渚囧幗閹搁亶寮ㄩ崜褏鐥呴柡鍫濈Т婵喖宕抽妸褉鈧鎷嬮妶鍥ㄧ暠閺夌偑鍔忛幎妤呭灳濠垫挾绀夐柤鏉垮缁楀寮伴妞诲亾濠娾偓缁旀挳宕犻崨顒傤伇闁告牕鎳撻幏鐑芥偐閼哥鍋撴担娴嬪亾濠靛嫧鍋?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换鍐Υ?
+## 闂傚啳鍩栭?24闁挎稒鐡朼nk Trouble 濞存粍鍨归顒傛暜閹间讲鏁嗛悷娆忓€归崹顒併亜閸忓摜鐟㈤柍銉︾矌濞插啴骞掕濠€鎾炊闁款垪鍋撳┑鍡楀汲闁?
+闁哄啫鐖煎Λ鍧楁晬?026-05-03 14:02:54 +08:00
 
-鏈樁娈电洰鏍囷細
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 鍦ㄢ€滃紑濮嬫父鎴忊€濃€滄祴璇曞欢杩熲€濅箣澶栨柊澧炰竴涓?`鐩戞帶鍦板浘` 鍏ュ彛銆?- 鐐瑰嚮鍚庢墦寮€娴忚鍣ㄧ綉椤碉紝甯搁┗鏌ョ湅褰撳墠浜戠鍦ㄧ嚎鎴块棿銆?- 瑙傛垬缃戦〉涓嶅姞鍏ユ埧闂淬€佷笉鍗犻鑹层€佷笉鍙戦€佺帺瀹惰緭鍏ャ€?- 淇濇寔鍜屽欢杩熸祴璇曠綉椤电被浼肩殑瀹炴椂浣撻獙锛氭祻瑙堝櫒鏈湴娓叉煋鍧﹀厠銆佺偖寮广€侀澏瀛愩€佸湴鍥惧拰璁″垎鏉匡紝缃戠粶鍙媺杞婚噺鐘舵€併€?
-鏋舵瀯閫夋嫨锛?
-- 娌℃湁娌跨敤鏈湴棰勮椤电殑鎴浘 / frame 鎺ㄩ€佹柟寮忋€?- 鏂板浜戠 Tank Trouble 鎴块棿鏈嶅姟鑷甫鐨勮鎴橀〉锛?  - `http://<server>:18086/spectator.html?room=tank-trouble-main`
+- 闁革负鍔夐埀顒佺矊缁辨垶鎱ㄧ€ｎ偆鍩楅柟鏉戠箚閳ь剚绺鹃埀顒佺矋缁佸鎷犻弴鐐搭偨閺夆晝鍟块埀顒佺箑缁狅絾寰勯弽銊︾厐濠⒀呭仒缁斿瓨绋?`闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 闁稿繈鍎辫ぐ娑㈠Υ?- 闁绘劗鎳撻崵顕€宕ユ惔銏犫叺鐎殿喒鍋撴繛鏉戠箺椤秹宕抽妸褏绉瑰銈囶暜缁辨繄鏁幖浣叉晢闁哄被鍎冲﹢鍛般亹閹惧啿顤呭ù婊勫灩椤忣剟宕烽妸褍娈犻柟鏉戞健濡潡濡?- 閻熸瑥鍊归崹顒傜磾閹达负鈧绋夊鍛潱闁稿繈鍎查崺褔姊诲ǎ顑藉亾娴ｉ鐟濋柛妤冨█椤や線鎳濈仦鍌楀亾娴ｉ鐟濋柛娆愬灴閳ь兛鑳剁敮铏光偓瑙勫劶缁额參宕楅妷锝傚亾?- 濞ｅ洦绻冪€垫棃宕仦鑺ヮ偨閺夆晝鍠愮粊瀵告嫚閺囩姷绉瑰銈囨暩鐞氼偅瀵奸懖鈺傜暠閻庡湱鍋炲鍌涙媴閹捐崵宕ｉ柨娑欑缁佽崵鎲撮崼婵囩彜闁哄牜鍓欏﹢鏉戙€掗崣澶屽帬闁秆嶇畱閸樼娀濡存担鍝勪粡鐎殿喖绠嶉埀顑跨窔濠㈠繒鈧稒鍔戦埀顑跨濠€鎾炊閹勫閻犱讲鈧啿鐎婚柡澶婂皡缁辨繄绱旈幋鐘垫崟闁告瑯浜濇刊鐑樻姜婵犳艾娅ら柣妯垮煐閳ь兛闄嶉埀?
+闁哄鍩栭悗顖炴焻婢跺顏ラ柨?
+- 婵炲备鍓濆﹢浣糕柦鐠恒劍鏆忛柡鍫墮濠€瀛橈紣閸曨噮娼斿銈囨暩濞堟垿骞嬮鍕 / frame 闁规亽鍔戦埀顑跨劍閺岀喎顕ｈ箛瀣у亾?- 闁哄倹婢橀·鍐╃閹寸媭浼?Tank Trouble 闁规潙娼″Λ鍧楀嫉瀹ュ懎顫ら柤濂変簻閻㈩偊鎯冮崟顕呮綆闁瑰瓨锕㈤妴澶愭晬?  - `http://<server>:18086/spectator.html?room=tank-trouble-main`
   - `http://<server>:18086/spectator/state?room=tank-trouble-main`
-- 灏忕▼搴忓彧璐熻矗鍚戞湰鍦板悗绔姹傝鎴?URL锛屽苟鐢ㄦ祻瑙堝櫒鎵撳紑銆?- 鏈湴鍚庣鏍规嵁褰撳墠鐧诲綍鏈嶅姟鍣ㄧ敓鎴?`18086` 鐨勮鎴橀〉鍦板潃銆?
-浜戠鏀瑰姩锛?
+- 閻忓繐绻掗埢鍏兼償韫囨挸娑ч悹鎰枙閻宕ラ幋鐐存嫳闁革附婢橀幃妤冪博椤栨繍鍤炴慨鐟板€介～鍥箣?URL闁挎稑鑻懟鐔兼偨閵婏妇銈婚悷娆忕墕濞呮帡骞嶉幘宕囩；闁?- 闁哄牜鍓欏﹢鎾触鎼达綆浼傞柡宥堫潐瀹撲浇銇愰幘鍐差枀闁谎嗩嚙缂嶅秹寮靛鍛潳闁革絻鍔庨弫鎾诲箣?`18086` 闁汇劌瀚～鍥箣濮椻偓閵嗗宕烽弶鎸庣祷闁?
+濞存粍鍨归顒勫绩閻熸澘袟闁?
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - 鏂板 spectator 蹇収鏋勫缓鍑芥暟銆?  - 蹇収鍖呭惈鍏ㄩ儴鐜╁锛岃€屼笉鏄儚鐜╁瑙嗚閭ｆ牱鎺掗櫎 local player銆?  - 蹇収鍖呭惈澧欎綋銆侀澏瀛愩€佺偖寮广€佽鍒嗘澘銆佹姇绁ㄥ拰鍦板浘淇℃伅銆?  - 鏂板鑷寘鍚?Canvas HTML 椤甸潰銆?  - 鏂板 `GET /spectator.html`銆?  - 鏂板 `GET /spectator/state`銆?  - 鏈夌帺瀹跺湪绾挎椂瑙傛垬璇锋眰鍙鐘舵€侊紝涓嶆帹杩涙潈濞佹父鎴忓惊鐜€?  - 娌＄帺瀹跺湪绾夸絾浠嶆湁娈嬬暀鐐脊鏃讹紝鎵嶅仛杞婚噺鐐脊鑷劧娑堝け娓呯悊銆?
-鏈湴鍚庣鏀瑰姩锛?
+  - 闁哄倹婢橀·?spectator 闊浂鍋嗛崣搴ㄥ几閸曨偆绱﹂柛鎴ｅГ閺嗙喖濡?  - 闊浂鍋嗛崣搴ㄥ礌閸涱厽鍎撻柛蹇嬪姂閸庢挳鎮抽埡渚囧晙闁挎稑鐭侀埀顒€濂旂粭澶愬及椤栨艾鍓奸柣婧炬櫅椤斿秶鎲撮崱姘兼健闂侇叏绲鹃悧閬嶅箳閹烘鐝?local player闁?  - 闊浂鍋嗛崣搴ㄥ礌閸涱厽鍎撳褎鐟ょ紞瀣Υ娓氣偓濠㈠繒鈧稒鍔戦埀顑胯兌閸嬫牕顕ｉ獮搴撳亾娴ｇ瓔鍚€闁告帒妫欏姗€濡存担鐟邦潓缂佷降鍔岄幏浼村捶閺夋寧绂堝ǎ鍥ｅ墲娴煎懘濡?  - 闁哄倹婢橀·鍐嚊椤忓嫬鐦堕柛?Canvas HTML 濡炪倗鏁诲浼村Υ?  - 闁哄倹婢橀·?`GET /spectator.html`闁?  - 闁哄倹婢橀·?`GET /spectator/state`闁?  - 闁哄牆顦辩敮铏光偓纭呮硾濠€顏嗙棯閹稿孩顦ч悷娆忓€归崹顒傛嫚闁垮婀撮柛娆樹海椤曚即鎮╅懜纰樺亾娓氬﹦绀夊☉鎾崇У鐢娼诲☉娆愮秬濠电偘鐒﹂悥鍫曞箣韫囨挻鍎曢柣婊庡灛閳?  - 婵炲矉绱曠敮铏光偓纭呮硾濠€顏嗙棯婢跺摜绋诲ù鐘茬У濠€浣糕枔鐎ｎ剚娈岄柣鎰靛枛閼村﹪寮拋鍦闁归潧绉存禒娑欐姜婵犳艾娅ら柣鎰靛枛閼村﹪鎳涢鍡楀Ё婵炴垵鐗嗛妵鎴濄€掗崨顖涘€為柕?
+闁哄牜鍓欏﹢鎾触鎼达綆浼傞柡鈧悷鏉啃楅柨?
 - `backend/models.py`
-  - 鏂板 `TankTroublePageUrlResponse`銆?- `backend/tank_trouble_cloud.py`
-  - 鏂板 `spectator_page_url(...)`銆?  - 鏂板 `ensure_server(...)`锛岀敤浜庢墦寮€瑙傛垬鍓嶇‘淇?`18086` 鎴块棿鏈嶅姟鍙敤銆?- `backend/main.py`
-  - 鏂板 `GET /api/games/tank-trouble/spectator/page-url`銆?
-鍓嶇鏀瑰姩锛?
+  - 闁哄倹婢橀·?`TankTroublePageUrlResponse`闁?- `backend/tank_trouble_cloud.py`
+  - 闁哄倹婢橀·?`spectator_page_url(...)`闁?  - 闁哄倹婢橀·?`ensure_server(...)`闁挎稑鐬奸弫銈嗙鎼淬垹鈪电€殿喒鍋撻悷娆忓€归崹顒勫礈瀹ュ洠鈧ɑ绌?`18086` 闁规潙娼″Λ鍧楀嫉瀹ュ懎顫ら柛娆樺灣閺併倝濡?- `backend/main.py`
+  - 闁哄倹婢橀·?`GET /api/games/tank-trouble/spectator/page-url`闁?
+闁告挸绉堕顒勫绩閻熸澘袟闁?
 - `frontend/src/types/cloud.ts`
-  - 鏂板 `TankTroublePageUrlResponse`銆?- `frontend/src/api/cloudApi.ts`
-  - 鏂板 `getTankTroubleSpectatorPageUrl(...)`銆?- `frontend/src/components/TankTroublePanel.tsx`
-  - 鏂板 `GameLaunchMode = "online" | "latency" | "spectator"`銆?  - 鏂板 `openSpectatorMap(...)`銆?  - 鏂板 `鐩戞帶鍦板浘` 鎸夐挳銆?  - 璇ユ寜閽笉渚濊禆鐜╁ ID锛屾湭杈撳叆鐜╁ ID 涔熻兘瑙傛垬銆?- `frontend/src/styles/globals.css`
-  - 娓告垙鍚姩鎸夐挳鍖烘敼涓?3 鍒楀竷灞€銆?
-涓庡叾浠栭摼璺殑杈圭晫锛?
-- 涓嶈Е纰?go2rtc 瑙嗛鎺ㄦ祦 / 鎷夋祦閾捐矾銆?- 涓嶈Е纰版満姊拌噦鎺у埗淇″彿鐩戝惉閾捐矾銆?- 涓嶆敼鍙樺湪绾跨帺瀹跺悓姝ュ崗璁殑鍐欏叆璺緞銆?- 涓嶈瑙傛垬椤垫垚涓烘柊鐨勬父鎴忔潈濞佸惊鐜€?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃銆?- `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py backend\main.py backend\tank_trouble_cloud.py backend\models.py` 閫氳繃銆?- `python -m compileall backend` 閫氳繃銆?
-## 闃舵 22锛歍ank Trouble 鍦ㄧ嚎鏈満棰勬祴瀛愬脊涓庡洖婧慨澶?
-鏈樁娈电洰鏍囷細
+  - 闁哄倹婢橀·?`TankTroublePageUrlResponse`闁?- `frontend/src/api/cloudApi.ts`
+  - 闁哄倹婢橀·?`getTankTroubleSpectatorPageUrl(...)`闁?- `frontend/src/components/TankTroublePanel.tsx`
+  - 闁哄倹婢橀·?`GameLaunchMode = "online" | "latency" | "spectator"`闁?  - 闁哄倹婢橀·?`openSpectatorMap(...)`闁?  - 闁哄倹婢橀·?`闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 闁圭顦甸幐鎶藉Υ?  - 閻犲洢鍎茬€垫粓鏌﹂鑽ょ憹濞撴碍绻嗙粋鍡涙偝閳轰緡鍟€ ID闁挎稑鏈﹢顓熸綇閹惧啿寮抽柣婧炬櫅椤?ID 濞戞梻鍠曢崗妯兼喆閸屾稑鐏涢柕?- `frontend/src/styles/globals.css`
+  - 婵炴挸鎲￠崹娆撳触椤栨艾袟闁圭顦甸幐鎶藉礌閻戞ɑ鏆☉?3 闁告帗顨呯粩椋庝沪閳ь剟濡?
+濞戞挸楠搁崣鐐閺嶎厽鎳犻悹渚灣濞堟垶娼忛崷顓熸珪闁?
+- 濞戞挸绉疯缁?go2rtc 閻熸瑥妫濋。鍫曞箳閵婏妇銈?/ 闁瑰嘲顦扮粊锕傛煣閹规劗鐔呴柕?- 濞戞挸绉疯缁炬壆澧楀┃鈧慨濠冨閸ｏ箓骞掕閸╂绌遍垾鍐插▏闁烩晜鍨甸幆澶愭煣閹规劗鐔呴柕?- 濞戞挸绉甸弫濂稿矗濡儤韬紒鎹愭硶鐢櫣鈧娉涢幃鎾愁潰閵夈儱绀傞悹渚囧枤濞堟垿宕樺▎蹇撳汲閻犱警鍨扮欢鐐哄Υ?- 濞戞挸绉烽鈧悷娆忓€归崹顒併亜閸偄鐏囧☉鎾跺劋閺屽﹪鎯冮崟顒傚煑闁规潙绻戝鍫熺箾娴ｅ憡鍎曢柣婊庡灛閳?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换鍐Υ?- `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py backend\main.py backend\tank_trouble_cloud.py backend\models.py` 闂侇偅淇虹换鍐Υ?- `python -m compileall backend` 闂侇偅淇虹换鍐Υ?
+## 闂傚啳鍩栭?22闁挎稒鐡朼nk Trouble 闁革负鍔庨崵搴ㄥ嫉椤掍焦绨氬Λ鏉垮缁佸鈧稒鍔曢懘濠冪▔鎼粹剝绀€婵犙屽灟閹便劍寰?
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 淇鍦ㄧ嚎妯″紡涓粛鐒跺瓨鍦ㄧ殑鏈満鍧﹀厠鍥炴函 / 鐬Щ銆?- 淇鏈満寮€鐏渶瑕佺瓑寰呮湇鍔″櫒纭鎵嶆樉绀虹偖寮圭殑闂銆?- 淇棰勬祴涓庢湇鍔″櫒纭涔嬮棿澶勭悊涓嶇ǔ閫犳垚鐨勭偖寮圭獊鐒跺嚭鐜般€佺獊鐒舵秷澶便€?
-闂鍘熷洜锛?
-- `applyLocalPlayerState(...)` 閲屼粛瀛樺湪鏈満婕傜Щ瓒呰繃闃堝€兼椂寮哄埗鍚冩湇鍔″櫒鍧愭爣鐨勯€昏緫锛屾湇鍔″櫒蹇収绋嶅井钀藉悗灏变細鎶婃湰鏈虹帺瀹跺悜鏃т綅缃媺鍥炪€?- 鏈満鍦ㄧ嚎瀛愬脊姝ゅ墠瀹屽叏鏉ヨ嚜鏈嶅姟鍣?`state.bullets`锛屾墍浠ュ紑鐏瑙夊繀椤荤瓑涓嬩竴娆℃湇鍔″櫒鍥炲寘銆?- 鏈嶅姟鍣ㄧ湡瀛愬脊鍑虹幇鏃讹紝濡傛灉娌℃湁姝ｇ‘鎺ョ鏈湴棰勬祴瀛愬脊锛屽氨鍙兘鐭殏鏄剧ず涓ら锛岄殢鍚庨娴嬪瓙寮规贰鍑猴紝鐪嬭捣鏉ュ儚闂幇 / 闂病銆?
-鏈樁娈靛墠绔敼鍔細
-
-- `frontend/src/components/TankTroublePanel.tsx`
-  - `OnlineBullet` 鏂板 `predicted` 鏍囪銆?  - 鏂板 `localFireLatched`銆乣localShootCooldown`銆乣nextPredictedBulletId`銆?  - 鏂板 `firePredictedLocalBullet(...)`锛屾湰鏈烘寜涓嬪紑鐏椂绔嬪嵆鐢熸垚鏈湴棰勬祴瀛愬脊銆?  - 鏅€氭湇鍔″櫒 `local_state` 涓嶅啀寮哄埗鍥炴媺鏈満鍧愭爣锛屽彧淇濈暀闈炲父杞诲井鐨勮搴︽牎姝ｃ€?  - 鏈嶅姟鍣ㄥ瓙寮瑰悓姝ユ椂锛屼細浠庢湭鍖归厤鐨勯娴嬪瓙寮逛腑瀵绘壘鍚?owner銆佽窛绂绘帴杩戠殑瀛愬脊杩涜鎺ョ銆?  - 宸茶鎺ョ鐨勯娴嬪瓙寮逛笉浼氬啀棰濆鐢熸垚娣″嚭娈嬪奖銆?  - 鏈鏈嶅姟鍣ㄧ‘璁ょ殑棰勬祴瀛愬脊瓒呰繃鐭椂闂翠細娣″嚭绉婚櫎锛岄伩鍏嶈鏈嶅姟绔嫆缁濆紑鐏椂闀挎湡娈嬬暀銆?
-鐗堟湰锛?
-- 搴旂敤鐗堟湰浠?`0.3.3` 鎻愬崌鍒?`0.3.4`銆?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃銆?- `python -m compileall backend` 閫氳繃銆?
-## 闃舵 23锛歍ank Trouble 缁熶竴鍦ㄧ嚎鏈湴鏉冨▉鎵嬫劅
-
-鏈樁娈电洰鏍囷細
-
-- 淇涓婁竴鐗堟妸鏈湴鎵嬫劅缁戝畾鍒扳€滄埧闂撮噷鍙湁涓€涓帺瀹垛€濈殑璁捐璇尯銆?- 鍦ㄧ嚎妯″紡涓紝鏈満鐜╁銆佹湰鏈鸿緭鍏ャ€佹湰鏈虹偖寮瑰繀椤诲缁堜繚鎸佹湰鍦板嵆鏃舵帹杩涖€?- 澶氫汉鑱旀満鍙簲璇ラ澶栨樉绀哄叾浠栫帺瀹跺拰鍏朵粬鐜╁鐐脊锛屼笉搴旇鏀瑰彉鏈満鎿嶄綔璺緞銆?
-鏈樁娈靛墠绔敼鍔細
+- 濞ｅ浂鍠栭ˇ鏌ュ捶閵娧冩疇婵☆垪鈧磭纭€濞戞搩鍘虹划娑㈡倿鐠鸿櫣鎽犻柛锔哄妿濞堟垿寮甸浣圭皻闁秆嶇畱閸樼娀宕堕悙鏉戝毐 / 闁活剦鍓涗簺闁?- 濞ｅ浂鍠栭ˇ鏌ュ嫉椤掍焦绨氱€殿喒鍋撻柣蹇ｅ亰濞撳墎鎲版担铏规惣鐎垫澘鎳忓﹢鍥礉閳ヨ櫕鐝ょ痪顓у枦椤撳骞嶅鍡樷枖缂佲偓閾忕懓浠忕€殿喖婀卞▓鎴︽⒒椤曗偓椤ｄ粙濡?- 濞ｅ浂鍠栭ˇ鍙夛紣閸曨剛銈村☉鎾冲濠€鍥礉閳ヨ櫕鐝ょ痪顓у枦椤撶粯绋婄€ｎ喗锛熷璺哄閹﹥绋夊鍤芥棃鏌呴悩鍐茬亣闁汇劌瀚崑鏍ь嚕閸︻厾宕愰柣鎺曟硾閸ゎ參鎮抽懜顑藉亾娴ｈ櫣宕愰柣鎺曞煐缁夐攱寰勬笟搴撳亾?
+闂傚偆鍣ｉ。浠嬪储閻旈攱绀堥柨?
+- `applyLocalPlayerState(...)` 闂佹彃濂旂划娑氣偓娑櫭﹢顏堝嫉椤掍焦绨氭繝鏇炲€讳簺閻℃帒鎳撶换鍐⒓閸績鍋撻崗鍏碱槯鐎殿喖鎼崺妤呭触閸愨晜绠涢柛鏂衡偓铏彜闁秆勫姈閻栵綁鎯冮崟顖楀亾閺勫繒甯嗛柨娑樻湰濠€鍥礉閳ヨ櫕鐝ら煫鍥跺亞閸欏海绮欏鍛俺闁解偓閽樺鍊甸悘蹇撳綁缁变即骞庢繝鍐╂嫳闁哄牐娅ｇ敮铏光偓纭呮硾閹粓寮缂嶅懐绱旈钘夘€欓柛銉у亼閳?- 闁哄牜鍓氬┃鈧柛锔哄妿閸ゅ海鈧稒鍔曢懘濠傤潰閵堝懎顤呴悗鐟拌嫰閸欏繘寮堕妷銊ユ闁哄牆绉存慨鐔煎闯?`state.bullets`闁挎稑鏈晶宥嗙閵夈儳纾婚柣蹇ｅ亯椤鎲存径濠勭畱濡炪倛宕甸悺鎴炵▔鐎ｂ晝顏辨繛鍡忓墲濠€鍥礉閳ヨ櫕鐝ら柛銉у仜鐎垫﹢濡?- 闁哄牆绉存慨鐔煎闯閵娧勫焸閻庢稒鍔曢懘濠囧礄閾忕懓绠涢柡鍐啇缁辨繃淇婇崒娑氫函婵炲备鍓濆﹢浣割潰閿濆洠鈧﹢骞掗妷褜鍚€闁哄牜鍓欏﹢瀛橈紣閸曨剛銈撮悗娑欏姇閼村﹪鏁嶇仦鑺ョ殤闁告瑯鍨甸崗姗€鎯岄鐔哥暞闁哄嫬澧介妵姘▔閵堝鏆柨娑樼焸濞堛垽宕ユ惔顭戞殨婵炴潙顑呴悺娆忣嚕鐟欏嫯绐楅柛鎴犲皑缁辨繈鎯囩€ｎ厽宕抽柡澶堝劚閸庢岸姊婚鍡楃疀 / 闂傚偆浜濋惀鍛村Υ?
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灡閺佸ジ宕濋…鎺旂獥
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - 绉婚櫎 `soloLocalMode` 涓?`ONLINE_SYNC_SOLO_INTERVAL_MS`銆?  - 鏈満鍧﹀厠姝ｅ父绉诲姩鏃朵笉鍐嶆寔缁惛闄勬湇鍔″櫒浣嶇疆 / 瑙掑害锛屽彧鍦ㄥ姞鍏ャ€佹崲鍥俱€佹浜°€侀噸鐢熺瓑杈圭晫閲嶆柊鎾銆?  - 鏈満鐐脊鍙戝皠鍚庣珛鍗冲姞鍏ユ湰鍦板脊閬撳垪琛紝鏈嶅姟鍣ㄧ‘璁ゅ悗鍙粦瀹?`serverId`锛屼笉鎺ョ鏈湴鍧愭爣銆?  - 鏈嶅姟鍣ㄧ偖寮规寜 owner 鍒嗘祦锛氭湰鏈?owner 鍙仛纭鍜岀敓鍛藉懆鏈熻緟鍔╋紝杩滅 owner 鎵嶅仛鎻掑€兼覆鏌撱€?  - 鏈満鐐脊鍛戒腑闈跺瓙鏈湴鍗虫椂缁撶畻锛岄澏瀛愪綅缃敤绛惧悕鍚堝苟锛岄伩鍏嶆湇鍔″櫒蹇収鎸佺画瑕嗙洊鏈湴鐢婚潰銆?  - 鍦ㄧ嚎 WebSocket 璋冨害缁熶竴涓烘湁杈撳叆 `16ms`銆佺┖闂?`90ms`锛屼笉鍐嶆寜鐜╁鏁伴噺鏀瑰彉鍚屾绛栫暐銆?
-鍏抽敭缁撴灉锛?
-- 鍦ㄧ嚎妯″紡鍙湁鏈満鐜╁鏃讹紝鎵嬫劅搴旀帴杩戝欢杩熸祴璇曟ā寮忋€?- 鍦ㄧ嚎妯″紡鏈夊叾浠栫帺瀹舵椂锛屾湰鏈烘墜鎰熶粛搴斾繚鎸佷竴鑷达紝棰濆鎴愭湰鍙槸娓叉煋杩滅鍧﹀厠鍜岃繙绔偖寮广€?- 鏈嶅姟鍣ㄤ粛璐熻矗鎴块棿銆侀鑹插崰鐢ㄣ€佹姇绁ㄦ崲鍥俱€佽繙绔帺瀹剁姸鎬併€佽繙绔偖寮圭姸鎬佸拰鏉冨▉缁撶畻銆?
-鐗堟湰锛?
-- 搴旂敤鐗堟湰浠?`0.3.5` 鎻愬崌鍒?`0.3.6`銆?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃銆?## 闃舵 25锛歍ank Trouble 鐩戞帶鍦板浘涓濇粦瀛愬脊涓庡悓娆捐瑙夐鏍?鏃堕棿锛?026-05-03
+  - `OnlineBullet` 闁哄倹婢橀·?`predicted` 闁哄秴娲╅鍥Υ?  - 闁哄倹婢橀·?`localFireLatched`闁靛棔姊條ocalShootCooldown`闁靛棔姊梟extPredictedBulletId`闁?  - 闁哄倹婢橀·?`firePredictedLocalBullet(...)`闁挎稑鏈﹢浼村嫉閻戞ê鐦诲☉鎾愁儏缁辨垿鎮橀锝嗩槯缂佹柨顑呭畵鍡涙偨閻旂鐏囬柡鍫墮濠€瀛橈紣閸曨剛銈撮悗娑欏姇閼村﹪濡?  - 闁哄拋鍣ｉ埀顒佺濠€鍥礉閳ヨ櫕鐝?`local_state` 濞戞挸绉撮崯鈧€殿喖鎼崺妤呭炊閻愭潙顎欓柡鍫墯濠р偓闁秆勫姈閻栵綁鏁嶇仦钘夋锭濞ｅ洦绻勯弳鈧梻鍫㈠仜閻栬埖娼拠韫俺闁汇劌瀚～妤佹償閿旂晫澧℃慨婵撶祷閳?  - 闁哄牆绉存慨鐔煎闯閵娿儳鎽嶇€殿喚鎳撻幃鎾愁潰閵夛附顦ч柨娑樺缁辩増绂掓惔銏″紦闁告牕缍婇崢銈夋儍閸曨垼鏆曟繛鏉戭儏閻℃瑥顕ｉ柅娑滃幀閻庣數绮竟姗€宕?owner闁靛棔娴囩粣娑氱矉缂佹ê澶嶉弶鈺傚灩濞堟垹鈧稒鍔曢懘濠冩交濞戞粠鏀介柟鎭掑劤椤撴悂濡?  - 鐎规瓕灏～锕傚箳閵壯屽悁闁汇劌瀚伴。鈺伱圭€ｎ亞鎽嶇€殿噣鈧稓鐟濆ù鍏艰壘閸熲偓濡増绻傞ˇ濠氭偨閻旂鐏囨繛锝傗偓鍐叉瘔婵炲牆顑呮總鏍Υ?  - 闁哄牜浜ｉ～锕傚嫉瀹ュ懎顫ら柛锝冨妿閳ユ鎷嬮妶鍥ㄧ暠濡澘瀚粊瀵糕偓娑欏姇閼村﹦鎼鹃崨鎵畺闁活収鍘藉鍌炴⒒缂堢姷绐楁繛锝傗偓鍐叉瘔缂佸顭峰▍搴ㄦ晬瀹€鍕級闁稿繐绉烽～锕傚嫉瀹ュ懎顫ょ紒鏃戝灡鐎氬棛绱掑┑鍡欑；闁诲浚鍋呭鍌炴⒐閹稿孩鍩傛繛鍫濐儑閺嗏偓闁?
+闁绘鐗婂﹢浼存晬?
+- 閹煎瓨姊婚弫銈夋偋閸喐鎷卞ù?`0.3.3` 闁圭粯鍔曞畷宀勫礆?`0.3.4`闁?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换鍐Υ?- `python -m compileall backend` 闂侇偅淇虹换鍐Υ?
+## 闂傚啳鍩栭?23闁挎稒鐡朼nk Trouble 缂備胶鍠嶇粩鎾捶閵娧冩疇闁哄牜鍓欏﹢鎾级閸愩劉鏋嗛柟闈涱儐閸?
 
-鏈樁娈电洰鏍囷細
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
 
-- 淇浜戠瑙傛垬缃戦〉閲岀偖寮归琛屼粛鏈夐】鎸殑闂銆?- 灏忕▼搴忕偣鍑?`鐩戞帶鍦板浘` 鍚庣洿鎺ユ墦寮€鍥哄畾鐨勬柊浜戠瑙傛垬椤碉細`http://111.230.62.106:18086/spectator.html?room=tank-trouble-main`銆?- 璁╀簯绔鎴樼綉椤电殑鍦板浘銆佸浣撱€侀澏瀛愩€佺偖寮广€佸弽寮规尝绾瑰拰鍧﹀厠鏍峰紡灏介噺涓庡皬绋嬪簭鍐?Tank Trouble 娓告垙鐣岄潰淇濇寔鍚屼竴濂楄瑙夎瑷€銆?
-鏈湴灏忕▼搴忔敼鍔細
+- 濞ｅ浂鍠楅婊勭▔婵犱胶顏遍柣妤€鐗婃俊鎼佸嫉椤掆偓濠€鎾箥鐎ｎ偄濡崇紓浣瑰灥閻ｉ箖宕氶幍鏂ュ亾濠婂嫬鐓ｉ梻鍌涙尦閸ｇ兘宕ｉ鍛畳濞戞挴鍋撳☉鎿冧簽鐢櫣鈧懓鐏堥埀顒佺箘濞堟垹鎷嬮幑鎰靛悁閻犲浂鍨扮亸顖炲Υ?- 闁革负鍔庨崵搴∥熼垾宕囩濞戞搩鍙忕槐婵嬪嫉椤掍焦绨氶柣婧炬櫅椤斿秹濡存担瑙勬嫳闁哄牓缂氱欢顓㈠礂閵夛絺鍋撴担瑙勬嫳闁哄牐娅ｉ崑鏍ь嚕閻熸壆绠戝銈堫嚙椤劗绱掗崼婊呯闁归晲鐒﹀﹢浼村捶閺夊灝绁柡鍐煐鐢娼诲☉鏍ゅ亾?- 濠㈣埖鐭Ч澶愭嚂閺冣偓濠р偓闁告瑯浜滅花鑼嫚閵夆晩鏉哄鑸电墬濡绮堥崫鍕緭濞寸姵鐗滅敮铏光偓纭呮硾閹蜂即宕楅張鐢甸搨闁绘壕鏅涢宥夋倷椤旇壈鍓ㄩ柨娑樺缁楀鎯旈弮鍥跺殙闁衡偓閻熸澘缍侀柡鍫墯濠р偓闁瑰灝绉崇紞鏃傛崉椤栨氨绐為柕?
+闁哄牜鍓熷Ο浣糕枔闂堟稑顤呯紒鏃戝灡閺佸ジ宕濋…鎺旂獥
 
 - `frontend/src/components/TankTroublePanel.tsx`
-  - `鐩戞帶鍦板浘` 鎸夐挳涓嶅啀璧版棫鐨勫悗绔姩鎬?URL 鑾峰彇璺緞銆?  - 鐐瑰嚮鍚庣洿鎺ユ墦寮€ `TANK_TROUBLE_SPECTATOR_URL`銆?  - 鎵撳紑鏃朵細闄勫甫褰撳墠涓婚鍙傛暟锛歚&theme=light` 鎴?`&theme=dark`锛岃缃戦〉瑙傛垬椤佃窡闅忓皬绋嬪簭娣辨祬鑹叉ā寮忋€?
-浜戠瑙傛垬椤垫敼鍔細
+  - 缂佸顭峰▍?`soloLocalMode` 濞?`ONLINE_SYNC_SOLO_INTERVAL_MS`闁?  - 闁哄牜鍓氬┃鈧柛褝绠戦崢鐘差潰閿濆懐鍩楃紒澶庮嚙婵晠寮張鐢电憹闁告劕绉电€垫梻绱掗鐐村劎闂傚嫬瀚﹢鍥礉閳ヨ櫕鐝ゅù锝呯Ф閻?/ 閻熸瑦甯掔€规娊鏁嶇仦钘夋锭闁革负鍔屾慨鐐哄礂閵夛絺鍋撴担鐟板簥闁搞儰鍕橀埀顑跨劍椤掑瓨绂嶆幊閳ь兛绶氶崳鎼佹偨閻旇櫣鎼奸弶鍫濇贡閺咁偊鏌屽鍡樼厐闁圭虎鍘鹃～鎺楀Υ?  - 闁哄牜鍓氬┃鈧柣鎰靛枛閼村﹪宕ｉ幋婵堟闁告艾娴烽悵娑㈠础閸愭彃顫ｉ柛蹇嬪劜濠€浼村捶閺夎儻鍓ㄩ梺顒佹尭閸亞鎮伴…鎺旂闁哄牆绉存慨鐔煎闯閵娧€鈧鎷嬮妶鍛€甸柛娆樹簽缁妇鈧?`serverId`闁挎稑濂旂粭澶愬箳閵壯屽悁闁哄牜鍓欏﹢鎾锤閹邦厾鍨奸柕?  - 闁哄牆绉存慨鐔煎闯閵娧冧粡鐎殿喛顫夌€?owner 闁告帒妫欑粊锕傛晬濮橆厽鎷遍柡?owner 闁告瑯浜滄禒娑氭兜椤旀鍚囬柛婊冪灱閺佹捇宕ㄩ挊澶嬪櫙闁哄牏鍠曠欢鐔煎礉閳哄绀夐弶鈺傜矌椤?owner 闁归潧绉存禒娑㈠箵閹烘垟鍋撻崗鑹邦洬闁哄本鎸堕埀?  - 闁哄牜鍓氬┃鈧柣鎰靛枛閼村﹪宕ㄩ幋鎺曞幀闂傚牐娉涢悺娆撳嫉椤掆偓濠€鎾础閾忣偅顦х紓浣规尵閻ｅ鏁嶅畝鍕珐閻庢稒鍔掔紞鍛磾椤旂偓鏆忕紒娑欏劤閹洟宕ラ崼婵婂珯闁挎稑鐭傛导鈺呭礂瀹ュ棙绠涢柛鏂衡偓铏彜闊浂鍋嗛崣搴ㄥ箰娴ｈ櫣鏁鹃悷鏇炴濞插﹪寮甸鈧﹢鎾偨婵犳碍妗ㄩ柕?  - 闁革负鍔庨崵?WebSocket 閻犲鍟€瑰磭绱掗悢鍓侇伇濞戞挾鍎ゅ﹢浣规綇閹惧啿寮?`16ms`闁靛棔鑳堕埞鏍⒒?`90ms`闁挎稑濂旂粭澶愬礃瀹ュ棗鐦婚柣婧炬櫅椤斿秹寮导鏉戞闁衡偓閻熸澘缍侀柛姘湰椤掔偟绮甸弽顐ｆ闁?
+闁稿繑濞婇弫顓犵磼閹惧浜柨?
+- 闁革负鍔庨崵搴∥熼垾宕囩闁告瑯浜濆﹢渚€寮甸浣圭皻闁绘壕鏅涢宥夊籍鐠佸湱绀夐柟闈涱儐閸斿懏鎯旈弮鈧敮瀛樻交閹存繃顐介弶鈺冨枑缁佸鎷犻弴鐔屼礁顕ｈ箛瀣у亾?- 闁革负鍔庨崵搴∥熼垾宕囩闁哄牆顦崣鐐閺嶎偄璐熼悗纭呭煐濡炲倿鏁嶇仦鐐嫳闁哄牏鍎ゆ晶婊堝箛閻斿墎鐭濋幖瀛樻煣缁绘岸骞愭担椋庮伇闁肩柉鎻槐婵囷紣濠靛棭妯嗛柟瀛樺姈濠€浼村矗椤忓懏笑婵炴挸寮堕悡瀣交濠婂拋浼傞柛褝绠戦崢鐘诲椽瀹€鍐缂佹棏鍨抽崑鏍ь嚕楠炲簱鍋?- 闁哄牆绉存慨鐔煎闯閵娿倗鐭濋悹鎰枙閻骞嬮崸妤侊紵闁靛棔绶氶·渚€鎳濋幓鎺戠獥闁活潿鍔婇埀顑跨劍婵洨绮婇妸锕€搴婇柛銉ゅ嫎閳ь兛娴囩换娆戠博椤栨粌璐熼悗鐟板婵悂骞€娴ｇ鍋撴担鐣岀缂佹棏鍨抽崑鏍ь嚕閸︻厼笑闁诡兛绀侀幏浼村级閸愩劉鏋嗙紓浣规尵閻ｅ濡?
+闁绘鐗婂﹢浼存晬?
+- 閹煎瓨姊婚弫銈夋偋閸喐鎷卞ù?`0.3.5` 闁圭粯鍔曞畷宀勫礆?`0.3.6`闁?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换鍐Υ?## 闂傚啳鍩栭?25闁挎稒鐡朼nk Trouble 闁烩晜鍨剁敮鍫曞捶閺夋寧绂堝☉鎾寸箖缁妇鈧稒鍔曢懘濠冪▔鎼粹剝鍊辨繛鍡樺礃椤鎲存径鎰垫闁?闁哄啫鐖煎Λ鍧楁晬?026-05-03
+
+闁哄牜鍓熷Ο浣糕枔閻㈠灚绐楅柡宥呮祫缁?
+
+- 濞ｅ浂鍠栭ˇ鍙夌閹寸媭浼傞悷娆忓€归崹顒傜磾閹达负鈧鏌屽畝鈧崑鏍ь嚕瑜版帩妫ч悶娑樺缁盯寮垫径鎰┾偓鎴﹀箰椤愩倖鐣遍梻鍌ゅ櫍椤ｄ粙濡?- 閻忓繐绻掗埢鍏兼償韫囨洖浠柛?`闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 闁告艾娴峰ú鍧楀箳閵夛箑鈪电€殿喒鍋撻柛銉ユ惈閻ｉ箖鎯冮崟顒佺厐濞存粍鍨归顒傛喆閸屾稑鐏涘銈囶暜缁辩櫗http://111.230.62.106:18086/spectator.html?room=tank-trouble-main`闁?- 閻犱讲鏅欑花顖滅博椤栨繍娼庨柟瀛橆焽缂嶅銇勯悽鍨暠闁革附婢樺ù姗€濡存担鍓叉毎濞达絾鎸堕埀顑跨窔濠㈠繒鈧稒鍔戦埀顑胯兌閸嬫牕顕ｉ獮搴撳亾娴ｇ鍐€鐎殿喛顫夌亸婵堢棯閻熺増瀚查柛褝绠戦崢鐘诲冀瀹勬壆纭€閻忓繋绮欓崳鐑樼▔鎼达紕姣堢紒瀣儏缁參宕?Tank Trouble 婵炴挸鎲￠崹娆撴偩瀹€鍕〃濞ｅ洦绻冪€垫棃宕ョ仦鑲╊伇濠靛倹顨夐～瀣喆婢跺寒鍤旈悷灏佸亾闁?
+闁哄牜鍓欏﹢瀵镐焊韫囨洍鏌ら幖鏉戠箲閺佸ジ宕濋…鎺旂獥
+
+- `frontend/src/components/TankTroublePanel.tsx`
+  - `闁烩晜鍨剁敮鍫曞捶閺夋寧绂坄 闁圭顦甸幐铏▔瀹ュ懎鏅欓悹褏澧楀Λ顐︽儍閸曨偅鍊电紒鏃戝灠婵晠骞€?URL 闁兼儳鍢茶ぐ鍥╂崉椤栨氨绐為柕?  - 闁绘劗鎳撻崵顕€宕ユ惔锝嗙函闁规亽鍎叉晶锕€顕ｉ埀?`TANK_TROUBLE_SPECTATOR_URL`闁?  - 闁瑰灚鎸哥槐鎴﹀籍閺堢數绐楅梻鍕閻㈩偉銇愰幘鍐差枀濞戞挸顭烽。浠嬪矗閸屾稒娈堕柨娑欑摢&theme=light` 闁?`&theme=dark`闁挎稑鐭侀鈧紓鍐╁灴閵嗗鎲撮崒娑樼仜濡炪倓绲荤粣锟犳⒕韫囨挾姣堢紒瀣儏缁厼菐鏉堛劎銈柤鐟板级鑶╃€殿喖绻堥埀?
+濞存粍鍨归顒傛喆閸屾稑鐏涘銈呯仛閺佸ジ宕濋…鎺旂獥
 
 - `backend/cloud_setup_bundle/tank_trouble_room.py`
-  - `build_spectator_html()` 鍐呮柊澧?`renderBullets`銆乣bulletFades`銆乣wallRipples` 绛夋祻瑙堝櫒鏈湴娓叉煋鐘舵€併€?  - 鏂板 `syncRenderBullets(...)`锛氭湇鍔″櫒蹇収鍙綔涓虹偖寮圭洰鏍囦綅缃?/ 鐩爣閫熷害鐨勮交鏍℃鏉ユ簮銆?  - 鏂板 `advanceRenderBullet(...)`锛氭祻瑙堝櫒姣忓抚鎸?`vx / vy` 杩炵画鎺ㄨ繘鐐脊锛屽苟鍦ㄦ湰鍦板鐞嗗浣撳弽寮硅瑙夈€?  - 鏂板 `advanceEffectsAndBullets(...)`锛氱粺涓€鎺ㄨ繘鐐脊銆佺偖寮规贰鍑恒€佸浣撳弽寮规尝绾广€?  - 娓叉煋鏃朵笉鍐嶇洿鎺ユ妸 `state.bullets` 褰撲綔姣忓抚鏄剧ず婧愶紝鑰屾槸鍏堝悓姝ュ埌鏈湴 `renderBullets`锛屽啀鐢辨祻瑙堝櫒鐢?`requestAnimationFrame` 杩炵画鎾斁銆?  - 淇濈暀鏈嶅姟鍣ㄦ潈濞侊細鐐脊鐢熷懡鍛ㄦ湡銆佸弽寮规鏁般€佸懡涓€佽鍒嗐€侀澏瀛愮姸鎬佷粛鐢变簯绔埧闂存湇鍔＄‘璁わ紱缃戦〉绔彧鍋氳瑙夎繛缁€у拰杞婚噺棰勬祴銆?
-瑙嗚鍚屾锛?
-- 浜戠瑙傛垬椤电殑鑳屾櫙銆佺珵鎶€鍦哄簳鏉裤€佸浣撴笎鍙樸€佸浣撴壂鎻忕嚎銆佽妭鐐广€佽竟瑙掔嚎銆侀澏瀛愭牱寮忋€佺偖寮瑰彂鍏夊拰娣″嚭鏁堟灉锛屾敼涓鸿创杩戝皬绋嬪簭鍐呯殑 Tank Trouble 鍚屾绉戞妧椋庢牸銆?- 浜戠瑙傛垬椤靛潶鍏嬬粯鍒舵敼涓轰笌灏忕▼搴忛噷鐨勯珮绾у潶鍏嬫牱寮忎竴鑷达紝鍖呮嫭鐐銆佽溅浣撴壂鎻忓厜銆佸熬閮ㄥ彂鍏夊拰鍙楀嚮 / 寮€鐏棯鍏夈€?- 鍧﹀厠缁樺埗缁х画浣跨敤 `angle + Math.PI / 2` 鐨勬柟鍚戝鐞嗭紝閬垮厤鐐鏂瑰悜鍜岃杩涙柟鍚戝弽鍚戙€?
-閮ㄧ讲杈圭晫锛?
-- 宸蹭笂浼犲苟閲嶅惎 `111.230.62.106` 涓婄殑 Tank Trouble 鎴块棿 / 瑙傛垬鏈嶅姟锛岀鍙ｄ负 `18086`銆?- 鏈鍙Е纰?Tank Trouble 娓告垙鍜岃鎴橀摼璺€?- 鏈敼鍔?go2rtc 瑙嗛鎺ㄦ祦 / 鎷夋祦閾捐矾銆?- 鏈敼鍔ㄦ満姊拌噦鎺у埗淇″彿鐩戝惉閾捐矾銆?
-楠岃瘉缁撴灉锛?
-- `cmd /c npm run build` 閫氳繃銆?- `python -m compileall backend` 閫氳繃銆?- `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py` 閫氳繃銆?- 浠?`build_spectator_html()` 鎻愬彇鍐呭祵鑴氭湰鍚庢墽琛?`node --check build-logs\spectator-page-check.js` 閫氳繃銆?- 浜戠 `http://111.230.62.106:18086/health` 杩斿洖 `{"ok": true, "idle_timeout": 0}`銆?- 浜戠瑙傛垬椤靛唴瀹圭‘璁ゅ寘鍚?`renderBullets`銆乣syncRenderBullets`銆乣wallRipples`銆乣tankNoseGlow`銆乣spectatorTheme`銆?## 2026-05-03 16:47 - Tank Trouble monitor cleanup, vote UI, latency badge, dark web views
+  - `build_spectator_html()` 闁告劕鎳忛弻濠冩櫠?`renderBullets`闁靛棔姊梑ulletFades`闁靛棔姊梬allRipples` 缂佹稑顦扮粊鑽ゆ喆閸繃鐝ら柡鍫墮濠€鏉戙€掗崣澶屽帬闁绘鍩栭埀顑块檷閳?  - 闁哄倹婢橀·?`syncRenderBullets(...)`闁挎稒纰嶅﹢鍥礉閳ヨ櫕鐝ら煫鍥跺亞閸欏酣宕ｉ鍐▕濞戞捁娅ｉ崑鏍ь嚕閸︻厽绐楅柡宥呮矗缂嶅懐绱?/ 闁烩晩鍠楅悥锝夋焻閻斿嘲顔婇柣銊ュ娴溿倝寮介埄鍐惧妧闁哄鍎茬花顕€濡?  - 闁哄倹婢橀·?`advanceRenderBullet(...)`闁挎稒纰嶇粊鑽ゆ喆閸繃鐝ゆ慨锝呯箰閹舵岸骞?`vx / vy` 閺夆晝鍋熼悽濠氬箳閵娿劎绠婚柣鎰靛枛閼村﹪鏁嶇仦鍊熷珯闁革负鍔嶅﹢浼村捶閺夋妲遍柣鐐叉椤ｇ偓鎷呴幘鍐插唨鐎殿喚顢婇～瀣喆婢跺牃鍋?  - 闁哄倹婢橀·?`advanceEffectsAndBullets(...)`闁挎稒姘ㄧ划鐑樼▔閳ь剟骞掗妸銊х闁绘劦鍠栭懘濠囧Υ娴ｅ搫浠忕€殿喛顫夌拹浼村礄閹巻鍋撴担鍓叉毎濞达絾鎸稿钘夘嚕鐟欏嫬鐨剧紒鎯х畭閳?  - 婵炴挸寮堕悡瀣籍閺堢數鐟濋柛鎰Ф濞插潡骞掗妷锕€惟 `state.bullets` 鐟滅増鎸风紞鏂啃掕箛鎾村闁哄嫬澧介妵姘攦閹板墎绀夐柤鏉挎湰濡叉悂宕楅崼婵囧€辨慨婵勫劚閸╁矂寮甸鈧﹢?`renderBullets`闁挎稑鑻崯鈧柣銏ｉ哺缁佽崵鎲撮崼婵囩彜闁?`requestAnimationFrame` 閺夆晝鍋熼悽濠氬箻椤撶喐鏉归柕?  - 濞ｅ洦绻勯弳鈧柡鍫濈Т婵喖宕抽妸锔界秬濠电偘绶ょ槐浼存倷椤旇壈鍓ㄩ柣銏㈠枎閹筹繝宕ㄩ妸锔藉焸闁靛棔绀佸钘夘嚕鐟欏嫷鍋ч柡浣藉焽閳ь兛绀侀幊鈩冪▔椤撴壕鍋撴担绛嬪悁闁告帒妫庨埀顑跨窔濠㈠繒鈧稒鍔楁慨鎼佸箑娴ｉ鐭濋柣銏犲綁缁垳绮╅娑樼叄闂傚倸鐡ㄥ﹢鍥礉閿涘嫧鈧鎷嬮妶蹇曞耿缂傚啯鍨块妴澶岀博椤栨艾娑ч柛瀣亢椤鎲存径搴ｇ缂備緡鍘介埀顑啯瀚查弶鐐差煼閸ｇ儤锛愰崟顒傘偞闁?
+閻熸瑥妫滈～搴ㄥ触鐏炵虎鍔勯柨?
+- 濞存粍鍨归顒傛喆閸屾稑鐏涘銈囨暩濞堟垿鎳楃仦鐐彲闁靛棔鑳堕悵鐢稿箮閳ь剟宕烽崫鍕亢闁哄锟ラ埀顑跨椤ｇ偓鎷呴幘瀵哥懁闁告瑦菧閳ь兛绀侀。鐐媴閹炬潙顥囬柟璇茬箳閸ゅ酣濡存担钘壩濋柣鎰畭閳ь兛娴囩粩鐔烘喆閹烘柨娈犻柕鍡曠窔濠㈠繒鈧稒鍔栭悧鍗烆嚕韫囧鍋撴担鍝勪粡鐎殿喚鎳撹ぐ鍌炲礂婢跺﹥瀚叉繛锝傗偓鍐叉瘔闁轰礁鐗婇悘澶愭晬鐏炵偓鏆☉鎾荤細閸掓稒娼婚幋婵堟瘓缂佸顑呯花顓㈠礃閸涱垱鐣?Tank Trouble 闁告艾鏈娆戠矓閹寸偛螚濡炲瀛╅悧鎼佸Υ?- 濞存粍鍨归顒傛喆閸屾稑鐏涘銈夋涧濞煎爼宕楃€ｎ剛甯涢柛鎺曞煐閺佸吋绋夋潪鎵憿閻忓繐绻掗埢鍏兼償韫囨稑娅￠柣銊ュ閻濐喚鐥濞煎爼宕楃€ｎ偆澹夌€殿喖绻嬬粩鎾嚊鏉堝墽绀夐柛鏍ф噺鐎氼參鎮欓纰辨晩闁靛棔娴囧┃鍛媴閹炬潙顥囬柟璇茬箰閸樻粓濡存担鍝ュ暡闂侇喓鍔岃ぐ鍌炲礂婢跺﹥瀚查柛娆愵殔閸?/ 鐎殿喒鍋撻柣蹇ｅ亰濡垶宕楁径鍫氬亾?- 闁秆嶇畱閸樼姷绱掑Ο鍝勭厬缂備綀鍛暰濞达綀娉曢弫?`angle + Math.PI / 2` 闁汇劌瀚弻鐔煎触閹存繍妲遍柣鐐叉４缁辨繈鏌嗛崹顔煎赋闁绘劦鍠栭、娆撳棘閻熺増鍊婚柛婊冪焷椤㈡垶娼诲☉娆愮厵闁告碍鍨靛浠嬪触閹存瑢鍋?
+闂侇喓鍔庣拋鍙夋綇閸︻厽娅曢柨?
+- 鐎规瓕寮撶粭鍌涘閻樿尪瀚欓梺鎻掔Т閹?`111.230.62.106` 濞戞挸锕﹀▓?Tank Trouble 闁规潙娼″Λ?/ 閻熸瑥鍊归崹顒勫嫉瀹ュ懎顫ら柨娑樼灱椤忣剟宕ｉ敐鍕 `18086`闁?- 闁哄牜鍓氶濂稿矗椤忓泦鏇犲枈?Tank Trouble 婵炴挸鎲￠崹娆撳椽瀹€鍐炬綆闁瑰瓨锕㈤幗鑲╂崉椤栨ǚ鍋?- 闁哄牜浜濋弫濂稿礉?go2rtc 閻熸瑥妫濋。鍫曞箳閵婏妇銈?/ 闁瑰嘲顦扮粊锕傛煣閹规劗鐔呴柕?- 闁哄牜浜濋弫濂稿礉閵婏附绨氭慨濠冨閸ｏ箓骞掕閸╂绌遍垾鍐插▏闁烩晜鍨甸幆澶愭煣閹规劗鐔呴柕?
+濡ょ姴鐭侀惁澶岀磼閹惧浜柨?
+- `cmd /c npm run build` 闂侇偅淇虹换鍐Υ?- `python -m compileall backend` 闂侇偅淇虹换鍐Υ?- `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py` 闂侇偅淇虹换鍐Υ?- 濞?`build_spectator_html()` 闁圭粯鍔曡ぐ鍥礃閸涱厾銈甸柤瀛樼濠€浼村触鎼淬垹鈷旈悶?`node --check build-logs\spectator-page-check.js` 闂侇偅淇虹换鍐Υ?- 濞存粍鍨归?`http://111.230.62.106:18086/health` 閺夆晜鏌ㄥú?`{"ok": true, "idle_timeout": 0}`闁?- 濞存粍鍨归顒傛喆閸屾稑鐏涘銈夋涧閸炲鈧懓婀遍垾妯兼媼閵堝懎鐦堕柛?`renderBullets`闁靛棔姊梥yncRenderBullets`闁靛棔姊梬allRipples`闁靛棔姊梩ankNoseGlow`闁靛棔姊梥pectatorTheme`闁?## 2026-05-03 16:47 - Tank Trouble monitor cleanup, vote UI, latency badge, dark web views
 
 Scope:
 - Only touched Tank Trouble desktop UI, preview page, spectator page, and Tank Trouble room service.
@@ -2065,7 +6303,7 @@ Changes:
 - Cloud match service now consumes newer fire sequence numbers even when the shot is rejected by cooldown or the 5-bullet limit. This prevents delayed server-side "ghost shots" if a stale client ever sends extra fire requests.
 - Cloud match state and spectator state now publish `targets: []` for online rooms, and online spawn logic no longer creates targets just to avoid them.
 - Fixed the cloud monitor page stage sizing so the 1280x800 battlefield keeps its aspect ratio when the right scoreboard is visible and the browser is resized.
-- Replaced the latency-test preview raw URL text with a styled "鎵撳紑缃戦〉棰勮" button.
+- Replaced the latency-test preview raw URL text with a styled "闁瑰灚鎸哥槐鎴犵磾閹达负鈧锛愰崟顕呮綌" button.
 
 Files:
 - `frontend/src/components/TankTroublePanel.tsx`
@@ -2086,8 +6324,8 @@ Scope:
 - Did not touch mechanical-arm/control-signal listener paths.
 
 Changes:
-- Collapsed the keybinding grid in the Tank Trouble launch card. The `璁剧疆/瀹屾垚` toggle stays visible, and the forward/back/turn/fire binding buttons are only shown while editing.
-- Increased tank rotation speed to one full turn every `1.3s` by setting `PLAYER_TURN_SPEED = 2蟺 / 1.3` in both the desktop engine and cloud room script.
+- Collapsed the keybinding grid in the Tank Trouble launch card. The `閻犱礁澧介悿?閻庣懓鏈崹姝?toggle stays visible, and the forward/back/turn/fire binding buttons are only shown while editing.
+- Increased tank rotation speed to one full turn every `1.3s` by setting `PLAYER_TURN_SPEED = 2閿?/ 1.3` in both the desktop engine and cloud room script.
 - Upgraded tank destruction effects with segmented shock rings, radial tech ticks, and electric arc strokes while keeping the original blast radius.
 - Added `tankExplosions` to the latency preview push/state model so browser preview pages can render desktop death explosions instead of missing them.
 - Added cloud match/spectator fields for `tank_explosions`, `powerups`, and `powerup_effects`.
@@ -2488,7 +6726,7 @@ Scope:
 
 Changes:
 - Default-selected the Tank Trouble game card on fresh installs so a new user does not have to discover an extra hidden selection step.
-- Kept `开始游戏` and `测试延迟` clickable when the player ID is missing; clicking now shows a clear prompt and focuses the player ID field instead of silently appearing broken.
+- Kept `瀵偓婵鐖堕幋寤?and `濞村鐦鎯扮箿` clickable when the player ID is missing; clicking now shows a clear prompt and focuses the player ID field instead of silently appearing broken.
 - Added a launch hint under the action buttons explaining that a player ID is required.
 - Preserved the online color/full-room guards for real multiplayer entry.
 
@@ -2642,7 +6880,7 @@ Validation:
 ## 2026-05-05 01:35 - Tank Trouble one-click cloud bundle sync
 
 Scope:
-- Only changed the Tank Trouble cloud setup/sync path used by the desktop app's Tank Trouble `一键配置` button.
+- Only changed the Tank Trouble cloud setup/sync path used by the desktop app's Tank Trouble `娑撯偓闁款噣鍘ょ純鐢?button.
 - Did not touch go2rtc video ingest/playback.
 - Did not touch the mechanical-arm/control-signal listener paths.
 - Did not change gameplay rules or rendering behavior.
@@ -2651,7 +6889,7 @@ Changes:
 - Tank Trouble one-click setup now compares a local bundle manifest with a remote `bundle-manifest.json`.
 - The manifest hash covers `backend/cloud_setup_bundle/tank_trouble_room.py` plus Tank Trouble-only static assets under `backend/cloud_setup_bundle/www/tank-trouble/`.
 - If the remote server is missing the manifest, has a different bundle hash, is missing the game asset directory, or the Tank Trouble service/proxy is not healthy, one-click setup uploads the current bundled game files and restarts only `cloud-service-console-tank-trouble`.
-- If the remote server already matches the current desktop bundle and is healthy, one-click setup reports `服务器已同步到当前版本` without unnecessary re-upload/restart work.
+- If the remote server already matches the current desktop bundle and is healthy, one-click setup reports `閺堝秴濮熼崳銊ュ嚒閸氬本顒為崚鏉跨秼閸撳秶澧楅張鐞?without unnecessary re-upload/restart work.
 - This makes a fresh server or another existing server syncable from the desktop app without manually copying Tank Trouble game scripts/assets.
 
 Files:
@@ -2687,3 +6925,488 @@ Files:
 
 Validation:
 - Documentation files were created and reviewed for path/API coverage.
+
+## 2026-05-05 - Control side-channel monitor path
+
+Scope:
+- Changed only the control signal lane.
+- Kept browser-to-robot WebRTC signaling on `/control/webrtc/*`.
+- Added a side-channel key-state monitor on `/control/monitor/key-state` so the mini app can display frontend key input without answering or consuming robot WebRTC offers.
+- Did not change video ingest/playback, go2rtc video behavior, Tank Trouble, or game cloud services.
+
+Changes:
+- Cloud broker stores latest monitor key-state per `session + client_id`, expires stale clients after 3 seconds, and returns all active frontend clients.
+- Full setup Nginx config now proxies both `/control/webrtc/` and `/control/monitor/` to the internal control signaling service on `127.0.0.1:18085`.
+- Local backend added `GET /api/control-monitor/key-state?session=...` as a proxy to the cloud monitor endpoint.
+- Dashboard control monitor now polls the side-channel key-state endpoint instead of acting as a robot receiver.
+- Dashboard displays aggregate pressed keys plus a client list for multiple frontend senders.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/requirements.txt`
+- `backend/cloud_setup.py`
+- `backend/main.py`
+- `backend/models.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\cloud_setup.py backend\main.py backend\models.py` passed.
+- `cmd /c npm --prefix frontend run build` passed.
+
+Cloud deployment note:
+- Existing servers need the updated `control_signaling.py` and an Nginx config containing both `/control/webrtc/` and `/control/monitor/` proxy blocks before frontends can post side-channel key-state through public `18081`.
+
+## 2026-05-05 - Control monitor colored high-tech keyboard
+
+Scope:
+- Changed only the control monitor keyboard UI and monitor client ordering metadata.
+- Did not change WebRTC offer/answer pairing semantics.
+- Did not touch video ingest/playback, go2rtc video behavior, Tank Trouble, or game cloud services.
+
+Changes:
+- Added `firstSeenAt` and `firstSeenOrder` to cloud monitor client snapshots so the mini app can assign colors by first active frontend order.
+- The mini app now assigns stable active-client color slots in priority order: green, blue, red, yellow.
+- Active clients keep their color while they remain active; expired clients release their color; new clients take the highest-priority free color.
+- The virtual control monitor keyboard now uses angled, higher-tech key shapes, panel grid texture, animated scan highlights, and stronger active key lighting.
+- Keys pressed by one frontend use that frontend's gradient color.
+- Keys pressed by multiple frontends use a mixed gradient built from all pressing clients' colors.
+- The frontend client list now shows a matching color swatch and color label beside each `clientId`.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/models.py`
+- `frontend/src/types/cloud.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\models.py backend\main.py` passed.
+- `cmd /c npm --prefix frontend run build` passed.
+
+## 2026-05-05 - v0.3.51 installer build and local install
+
+Scope:
+- Built a new desktop installer containing the control side-channel monitor and colored high-tech keyboard changes.
+- Installed the new build locally.
+
+Changes:
+- Version bumped from `0.3.50` to `0.3.51`.
+- Generated NSIS installer `Cloud Service Console_0.3.51_x64-setup.exe`.
+- Copied installer to `E:\Cloud-Service-Console`.
+- Ran the installer silently; it completed with exit code `0`.
+
+Files:
+- `package.json`
+- `frontend/package.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- `cmd /c npm run tauri:build` passed.
+- Installed app registry entry reports `DisplayVersion=0.3.51`.
+- Installed files exist in `E:\Cloud-Service-Console`, including `Cloud Service Console.exe`, `cloud-console-backend.exe`, and `Cloud Service Console_0.3.51_x64-setup.exe`.
+
+## 2026-05-05 13:35 - Old server control signal deployment
+
+Scope:
+- Deployed only the Control Signal Agent lane to the old server `150.109.100.30`.
+- Did not modify video ingest/playback, go2rtc video service logic, Tank Trouble, or game cloud services.
+
+Cloud changes:
+- Uploaded current `backend/cloud_setup_bundle/control_signaling.py` to `/opt/go2rtc-cloud/control_signaling.py`.
+- Backed up the previous remote `control_signaling.py` before replacement.
+- Added Nginx `location /control/monitor/` proxy to `127.0.0.1:18085` in `/etc/nginx/conf.d/go2rtc-cloud.conf`.
+- Preserved existing `/control/webrtc/` proxy.
+- Ran `nginx -t`, restarted `go2rtc-control-signaling`, and reloaded `nginx`.
+
+Validation:
+- `python3 -m py_compile /opt/go2rtc-cloud/control_signaling.py` passed on the old server.
+- Internal `http://127.0.0.1:18085/control/webrtc/health` returned normal JSON.
+- Internal `http://127.0.0.1:18085/control/monitor/key-state?session=robot-control` returned normal JSON.
+- Public `http://150.109.100.30:18081/control/webrtc/health` returned `200`.
+- Public `http://150.109.100.30:18081/control/webrtc/status` returned `200` and included monitor status fields.
+- Public `http://150.109.100.30:18081/control/monitor/key-state?session=robot-control` returned `200`.
+- Public monitor POST/GET test with two `client_id` values returned `clientCount=2`, `firstSeenOrder`, and expected pressed keys.
+- After 4 seconds, public monitor GET returned `clientCount=0`, confirming TTL cleanup.
+- Public `robot-next-offer?session=robot-control` returned `204`, confirming the side-channel monitor did not create or consume robot offers.
+- Public `video-endpoints.json` still returned `200`.
+
+Follow-ups:
+- New server still needs the same control deployment if it should support `/control/monitor/key-state`.
+
+## 2026-05-05 13:37 - Shared status read/write workflow update
+
+Scope:
+- Documentation-only UI Design Agent workflow update.
+- Changed the multi-agent shared-status workflow so agents do not need to read `docs/SHARED_AGENT_STATUS.md` before every operation.
+- Agents still write `docs/SHARED_AGENT_STATUS.md` after completing a functional version or staged change.
+
+Changes:
+- Added `docs/SHARED_AGENT_STATUS.md` to the master index as the shared four-agent status log.
+- Updated the required workflow to read the shared status log only when the user asks, when fresh cross-agent state is needed, or when resolving a conflict.
+- Updated the UI Design Agent handoff to follow the same read-on-demand, write-after-work rule.
+
+Files:
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `docs/UI_DESIGN_AGENT.md`
+- `docs/SHARED_AGENT_STATUS.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+
+Validation:
+- Documentation-only change; no build or runtime validation required.
+
+Cloud deployment note:
+- No cloud changes.
+
+## 2026-05-05 13:41 - Control signal API usage document
+
+Scope:
+- Documentation-only Control Signal Agent update for teammate handoff.
+- Added a standalone Markdown guide covering browser frontend, robot receiver, and mini app monitor usage of the control signal APIs.
+- No runtime code, cloud scripts, video link, Tank Trouble, or UI behavior changed.
+
+Changes:
+- Documented public base URL, default `session=robot-control`, WebRTC signaling flow, side-channel key-state flow, response payloads, curl examples, JavaScript snippets, TURN settings, and troubleshooting notes.
+- Linked the new API usage guide from the control signal handoff document.
+- Added the guide to the master index so other agents can find it.
+
+Files:
+- `docs/CONTROL_SIGNAL_API_USAGE.md`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/AGENT_HANDOFF_MASTER_INDEX.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Cross-checked endpoint names and payload fields against `backend/cloud_setup_bundle/control_signaling.py`, `backend/main.py`, `backend/models.py`, `frontend/src/types/cloud.ts`, and `frontend/src/api/cloudApi.ts`.
+- Documentation-only change; no build or runtime validation required.
+
+Cloud deployment note:
+- No cloud changes.
+
+## 2026-05-12 18:32 - Local TRTC publisher helper
+
+Scope:
+- Video Link Agent local utility update.
+- Added a browser-based Tencent TRTC publisher page so camera, microphone, or screen can be pushed to a TRTC string room without OBS.
+- Added a PowerShell launcher that serves the page over `127.0.0.1` because browser media capture and TRTC SDK loading need an HTTP origin.
+
+Files:
+- `scripts/trtc-local-publisher.html`
+- `scripts/start-trtc-local-publisher.ps1`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Parsed `scripts/start-trtc-local-publisher.ps1` with PowerShell parser.
+- Confirmed Tencent TRTC Web SDK URL returned HTTP `200`.
+- Ran `scripts/start-trtc-local-publisher.ps1 -Port 8091`.
+- Confirmed `http://127.0.0.1:8091/trtc-local-publisher.html` returned HTTP `200`.
+
+Cloud deployment note:
+- No cloud changes. No ports, service names, or deployment bundle behavior changed.
+
+## 2026-05-05 13:48 - Control signal teammate guide narrowed to WebRTC signaling
+
+Scope:
+- Documentation-only Control Signal Agent update.
+- Revised the teammate-facing control signal guide so it only describes the browser-to-robot WebRTC signaling chain.
+- Removed side-channel monitor/key-state content because that is internal to the mini app and not needed by the teammate.
+
+Changes:
+- Kept `/control/webrtc/health`, `/control/webrtc/status`, `/control/webrtc/browser-offer`, `/control/webrtc/robot-next-offer`, and `/control/webrtc/robot-answer`.
+- Removed `/control/monitor/key-state`, local mini app monitor proxy endpoints, and `client_id` key-state examples from the teammate guide.
+- Added an explicit explanation of call ordering: robot can poll first and wait indefinitely; browser can post first and wait within the current offer timeout, then should auto-redial if no robot answers in time.
+
+Files:
+- `docs/CONTROL_SIGNAL_API_USAGE.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- Documentation-only change; reviewed against current control signaling broker behavior.
+
+Cloud deployment note:
+- No cloud changes.
+
+## 2026-05-05 14:00 - Control browser-offer long wait
+
+Scope:
+- Changed only the Control Signal Agent lane.
+- Removed the default app-level 20-second wait timeout from browser-submitted WebRTC offers.
+- Kept real control payloads on the browser-to-robot WebRTC DataChannel.
+- Did not change video ingest/playback, Tank Trouble, or UI behavior.
+
+Changes:
+- `backend/cloud_setup_bundle/control_signaling.py` now treats `--offer-timeout-sec 0` as no app-level timeout and uses that as the default.
+- Pending browser offers now remain queued until a robot answer arrives or the client/network disconnects.
+- Cancelled browser requests remove their pending offer from the broker.
+- Full setup Nginx template now sets `/control/webrtc/` `proxy_read_timeout` and `proxy_send_timeout` to `86400s`.
+- Updated teammate/API and control handoff docs to describe long browser-offer waits and the optional finite timeout override.
+
+Files:
+- `backend/cloud_setup_bundle/control_signaling.py`
+- `backend/cloud_setup.py`
+- `docs/CONTROL_SIGNAL_API_USAGE.md`
+- `docs/CONTROL_SIGNAL_AGENT.md`
+- `docs/CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Cloud deployment:
+- Old server `150.109.100.30`: uploaded updated `/opt/go2rtc-cloud/control_signaling.py`.
+- Old server `150.109.100.30`: updated `/etc/nginx/conf.d/go2rtc-cloud.conf` so `/control/webrtc/` uses `86400s` read/send proxy timeouts.
+- Restarted only `go2rtc-control-signaling`.
+- Reloaded `nginx`.
+- Did not touch video services, Tank Trouble services, or unrelated cloud paths.
+
+Validation:
+- `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\cloud_setup.py backend\main.py backend\models.py` passed.
+- Remote `python3 -m py_compile /opt/go2rtc-cloud/control_signaling.py` passed.
+- Remote `nginx -t` passed.
+- Public `http://150.109.100.30:18081/control/webrtc/health` returned `{"ok": true, ...}`.
+- Public `http://150.109.100.30:18081/control/webrtc/status` returned `offerTimeoutSec: null`.
+- Public long-wait pairing test passed: `browser-offer` stayed pending for more than 3 seconds, robot then pulled the offer, posted an answer, and the browser request returned the answer.
+
+Cloud deployment note:
+- New server was not updated in this step.
+
+## 2026-05-15 16:16 - Web local Tencent push entry
+
+Scope:
+- Video Link Agent change for the local-stream UI in hosted web mode.
+- Added browser camera probing so the web `閺堫剙婀撮幒銊︾ウ` sidebar entry can react to camera availability and browser permission state.
+- Kept old local go2rtc/FFmpeg `瀵偓婵甯瑰ù涔?disabled in web mode.
+- Kept Tencent Cloud Live WebRTC push usable in web mode and let it reuse the local-stream draft settings for resolution, frame rate, and bitrate.
+- Skipped desktop-only local-stream status/config polling in web mode.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public token checks passed for admin `xhfang` and user `cmc5006`.
+- Public web index references `/assets/index-DTHba6P5.js`.
+- Public `http://150.109.100.30:18080/api/health` returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Deployed hosted web console to `150.109.100.30:18080` with existing tokens.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- No video service, control broker, Tank Trouble service, public port, or cloud service name changed.
+
+## 2026-05-15 18:13 - Web Tencent push status proxy and occupancy
+
+Scope:
+- Added same-origin console backend proxy for Tencent video status updates at `/api/video/tencent/{start|heartbeat|stop}`.
+- Web Tencent push status heartbeats now go through that proxy, so hosted HTTPS pages no longer get blocked when updating the HTTP telemetry relay.
+- The local-stream page now polls video push status while open.
+- If another web client is actively pushing Tencent Cloud video, the web Tencent start button is disabled until that stream stops or times out.
+- Tencent push preview is rebound when the page becomes visible or focused again, reducing black preview after switching away and back.
+
+Files:
+- `backend/main.py`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `python -m py_compile backend\main.py`
+- `git diff --check -- backend\main.py frontend\src\api\cloudApi.ts frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://console.cityulive.xyz/` references `/assets/index-3fT14QW5.js` and `/assets/index-D38m5dXn.css`.
+- Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+- Public `https://console.cityulive.xyz/api/video/status` returned video status JSON.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Deployed hosted web console to `150.109.100.30` with existing tokens.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- No go2rtc video service, SRT bridge, telemetry relay service, control broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+
+## 2026-05-15 17:38 - Browser camera display and per-window online count
+
+Scope:
+- Fixed the web local-stream camera status so it no longer shows browser-enumerated camera counts as exact physical camera counts.
+- Browser `videoinput` devices are deduped, and the web camera signal now reports availability instead of a potentially misleading number.
+- Changed online presence to use a per-page/window in-memory client id.
+- Moved online heartbeat to the App level, so open admin web pages, user web pages, and EXE windows are counted while they are open.
+
+Files:
+- `frontend/src/App.tsx`
+- `frontend/src/api/cloudApi.ts`
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://console.cityulive.xyz/` references `/assets/index-gpzQKaw3.js` and `/assets/index-B2hd1Wbt.css`.
+- Public `https://console.cityulive.xyz/api/access` returned admin role for token `xhfang`.
+- Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+- Public online heartbeat smoke test with three temporary client ids changed count from `1` to `2 -> 3 -> 4`, then returned to `1` after leave calls.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Deployed hosted web console to `150.109.100.30` with existing tokens.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- No video service, control broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+
+## 2026-05-15 17:21 - Tencent push parameter locking
+
+Scope:
+- Video Link Agent UI change for local-stream Tencent Cloud push mode.
+- When the Tencent Cloud push panel is open or Tencent Cloud push is running, legacy-only local-stream options are dimmed and disabled.
+- Still editable in Tencent mode: `鏉堟挸鍤崚鍡氶哺閻滃樃, `閻╊喗鐖ｇ敮褏宸糮, and `鐟欏棝顣堕惍浣哄芳`.
+- Disabled in Tencent mode: local camera name, input format, encoder, capture resolution, capture FPS, legacy ingest protocol, SRT latency/packet controls, timeout, drop-late-packets, current-server toggle, public host/port, HTTP ingest, and SRT ingest.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/theme.css`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css frontend\src\styles\theme.css`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public `https://console.cityulive.xyz/` references `/assets/index-De224WQ0.js` and `/assets/index-B2hd1Wbt.css`.
+- Public `https://console.cityulive.xyz/api/access` returned admin role for token `xhfang`.
+- Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Deployed hosted web console to `150.109.100.30` with existing tokens.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- No video service, control broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+
+## 2026-05-15 17:01 - HTTPS console entry enabled
+
+Scope:
+- Video Link Agent cloud entry update for hosted web console secure context.
+- Enabled HTTPS for `console.cityulive.xyz`.
+- Nginx now redirects `http://console.cityulive.xyz/...` to HTTPS and proxies `https://console.cityulive.xyz/...` to the existing web console on `127.0.0.1:18080`.
+- Unknown port-80 hostnames still return `404`; old `/console/` was not restored.
+
+Remote files:
+- `/etc/nginx/conf.d/cloud-service-console-https.conf`
+- Backup: `/etc/nginx/conf.d/cloud-service-console-https.conf.bak-before-ssl-20260515170023`
+- Certificate: `/etc/letsencrypt/live/console.cityulive.xyz/fullchain.pem`
+- Private key: `/etc/letsencrypt/live/console.cityulive.xyz/privkey.pem`
+
+Public entries:
+- Admin: `https://console.cityulive.xyz/?access_token=xhfang`
+- User: `https://console.cityulive.xyz/?access_token=cmc5006`
+- Fallback direct port: `http://150.109.100.30:18080/?access_token=...`
+
+Validation:
+- `Resolve-DnsName console.cityulive.xyz -Type A` returned `150.109.100.30`.
+- `nslookup console.cityulive.xyz` via `8.8.8.8`, `1.1.1.1`, and `119.29.29.29` returned `150.109.100.30`.
+- Remote certbot issuance succeeded; certificate expires on `2026-08-13`.
+- Remote `sudo nginx -t` passed.
+- Remote `systemctl reload nginx` succeeded.
+- Public `https://console.cityulive.xyz/?access_token=xhfang` returned `200`.
+- Public `http://console.cityulive.xyz/?access_token=xhfang` returned `301` to HTTPS.
+- Public `https://console.cityulive.xyz/api/access` returned admin role for token `xhfang` and user role for token `cmc5006`.
+- Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+
+Cloud deployment note:
+- Reloaded only Nginx.
+- Existing chain services remained active: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `coturn`.
+- No EXE rebuild was needed because no app code changed.
+- No go2rtc video service, SRT bridge, telemetry relay, control broker, Tank Trouble service, coturn, or hosted web console process was restarted.
+
+## 2026-05-15 16:41 - Web local push blocked-camera visibility
+
+Scope:
+- Video Link Agent fix for hosted web local-stream visibility.
+- Public HTTP blocks browser camera enumeration, so web admins now still see `閺堫剙婀撮幒銊︾ウ` when the camera probe is blocked or checking.
+- The local-stream page shows `PERMISSION BLOCKED` / `鐞氼偅绁荤憴鍫濇珤闂冪粯顒沗 for public HTTP camera blocking.
+- `瀵偓婵鍚樼拋顖欑隘閹恒劍绁 is disabled with a tooltip when browser camera/screen capture is blocked by non-HTTPS.
+- Old local go2rtc/FFmpeg `瀵偓婵甯瑰ù涔?remains disabled in web mode.
+
+Files:
+- `frontend/src/pages/DashboardPage.tsx`
+- `docs/VIDEO_LINK_AGENT.md`
+- `frontend/IMPLEMENTATION_LOG.md`
+- `docs/SHARED_AGENT_STATUS.md`
+
+Validation:
+- `cmd /c npm --prefix frontend run build`
+- `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+- `cmd /c npm run installer:build`
+- `python scripts\deploy_web_console.py`
+- Public web index references `/assets/index-DTHba6P5.js`.
+- Public `http://150.109.100.30:18080/api/access` returned admin role for token `xhfang`.
+- Public `http://150.109.100.30:18080/api/health` returned `backend-ready`.
+
+Build / deployment:
+- Rebuilt `0.3.68`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe`.
+- Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`.
+- Replaced `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Deployed hosted web console to `150.109.100.30:18080` with existing tokens.
+
+Cloud deployment note:
+- Restarted only `cloud-service-console-web.service`.
+- Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- No video service, control broker, Tank Trouble service, public port, or cloud service name changed.

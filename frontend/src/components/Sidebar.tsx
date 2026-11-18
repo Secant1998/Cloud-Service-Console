@@ -1,6 +1,7 @@
 import type { NetworkEndpointStatus, NetworkSnapshot } from "../types/cloud";
+import consoleIcon from "../assets/console-icon.png";
 
-type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "games";
+type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "models" | "settings";
 
 type SidebarProps = {
   networkSnapshot: NetworkSnapshot;
@@ -17,7 +18,8 @@ const NAV_ITEMS: Array<{ key: ConsoleView; label: string }> = [
   { key: "health", label: "健康检查" },
   { key: "activity", label: "活动日志" },
   { key: "localStream", label: "本地推流" },
-  { key: "games", label: "玩玩游戏" },
+  { key: "models", label: "模型仓库" },
+  { key: "settings", label: "系统设置" },
 ];
 
 function buildCircleFlagUrl(countryCode: string) {
@@ -50,7 +52,7 @@ export function Sidebar({
   return (
     <aside className="panel sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-badge">V3</div>
+        <img className="sidebar-badge" src={consoleIcon} alt="" width={48} height={48} draggable={false} />
         <div>
           <div className="sidebar-title">Cloud Service Console</div>
           <div className="sidebar-subtitle">Tauri / React / FastAPI</div>

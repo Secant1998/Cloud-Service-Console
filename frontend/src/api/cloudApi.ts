@@ -1,9 +1,21 @@
 import type {
+  AccountAvatar,
+  AccountAuthRequest,
+  AccountRegisterRequest,
+  AccountSession,
+  AdminUserList,
+  AgentSettings,
+  AgentSettingsRequest,
   ApiResponse,
   ControlMonitorConfig,
   ControlMonitorKeyState,
   ControlMonitorOffer,
   ControlSessionDescription,
+  CaptureFileList,
+  CaptureFileEntry,
+  CaptureRecoveryKind,
+  CaptureTask,
+  CaptureTaskList,
   DashboardStatus,
   IngestModeResult,
   IngestModeSwitchRequest,
@@ -16,6 +28,7 @@ import type {
   LocalStreamStatus,
   LogsResponse,
   NetworkSnapshot,
+  P2PLocalPusherStatus,
   PortChecksResponse,
   PortStatus,
   SettingsRequest,
@@ -37,7 +50,8 @@ import type {
 } from "../types/cloud";
 
 const FALLBACK_API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8765";
-const ACCESS_TOKEN_STORAGE_KEY = "cloud-service-console.access-token";
+const LEGACY_ACCESS_TOKEN_STORAGE_KEY = "cloud-service-console.access-token";
+const ACCOUNT_SESSION_STORAGE_KEY = "cloud-service-console.account-session";
 let apiBasePromise: Promise<string> | null = null;
 let onlineClientId: string | null = null;
 
@@ -52,7 +66,7 @@ function isTauriRuntime() {
   return "__TAURI_IPC__" in window;
 }
 
-async function getApiBase(): Promise<string> {
+export async function getApiBase(): Promise<string> {
   if (!apiBasePromise) {
     apiBasePromise = (async () => {
       if (isTauriRuntime()) {
@@ -78,28 +92,35 @@ export function getStoredAccessToken() {
   if (typeof window === "undefined") {
     return "";
   }
-  return window.sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || "";
+  return window.sessionStorage.getItem(ACCOUNT_SESSION_STORAGE_KEY) || "";
 }
 
-export function readAccessTokenFromUrl() {
+export function setAccountSessionToken(token: string) {
   if (typeof window === "undefined") {
-    return "";
+    return;
+  }
+  if (token) {
+    window.sessionStorage.setItem(ACCOUNT_SESSION_STORAGE_KEY, token);
+  } else {
+    window.sessionStorage.removeItem(ACCOUNT_SESSION_STORAGE_KEY);
+  }
+}
+
+export function clearAccountSessionToken() {
+  setAccountSessionToken("");
+}
+
+export function discardLegacyAccessToken() {
+  if (typeof window === "undefined") {
+    return;
   }
   const url = new URL(window.location.href);
-  const token = url.searchParams.get("access_token")?.trim() || "";
-  if (!token) {
-    return getStoredAccessToken();
+  if (url.searchParams.has("access_token")) {
+    url.searchParams.delete("access_token");
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
   }
-  window.sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
-  url.searchParams.delete("access_token");
-  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  return token;
-}
-
-function authHeaders() {
-  const token = getStoredAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_STORAGE_KEY);
 }
 
 function createOnlineClientId() {
@@ -158,10 +179,10 @@ async function fetchWithRetry(url: string, options?: RequestInit): Promise<Respo
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const apiBase = await getApiBase();
   const response = await fetchWithRetry(`${apiBase}${path}`, {
+    ...options,
     headers: {
       ...Object.fromEntries(buildRequestHeaders(options?.headers).entries()),
     },
-    ...options,
   });
 
   if (!response.ok) {
@@ -184,10 +205,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 async function requestResponse(path: string, options?: RequestInit): Promise<Response> {
   const apiBase = await getApiBase();
   const response = await fetchWithRetry(`${apiBase}${path}`, {
+    ...options,
     headers: {
       ...Object.fromEntries(buildRequestHeaders(options?.headers).entries()),
     },
-    ...options,
   });
 
   if (!response.ok && response.status !== 204) {
@@ -213,8 +234,13 @@ export function getHealth() {
 
 export type AccessInfo = {
   webMode: boolean;
+  authenticated: boolean;
+  username: string;
   role: "desktop" | "admin" | "user";
   admin: boolean;
+  avatarDataUrl: string;
+  defaultHost: string;
+  defaultSshUsername: string;
 };
 
 export type OnlinePresence = {
@@ -225,6 +251,143 @@ export type OnlinePresence = {
 
 export function getAccessInfo() {
   return request<AccessInfo>("/api/access");
+}
+
+export function loginAccount(payload: AccountAuthRequest) {
+  return request<AccountSession>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function registerAccount(payload: AccountRegisterRequest) {
+  return request<AccountSession>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function loginAccountWithDevice(deviceToken: string) {
+  return request<AccountSession>("/api/auth/device-login", {
+    method: "POST",
+    body: JSON.stringify({ device_token: deviceToken }),
+  });
+}
+
+export function logoutAccount() {
+  return request<ApiResponse>("/api/auth/logout", { method: "POST" });
+}
+
+export function saveAccountAvatar(dataUrl: string) {
+  return request<AccountAvatar>("/api/account/avatar", {
+    method: "PUT",
+    body: JSON.stringify({ data_url: dataUrl }),
+  });
+}
+
+export function getAdminUsers() {
+  return request<AdminUserList>("/api/admin/users");
+}
+
+export function getAgentSettings() {
+  return request<AgentSettings>("/api/agent/settings");
+}
+
+export function saveAgentSettings(payload: AgentSettingsRequest) {
+  return request<AgentSettings>("/api/agent/settings", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function testAgentSettings() {
+  return request<ApiResponse>("/api/agent/settings/test", { method: "POST" });
+}
+
+export function getCaptureFiles(limit = 0) {
+  return request<CaptureFileList>(`/api/captures/files?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export async function downloadCaptureFile(captureId: string, filename: string) {
+  await downloadCapture({ file_id: captureId }, filename);
+}
+
+export function getCaptureTasks() {
+  return request<CaptureTaskList>("/api/captures/tasks");
+}
+
+function encodeUtf8Base64(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return window.btoa(binary);
+}
+
+export async function uploadCaptureRecoveryFile(
+  taskId: string,
+  kind: CaptureRecoveryKind,
+  file: File,
+  onProgress?: (percent: number) => void,
+) {
+  const apiBase = await getApiBase();
+  return new Promise<CaptureFileEntry>((resolve, reject) => {
+    const upload = new XMLHttpRequest();
+    upload.open("POST", `${apiBase}/api/captures/upload`);
+    upload.timeout = 60 * 60 * 1000;
+    const token = getStoredAccessToken();
+    if (token) upload.setRequestHeader("Authorization", `Bearer ${token}`);
+    upload.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    upload.setRequestHeader("X-Telebot-Capture-Filename-B64", encodeUtf8Base64(file.name));
+    upload.setRequestHeader("X-Telebot-Capture-Recovery-Task", taskId);
+    upload.setRequestHeader("X-Telebot-Capture-Recovery-Kind", kind);
+    upload.upload.addEventListener("progress", event => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.min(100, Math.round(event.loaded / event.total * 100)));
+      }
+    });
+    upload.addEventListener("load", () => {
+      let payload: { file?: CaptureFileEntry; detail?: string; message?: string } = {};
+      try { payload = upload.responseText ? JSON.parse(upload.responseText) : {}; } catch { /* use status text */ }
+      if (upload.status >= 200 && upload.status < 300 && payload.file) {
+        onProgress?.(100);
+        resolve(payload.file);
+        return;
+      }
+      reject(new Error(String(payload.detail || payload.message || upload.statusText || `上传失败：HTTP ${upload.status}`)));
+    });
+    upload.addEventListener("error", () => reject(new Error("补传连接中断，请检查网络后重试。")));
+    upload.addEventListener("timeout", () => reject(new Error("补传超过一小时仍未完成。")));
+    upload.addEventListener("abort", () => reject(new Error("补传已取消。")));
+    upload.send(file);
+  });
+}
+
+export function synthesizeCaptureTask(taskId: string) {
+  return request<CaptureTask>(`/api/captures/tasks/${encodeURIComponent(taskId)}/synthesize`, { method: "POST" });
+}
+
+export function deleteCaptureTask(taskId: string) {
+  return request<{ success: boolean }>(`/api/captures/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE" });
+}
+
+export function downloadCaptureTask(taskId: string) {
+  return downloadCapture({ task_id: taskId }, `${taskId}-piper-replay.mp4`);
+}
+
+async function downloadCapture(target: { task_id?: string; file_id?: string }, filename: string) {
+  const ticket = await request<{ path: string }>("/api/captures/downloads", {
+    method: "POST", body: JSON.stringify(target),
+  });
+  const anchor = document.createElement("a");
+  anchor.href = `${await getApiBase()}${ticket.path}`;
+  anchor.download = filename || "capture.bin";
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
 }
 
 export function heartbeatOnlinePresence() {
@@ -413,13 +576,30 @@ export function stopLocalStream() {
   });
 }
 
+export function getP2pLocalPusherStatus() {
+  return request<P2PLocalPusherStatus>("/api/p2p-local-pusher/status");
+}
+
+export function startP2pLocalPusher(payload: LocalStreamConfig, watchUrl: string) {
+  return request<P2PLocalPusherStatus>(`/api/p2p-local-pusher/start?watch_url=${encodeURIComponent(watchUrl)}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function stopP2pLocalPusher() {
+  return request<P2PLocalPusherStatus>("/api/p2p-local-pusher/stop", {
+    method: "POST",
+  });
+}
+
 export function getControlMonitorConfig() {
   return request<ControlMonitorConfig>("/api/control-monitor/config");
 }
 
-export async function pollControlMonitorOffer(session: string, robotClientId: string) {
+export async function pollControlMonitorOffer(session: string, computeClientId: string) {
   const response = await requestResponse(
-    `/api/control-monitor/offer?session=${encodeURIComponent(session)}&robot_client_id=${encodeURIComponent(robotClientId)}`,
+    `/api/control-monitor/offer?session=${encodeURIComponent(session)}&compute_client_id=${encodeURIComponent(computeClientId)}`,
   );
   if (response.status === 204) {
     return null;
@@ -430,11 +610,11 @@ export async function pollControlMonitorOffer(session: string, robotClientId: st
 export function postControlMonitorAnswer(
   session: string,
   offerId: string,
-  robotClientId: string,
+  computeClientId: string,
   payload: ControlSessionDescription,
 ) {
   return request<ApiResponse>(
-    `/api/control-monitor/answer?session=${encodeURIComponent(session)}&offer_id=${encodeURIComponent(offerId)}&robot_client_id=${encodeURIComponent(robotClientId)}`,
+    `/api/control-monitor/answer?session=${encodeURIComponent(session)}&offer_id=${encodeURIComponent(offerId)}&compute_client_id=${encodeURIComponent(computeClientId)}`,
     {
       method: "POST",
       body: JSON.stringify(payload),

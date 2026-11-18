@@ -10,6 +10,119 @@ class ApiResponse(BaseModel):
     message: str = ""
 
 
+class AccountLoginRequest(BaseModel):
+    username: str
+    password: str = ""
+    remember_device: bool = False
+
+
+class AccountRegisterRequest(BaseModel):
+    username: str
+    password: str
+    remember_device: bool = False
+
+
+class AccountDeviceLoginRequest(BaseModel):
+    device_token: str
+
+
+class AccountAvatarRequest(BaseModel):
+    data_url: str
+
+
+class AccountAvatarResponse(BaseModel):
+    success: bool = True
+    avatar_data_url: str
+
+
+class AccountSessionResponse(BaseModel):
+    success: bool = True
+    session_token: str
+    device_token: str = ""
+    username: str
+    role: str
+    admin: bool = False
+    avatar_data_url: str = ""
+
+
+class AdminUserResponse(BaseModel):
+    username: str
+    role: str
+    status: str = "active"
+    created_at: str = ""
+    online: bool = False
+    last_seen_at: str = ""
+    active_sessions: int = 0
+    avatar_data_url: str = ""
+
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserResponse] = Field(default_factory=list)
+    total: int = 0
+    online: int = 0
+    updated_at: str = ""
+
+
+class AgentSettingsRequest(BaseModel):
+    enabled: bool = False
+    base_url: str
+    model: str
+    api_key: str = ""
+    clear_api_key: bool = False
+
+
+class AgentSettingsResponse(BaseModel):
+    enabled: bool = False
+    base_url: str
+    model: str
+    api_key_configured: bool = False
+    api_key_hint: str = ""
+    updated_at: str = ""
+    updated_by: str = ""
+
+
+class AgentConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class CaptureFileEntry(BaseModel):
+    id: str
+    filename: str
+    stored_filename: str = ""
+    kind: str = "capture"
+    source: str = "unknown"
+    session_id: str = ""
+    room_id: str = ""
+    node_id: str = ""
+    content_type: str = "application/octet-stream"
+    size_bytes: int = 0
+    sha256: str = ""
+    uploaded_at: str = ""
+    started_at_server_ms: float | None = None
+    stopped_at_server_ms: float | None = None
+    authoritative_started_at_server_ms: float | None = None
+    authoritative_stopped_at_server_ms: float | None = None
+    stop_requested_at_server_ms: float | None = None
+    stop_received_at_server_ms: float | None = None
+    stop_authority: str | None = None
+    sample_count: int | None = None
+    sample_hz: float | None = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CaptureFileListResponse(BaseModel):
+    files: List[CaptureFileEntry] = Field(default_factory=list)
+    total: int = 0
+    total_bytes: int = 0
+    updated_at: str = ""
+
+
+class CaptureUploadResponse(BaseModel):
+    success: bool = True
+    file: CaptureFileEntry
+
+
 class LoginRequest(BaseModel):
     host: str
     username: str
@@ -235,6 +348,20 @@ class LocalStreamStatus(BaseModel):
     updated_at: str = ""
 
 
+class P2PLocalPusherStatus(BaseModel):
+    available: bool = False
+    running: bool = False
+    pid: Optional[int] = None
+    project_path: str = ""
+    config_path: str = ""
+    room_id: str = "robot"
+    watch_url: str = ""
+    active_profile: Dict[str, Any] = Field(default_factory=dict)
+    log_tail: str = ""
+    message: str = ""
+    updated_at: str = ""
+
+
 class TankTroubleSetupStatus(BaseModel):
     ready: bool
     message: str
@@ -276,6 +403,7 @@ class ControlMonitorOfferResponse(BaseModel):
     createdAt: str
     clientId: str = ""
     frontendClientId: str = ""
+    computeClientId: str = ""
     robotClientId: str = ""
     offer: ControlSessionDescription
 
@@ -315,6 +443,8 @@ class ControlMonitorLinkStatus(BaseModel):
     internalPendingOffers: int = 0
     browserPosts: int = 0
     robotPolls: int = 0
+    frontendPosts: int = 0
+    computePolls: int = 0
     answersPosted: int = 0
     activeClientCount: int = 0
     dialingClientCount: int = 0
@@ -326,6 +456,7 @@ class ControlMonitorLinkStatus(BaseModel):
     signalPaired: bool = False
     inferredDirectConnected: bool = False
     robotListenerClientId: str = ""
+    computeListenerClientId: str = ""
     robotListenerFreshMs: int = 10000
     robotListenerAgeMs: Optional[int] = None
     robotListenerLatencyMs: Optional[int] = None
@@ -335,6 +466,8 @@ class ControlMonitorLinkStatus(BaseModel):
     lastRobotListenerAt: Optional[str] = None
     lastBrowserOfferAt: Optional[str] = None
     lastRobotPollAt: Optional[str] = None
+    lastFrontendOfferAt: Optional[str] = None
+    lastComputePollAt: Optional[str] = None
     lastAnswerAt: Optional[str] = None
     source: str = ""
 

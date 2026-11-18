@@ -38,6 +38,7 @@ data/
 
 # Generated reports / local handoff files
 *.pptx
+/reports/
 
 # Local env / secrets
 .env

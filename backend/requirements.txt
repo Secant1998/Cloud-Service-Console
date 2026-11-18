@@ -3,3 +3,5 @@ uvicorn[standard]>=0.32,<1.0
 paramiko>=3.5,<4.0
 Pillow>=10,<12
 aiohttp>=3.9,<4.0
+ijson>=3.3,<4.0
+playwright>=1.51,<2.0

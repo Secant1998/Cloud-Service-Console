@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { open as openExternalUrl } from "@tauri-apps/api/shell";
 import {
@@ -8,6 +8,7 @@ import {
   getControlMonitorConfig,
   getControlMonitorKeyState,
   getLocalStreamStatus,
+  getP2pLocalPusherStatus,
   getVideoPreviewUrl,
   getLiveStatus,
   getLogs,
@@ -16,6 +17,7 @@ import {
   getTrafficMonitorSnapshot,
   getVideoPushStatus,
   logout,
+  logoutAccount,
   postTencentVideoStatus,
   postTencentVideoStatusBeacon,
   refreshNetworkSnapshot,
@@ -25,20 +27,23 @@ import {
   setupLocalStream,
   startAllServices,
   startLocalStream,
+  startP2pLocalPusher,
   startService,
   stopAllServices,
   stopLocalStream,
+  stopP2pLocalPusher,
   stopService,
 } from "../api/cloudApi";
 import { ActivityLog } from "../components/ActivityLog";
 import { AppShell } from "../components/AppShell";
+import { AppSelect } from "../components/AppSelect";
 import { Button } from "../components/Button";
 import type { AccessInfo } from "../api/cloudApi";
 import { HealthPanel } from "../components/HealthPanel";
 import { MetricCard } from "../components/MetricCard";
 import { ServiceCard } from "../components/ServiceCard";
-import { SummaryCard } from "../components/SummaryCard";
-import { TankTroublePanel } from "../components/TankTroublePanel";
+import { SystemSettingsPanel } from "../components/SystemSettingsPanel";
+import { ModelLibraryPanel } from "../components/ModelLibraryPanel";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import type { AppUpdaterState } from "../hooks/useAppUpdater";
 import type {
@@ -49,9 +54,9 @@ import type {
   LocalStreamConfig,
   LocalStreamStatus,
   LogEntry,
+  P2PLocalPusherStatus,
   PortStatus,
   TrafficMonitorSnapshot,
-  VideoPushModeStatus,
   VideoPushStatus,
 } from "../types/cloud";
 
@@ -61,17 +66,15 @@ type DashboardPageProps = {
   updater: AppUpdaterState;
   accessInfo: AccessInfo;
   onlineCount: number;
+  onAccessInfoChange: (accessInfo: AccessInfo) => void;
   onToggleTheme: () => void;
   onInstallUpdate: () => void;
   onLogoutDone: () => void;
 };
 
-type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "games";
+type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "models" | "settings";
 type LocalStreamDraftState = {
-  videoWidth: string;
-  videoHeight: string;
-  outputWidth: string;
-  outputHeight: string;
+  viewerResolution: string;
   inputFramerate: string;
   targetFramerate: string;
   videoBitrateKbps: string;
@@ -91,23 +94,10 @@ type LocalStreamNumberConfigKey =
   | "cloud_api_port"
   | "cloud_ingest_port"
   | "cloud_srt_ingest_port";
-type LocalStreamSizeConfigKey = "video_size" | "output_video_size";
-type LocalStreamSizeDraftKey = "videoWidth" | "videoHeight" | "outputWidth" | "outputHeight";
-type LocalStreamNumberDraftKey = Exclude<keyof LocalStreamDraftState, LocalStreamSizeDraftKey | "videoBitrateKbps">;
-type LocalStreamSelectOption = {
-  value: string;
-  label: string;
-  description?: string;
-};
-type LocalStreamSelectProps = {
-  className?: string;
-  label: string;
-  value: string;
-  options: LocalStreamSelectOption[];
-  placeholder: string;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-};
+type LocalStreamNumberDraftKey = Exclude<
+  keyof LocalStreamDraftState,
+  "viewerResolution" | "videoBitrateKbps"
+>;
 type TencentCloudLiveSource = "camera" | "screen";
 type TencentCloudPusher = {
   setRenderView?: (view: string | HTMLElement) => void;
@@ -133,9 +123,135 @@ type TencentCloudVideoConfig = {
   bitrateKbps: number;
   quality: "540p" | "720p" | "1080p";
 };
-type VideoHeartbeatBaseline = {
-  legacy: string;
-  tencent: string;
+
+const P2pCommunicationTopology = lazy(() =>
+  import("../components/P2pCommunicationTopology").then((module) => ({
+    default: module.P2pCommunicationTopology,
+  })),
+);
+type P2pSignalConfig = {
+  ok?: boolean;
+  defaultRoom?: string;
+  iceServers?: RTCIceServer[];
+};
+type P2pSignalMessage = {
+  seq?: number;
+  version?: number;
+  from?: string;
+  fromRole?: string;
+  fromEndpointId?: string;
+  fromPeerId?: string;
+  to?: string;
+  toRole?: string;
+  toEndpointId?: string;
+  toPeerId?: string;
+  connectionId?: string;
+  kind?: string;
+  payload?: {
+    sdp?: RTCSessionDescriptionInit;
+    candidate?: RTCIceCandidateInit;
+    video?: P2pVideoConfig;
+    offerId?: string;
+    reason?: string;
+    at?: number;
+  };
+};
+type P2pEndpoint = {
+  signalBaseUrl: string;
+  roomId: string;
+  watchUrl: string;
+};
+type P2pActiveRoom = {
+  room: string;
+  viewerCount?: number;
+  peerCount?: number;
+  activePusher?: {
+    startedAt?: string;
+    lastSeenAt?: string;
+  };
+};
+type P2pV2Endpoint = {
+  endpointId: string;
+  requestedEndpointId?: string;
+  nodeId?: string;
+  requestedNodeId?: string;
+  peerId?: string;
+  role: "video-pusher" | "compute" | "robot-edge" | "frontend" | "viewer" | string;
+  displayName?: string;
+  capabilities?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  status?: "waiting" | "connecting" | "connected" | "busy" | string;
+  lastHeartbeatAt?: string;
+  ageMs?: number | null;
+  ttlSeconds?: number;
+  activeConnections?: string[];
+};
+type P2pV2EndpointsResponse = {
+  ok?: boolean;
+  version?: number;
+  room?: string;
+  endpoints?: P2pV2Endpoint[];
+  ttlSeconds?: number;
+};
+type P2pV2Room = {
+  room: string;
+  endpointCount?: number;
+  videoPusherCount?: number;
+  roleCounts?: Record<string, number>;
+};
+type CloudP2pVideoTarget = {
+  value: string;
+  signalBaseUrl: string;
+  roomId: string;
+  endpointId: string;
+  peerId: string;
+  displayName: string;
+};
+type P2pV2RoomsResponse = {
+  ok?: boolean;
+  version?: number;
+  rooms?: P2pV2Room[];
+  ttlSeconds?: number;
+};
+type P2pRoomsResponse = {
+  ok?: boolean;
+  rooms?: P2pActiveRoom[];
+};
+type P2pRoomSummary = {
+  rooms: P2pActiveRoom[];
+  updatedAt: string;
+  error: string;
+};
+type P2pV2RoomSummary = {
+  rooms: P2pV2Room[];
+  updatedAt: string;
+  error: string;
+};
+type P2pViewerConnection = {
+  pc: RTCPeerConnection;
+  viewerId: string;
+  viewerEndpointId?: string;
+  connectionId?: string;
+  status: string;
+};
+type P2pVideoConfig = {
+  captureWidth: number;
+  captureHeight: number;
+  outputWidth: number;
+  outputHeight: number;
+  inputFps: number;
+  fps: number;
+  bitrateKbps: number;
+};
+const emptyP2pRoomSummary: P2pRoomSummary = {
+  rooms: [],
+  updatedAt: "",
+  error: "",
+};
+const emptyP2pV2RoomSummary: P2pV2RoomSummary = {
+  rooms: [],
+  updatedAt: "",
+  error: "",
 };
 type ControlSignalCounterBaseline = {
   browserPosts: number;
@@ -175,6 +291,18 @@ const TENCENT_CLOUD_PLAY_URL_STORAGE_KEY = "cloud-service-console.tencent-cloud-
 const TENCENT_CLOUD_PUSH_SESSION_STORAGE_KEY = "cloud-service-console.tencent-cloud-active-push-session";
 const TENCENT_CLOUD_URL_STORAGE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 const TENCENT_CLOUD_STATUS_HEARTBEAT_MS = 5000;
+const P2P_HONG_KONG_SIGNAL_BASE_URL = "https://p2p.cityulive.com";
+const P2P_GUANGZHOU_SIGNAL_BASE_URL = "https://p2p-gz.dlcourse.online";
+const P2P_SIGNAL_BASE_URL = P2P_HONG_KONG_SIGNAL_BASE_URL;
+const P2P_DEFAULT_ROOM_ID = "robot";
+const P2P_DEFAULT_WATCH_URL = `${P2P_SIGNAL_BASE_URL}/watch.html?room=${P2P_DEFAULT_ROOM_ID}`;
+const P2P_LINK_STORAGE_KEY = "cloud-service-console.p2p-link";
+const P2P_ROOM_STORAGE_KEY = "cloud-service-console.p2p-room";
+const P2P_GUANGZHOU_HOSTS = new Set(["111.230.62.106", "p2p-gz.dlcourse.online", "p2p-gz.cityulive.com"]);
+const P2P_KNOWN_SIGNAL_BASE_URLS = new Set(
+  [P2P_HONG_KONG_SIGNAL_BASE_URL, P2P_GUANGZHOU_SIGNAL_BASE_URL].map((value) => new URL(value).origin.toLowerCase()),
+);
+const P2P_SIGNAL_POLL_TIMEOUT_MS = 25000;
 const VIDEO_PUSH_STATUS_POLL_INTERVAL_MS = 5000;
 const TRAFFIC_MONITOR_POLL_INTERVAL_MS = 2000;
 const TRAFFIC_MONITOR_WINDOW_MS = 60 * 1000;
@@ -260,85 +388,6 @@ const CONTROL_MONITOR_DEFAULT_LINK_STATUS: ControlMonitorLinkStatus = {
   source: "",
 };
 
-function LocalStreamSelect({ className = "", label, value, options, placeholder, disabled = false, onChange }: LocalStreamSelectProps) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const selectedOption = options.find((option) => option.value === value);
-
-  useEffect(() => {
-    if (disabled) {
-      setOpen(false);
-    }
-  }, [disabled]);
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
-  return (
-    <div className={`field ${className}`.trim()}>
-      <span>{label}</span>
-      <div className={`local-stream-select-shell${open ? " open" : ""}${disabled ? " disabled" : ""}`} ref={rootRef}>
-        <button
-          type="button"
-          className="input local-stream-select-trigger"
-          disabled={disabled}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          onClick={() => {
-            if (disabled) {
-              return;
-            }
-            setOpen((current) => !current);
-          }}
-        >
-          <span className="local-stream-select-trigger-main">{selectedOption?.label || placeholder}</span>
-          <span className="local-stream-select-trigger-arrow" aria-hidden="true" />
-        </button>
-        {open && !disabled ? (
-          <div className="local-stream-select-menu" role="listbox" aria-label={label}>
-            {options.map((option) => {
-              const active = option.value === value;
-              return (
-                <button
-                  key={option.value || "__empty__"}
-                  type="button"
-                  className={`local-stream-select-option${active ? " selected" : ""}`}
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="local-stream-select-option-main">{option.label}</span>
-                  {option.description ? <span className="local-stream-select-option-sub">{option.description}</span> : null}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 const CONTROL_MONITOR_CLIENT_COLORS = [
   {
     id: "green",
@@ -489,7 +538,8 @@ const VIEW_META: Record<ConsoleView, { title: string }> = {
   health: { title: "健康检查" },
   activity: { title: "活动日志" },
   localStream: { title: "本地推流" },
-  games: { title: "玩玩游戏" },
+  models: { title: "模型仓库" },
+  settings: { title: "系统设置" },
 };
 
 const emptyStatus: DashboardStatus = {
@@ -571,6 +621,20 @@ const emptyLocalStreamStatus: LocalStreamStatus = {
   updated_at: "never",
 };
 
+const emptyP2pLocalPusherStatus: P2PLocalPusherStatus = {
+  available: false,
+  running: false,
+  pid: null,
+  project_path: "",
+  config_path: "",
+  room_id: P2P_DEFAULT_ROOM_ID,
+  watch_url: buildP2pWatchPageUrl(P2P_DEFAULT_ROOM_ID),
+  active_profile: {},
+  log_tail: "",
+  message: "",
+  updated_at: "",
+};
+
 const emptyTrafficMonitorSnapshot: TrafficMonitorSnapshot = {
   connected: false,
   timestamp: "",
@@ -605,7 +669,7 @@ const emptyTrafficMonitorSnapshot: TrafficMonitorSnapshot = {
 };
 
 function parseLocalStreamSize(value: string | undefined, fallbackWidth = 1920, fallbackHeight = 1080) {
-  const match = /^(\d{2,5})x(\d{2,5})$/i.exec(String(value || "").trim());
+  const match = /^(\d{1,5})\s*(?:x|X|×|\*|\s)\s*(\d{1,5})$/.exec(String(value || "").trim());
   if (!match) {
     return { width: fallbackWidth, height: fallbackHeight };
   }
@@ -784,13 +848,16 @@ function parseLocalStreamBitrateKbps(value: string | undefined) {
 function buildLocalStreamDraft(config: LocalStreamConfig): LocalStreamDraftState {
   const inputSize = parseLocalStreamSize(config.video_size);
   const outputSize = parseLocalStreamSize(config.output_video_size, inputSize.width, inputSize.height);
+  const viewerFps = parseDraftInteger(
+    String(config.target_framerate || config.input_framerate || 30),
+    config.target_framerate || config.input_framerate || 30,
+    1,
+    120,
+  );
   return {
-    videoWidth: String(inputSize.width),
-    videoHeight: String(inputSize.height),
-    outputWidth: String(outputSize.width),
-    outputHeight: String(outputSize.height),
-    inputFramerate: String(config.input_framerate),
-    targetFramerate: String(config.target_framerate),
+    viewerResolution: formatLocalStreamSize(outputSize.width, outputSize.height),
+    inputFramerate: String(viewerFps),
+    targetFramerate: String(viewerFps),
     videoBitrateKbps: String(parseLocalStreamBitrateKbps(config.video_bitrate)),
     srtLatencyMs: String(config.srt_latency_ms),
     srtPacketSize: String(config.srt_packet_size),
@@ -804,17 +871,20 @@ function buildLocalStreamDraft(config: LocalStreamConfig): LocalStreamDraftState
 function applyLocalStreamDraftToConfig(config: LocalStreamConfig, draft: LocalStreamDraftState): LocalStreamConfig {
   const inputSize = parseLocalStreamSize(config.video_size);
   const outputSize = parseLocalStreamSize(config.output_video_size, inputSize.width, inputSize.height);
-  const videoWidth = parseDraftInteger(draft.videoWidth, inputSize.width, 1);
-  const videoHeight = parseDraftInteger(draft.videoHeight, inputSize.height, 1);
-  const outputWidth = parseDraftInteger(draft.outputWidth, outputSize.width, 1);
-  const outputHeight = parseDraftInteger(draft.outputHeight, outputSize.height, 1);
+  const viewerSize = parseLocalStreamSize(draft.viewerResolution, outputSize.width, outputSize.height);
+  const viewerFps = parseDraftInteger(
+    draft.targetFramerate || draft.inputFramerate,
+    config.target_framerate || config.input_framerate,
+    1,
+    120,
+  );
 
   return {
     ...config,
-    video_size: formatLocalStreamSize(videoWidth, videoHeight),
-    output_video_size: formatLocalStreamSize(outputWidth, outputHeight),
-    input_framerate: parseDraftInteger(draft.inputFramerate, config.input_framerate, 1, 120),
-    target_framerate: parseDraftInteger(draft.targetFramerate, config.target_framerate, 1, 120),
+    video_size: formatLocalStreamSize(viewerSize.width, viewerSize.height),
+    output_video_size: formatLocalStreamSize(viewerSize.width, viewerSize.height),
+    input_framerate: viewerFps,
+    target_framerate: viewerFps,
     video_bitrate: `${parseDraftInteger(draft.videoBitrateKbps, parseLocalStreamBitrateKbps(config.video_bitrate), 1)}k`,
     srt_latency_ms: parseDraftInteger(draft.srtLatencyMs, config.srt_latency_ms, 40, 5000),
     srt_packet_size: parseDraftInteger(draft.srtPacketSize, config.srt_packet_size, 188, 65535),
@@ -1139,6 +1209,180 @@ function buildTencentCloudDefaultPlayUrl(status: DashboardStatus, streamName = "
   }
 }
 
+function makeP2pPeerId(prefix: string) {
+  const randomPart =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return `${prefix}-${Date.now().toString(36)}-${randomPart}`;
+}
+
+function normalizeP2pRoomInput(value: string) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_.-]/g, "-")
+    .slice(0, 64);
+  return normalized || P2P_DEFAULT_ROOM_ID;
+}
+
+function p2pV2RoleLabel(role: string) {
+  return ({
+    "video-pusher": "视频推流端",
+    compute: "计算服务器",
+    "robot-edge": "机械臂端侧",
+    frontend: "前端",
+    viewer: "观看端",
+  } as Record<string, string>)[role] || "其他端";
+}
+
+function p2pV2StatusLabel(status: string | undefined) {
+  return ({ waiting: "等待连接", connecting: "连接中", connected: "已连接", busy: "忙碌" } as Record<string, string>)[status || ""] || "在线";
+}
+
+function buildP2pWatchPageUrl(roomId = P2P_DEFAULT_ROOM_ID, signalBaseUrl = P2P_SIGNAL_BASE_URL) {
+  const url = new URL("/watch.html", signalBaseUrl || P2P_SIGNAL_BASE_URL);
+  url.searchParams.set("room", normalizeP2pRoomInput(roomId));
+  return url.toString();
+}
+
+function buildP2pV2WatchPageUrl(roomId: string, endpointId: string, signalBaseUrl = P2P_SIGNAL_BASE_URL) {
+  const url = new URL("/watch.html", signalBaseUrl || P2P_SIGNAL_BASE_URL);
+  url.searchParams.set("room", normalizeP2pRoomInput(roomId));
+  url.searchParams.set("v", "2");
+  url.searchParams.set("endpoint", endpointId);
+  return url.toString();
+}
+
+function normalizeP2pSignalBaseUrl(value: string) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+  try {
+    return new URL(text).origin.toLowerCase();
+  } catch {
+    return text.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
+function isKnownP2pSignalBaseUrl(value: string) {
+  return P2P_KNOWN_SIGNAL_BASE_URLS.has(normalizeP2pSignalBaseUrl(value));
+}
+
+function normalizeP2pServerHost(value: string) {
+  let text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+
+  try {
+    if (text.includes("://")) {
+      return new URL(text).hostname.toLowerCase();
+    }
+  } catch {
+    // Fall through to plain host parsing.
+  }
+
+  if (text.includes("@")) {
+    text = text.slice(text.lastIndexOf("@") + 1);
+  }
+  text = text.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  text = text.split(/[/?#]/)[0] || "";
+  if (text.startsWith("[") && text.includes("]")) {
+    text = text.slice(1, text.indexOf("]"));
+  } else {
+    text = text.split(":")[0] || "";
+  }
+  return text.trim().toLowerCase();
+}
+
+function isMeaningfulP2pServerHost(host: string) {
+  return Boolean(host && host !== "-" && host !== "localhost" && host !== "127.0.0.1" && host !== "::1");
+}
+
+function resolveDashboardP2pSignalBaseUrl(status: DashboardStatus, config: LocalStreamConfig) {
+  const hosts = [
+    normalizeP2pServerHost(status.ssh_target),
+    normalizeP2pServerHost(status.public_base_url),
+    normalizeP2pServerHost(status.network_snapshot?.server?.ip || ""),
+    normalizeP2pServerHost(config.cloud_public_host),
+  ].filter(isMeaningfulP2pServerHost);
+
+  if (hosts.length === 0) {
+    return "";
+  }
+  return hosts.some((host) => P2P_GUANGZHOU_HOSTS.has(host))
+    ? P2P_GUANGZHOU_SIGNAL_BASE_URL
+    : P2P_HONG_KONG_SIGNAL_BASE_URL;
+}
+
+function buildServerPreferredP2pEndpoint(endpoint: P2pEndpoint, signalBaseUrl: string) {
+  if (!signalBaseUrl || !isKnownP2pSignalBaseUrl(endpoint.signalBaseUrl)) {
+    return endpoint;
+  }
+  if (normalizeP2pSignalBaseUrl(endpoint.signalBaseUrl) === normalizeP2pSignalBaseUrl(signalBaseUrl)) {
+    return endpoint;
+  }
+  return normalizeP2pEndpointInput(buildP2pWatchPageUrl(endpoint.roomId, signalBaseUrl));
+}
+
+function normalizeP2pEndpointInput(value: string): P2pEndpoint {
+  let text = String(value || "").trim();
+  if (!text) {
+    text = P2P_DEFAULT_WATCH_URL;
+  } else if (!text.includes("://") && text.includes(".")) {
+    text = `https://${text}`;
+  }
+  if (!text.includes("://")) {
+    const roomId = normalizeP2pRoomInput(text);
+    return {
+      signalBaseUrl: P2P_SIGNAL_BASE_URL,
+      roomId,
+      watchUrl: buildP2pWatchPageUrl(roomId),
+    };
+  }
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Unsupported P2P URL protocol");
+    }
+    const roomId = normalizeP2pRoomInput(parsed.searchParams.get("room") || P2P_DEFAULT_ROOM_ID);
+    const signalBaseUrl = parsed.origin;
+    return {
+      signalBaseUrl,
+      roomId,
+      watchUrl: buildP2pWatchPageUrl(roomId, signalBaseUrl),
+    };
+  } catch {
+    const roomId = normalizeP2pRoomInput(text);
+    return {
+      signalBaseUrl: P2P_SIGNAL_BASE_URL,
+      roomId,
+      watchUrl: buildP2pWatchPageUrl(roomId),
+    };
+  }
+}
+
+function readSavedP2pEndpoint() {
+  const savedLink = readClientStoredValue(P2P_LINK_STORAGE_KEY);
+  if (savedLink) {
+    return normalizeP2pEndpointInput(savedLink);
+  }
+  const oldSavedRoom = readClientStoredValue(P2P_ROOM_STORAGE_KEY);
+  return normalizeP2pEndpointInput(oldSavedRoom || P2P_DEFAULT_WATCH_URL);
+}
+
+function readSavedP2pLink() {
+  return readSavedP2pEndpoint().watchUrl;
+}
+
+function rememberP2pLink(value: string) {
+  const endpoint = normalizeP2pEndpointInput(value);
+  rememberClientStoredValue(P2P_LINK_STORAGE_KEY, endpoint.watchUrl);
+  rememberClientStoredValue(P2P_ROOM_STORAGE_KEY, endpoint.roomId);
+  return endpoint;
+}
+
 function readClientStoredValue(storageKey: string) {
   if (typeof window === "undefined") {
     return "";
@@ -1280,109 +1524,6 @@ function parseTencentCloudPushUrl(pushUrl: string) {
       pushUrlHost: "",
     };
   }
-}
-
-function videoModeLabel(mode: string | undefined) {
-  if (mode === "legacy") {
-    return "旧链路";
-  }
-  if (mode === "tencent") {
-    return "腾讯云";
-  }
-  if (mode === "offline") {
-    return "未推流";
-  }
-  return mode ? mode : "未知";
-}
-
-function videoModeStateLabel(mode: VideoPushModeStatus | undefined) {
-  if (!mode) {
-    return "未知";
-  }
-  if (mode.live) {
-    return "推流中";
-  }
-  if (mode.state === "stale") {
-    return "已断开";
-  }
-  if (mode.state === "stopped") {
-    return "已停止";
-  }
-  return "未推流";
-}
-
-function videoModeLampClass(mode: VideoPushModeStatus | undefined) {
-  if (mode?.live) {
-    return "live";
-  }
-  if (mode?.state === "stale") {
-    return "pending";
-  }
-  return "off";
-}
-
-function videoModeLampClassForLocal(mode: VideoPushModeStatus | undefined, localActive: boolean) {
-  if (mode?.live && localActive) {
-    return "local";
-  }
-  return videoModeLampClass(mode);
-}
-
-function videoHeartbeatAt(mode: VideoPushModeStatus | undefined) {
-  return typeof mode?.lastHeartbeatAt === "string" ? mode.lastHeartbeatAt : "";
-}
-
-function timestampIsAfter(value: string, baseline: string) {
-  if (!value || !baseline) {
-    return true;
-  }
-  const valueTime = Date.parse(value);
-  const baselineTime = Date.parse(baseline);
-  if (Number.isFinite(valueTime) && Number.isFinite(baselineTime)) {
-    return valueTime > baselineTime;
-  }
-  return value > baseline;
-}
-
-function buildVideoHeartbeatBaseline(status: VideoPushStatus | null): VideoHeartbeatBaseline {
-  return {
-    legacy: videoHeartbeatAt(status?.legacy),
-    tencent: videoHeartbeatAt(status?.tencent),
-  };
-}
-
-function videoModeNote(mode: VideoPushModeStatus | undefined, fallback: string, heartbeatBaseline = "") {
-  if (!mode) {
-    return fallback;
-  }
-  const parts = [mode.streamName || fallback];
-  const heartbeatAt = videoHeartbeatAt(mode);
-  const heartbeatReset = Boolean(heartbeatBaseline && heartbeatAt && !timestampIsAfter(heartbeatAt, heartbeatBaseline));
-  if (heartbeatReset) {
-    parts.push("等待新心跳");
-  } else if (typeof mode.heartbeatAgeSec === "number" && Number.isFinite(mode.heartbeatAgeSec)) {
-    parts.push(`${Math.round(mode.heartbeatAgeSec)} 秒前心跳`);
-  } else if (mode.lastHeartbeatAt) {
-    parts.push("有心跳记录");
-  }
-  if (mode.producerVisible) {
-    parts.push("推流端可见");
-  }
-  if (mode.source) {
-    parts.push(mode.source);
-  }
-  return parts.join(" · ");
-}
-
-function videoPushHeadline(status: VideoPushStatus | null) {
-  if (!status) {
-    return "读取中";
-  }
-  const activeModes = status.availableModes || [];
-  if (status.conflict || activeModes.length > 1) {
-    return "双链路推流";
-  }
-  return videoModeLabel(status.activeMode);
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -1662,6 +1803,7 @@ export function DashboardPage({
   updater,
   accessInfo,
   onlineCount,
+  onAccessInfoChange,
   onToggleTheme,
   onInstallUpdate,
   onLogoutDone,
@@ -1706,6 +1848,29 @@ export function DashboardPage({
   const [tencentCloudPushRunning, setTencentCloudPushRunning] = useState(false);
   const [tencentCloudPushMessage, setTencentCloudPushMessage] = useState("等待启动腾讯云推流");
   const [tencentCloudPlayerKey, setTencentCloudPlayerKey] = useState(0);
+  const [p2pPushOpen, setP2pPushOpen] = useState(false);
+  const [p2pV2PushOpen, setP2pV2PushOpen] = useState(false);
+  const [p2pV2Active, setP2pV2Active] = useState(false);
+  const [p2pPushBusy, setP2pPushBusy] = useState(false);
+  const [p2pPushRunning, setP2pPushRunning] = useState(false);
+  const [p2pPushMessage, setP2pPushMessage] = useState("等待启动 P2P 推流");
+  const [p2pLocalPusherStatus, setP2pLocalPusherStatus] =
+    useState<P2PLocalPusherStatus>(emptyP2pLocalPusherStatus);
+  const [p2pRoomDraft, setP2pRoomDraft] = useState(readSavedP2pLink);
+  const [p2pViewDialogOpen, setP2pViewDialogOpen] = useState(false);
+  const [p2pV2ViewDialogOpen, setP2pV2ViewDialogOpen] = useState(false);
+  const [p2pV2RoomDraft, setP2pV2RoomDraft] = useState(P2P_DEFAULT_ROOM_ID);
+  const [p2pV2ViewError, setP2pV2ViewError] = useState("");
+  const [p2pV2ViewLoading, setP2pV2ViewLoading] = useState(false);
+  const [p2pV2Rooms, setP2pV2Rooms] = useState<P2pV2Room[]>([]);
+  const [p2pV2Endpoints, setP2pV2Endpoints] = useState<P2pV2Endpoint[]>([]);
+  const [p2pV2EndpointSummary, setP2pV2EndpointSummary] = useState("正在获取在线房间");
+  const [p2pViewError, setP2pViewError] = useState("");
+  const [p2pViewLoading, setP2pViewLoading] = useState(false);
+  const [p2pViewRooms, setP2pViewRooms] = useState<P2pActiveRoom[]>([]);
+  const [p2pViewEndpoint, setP2pViewEndpoint] = useState<P2pEndpoint>(readSavedP2pEndpoint);
+  const [p2pViewerCount, setP2pViewerCount] = useState(0);
+  const [p2pSignalState, setP2pSignalState] = useState<"idle" | "pending" | "live" | "off">("idle");
   const [loading, setLoading] = useState(!initialStatus);
   const [busy, setBusy] = useState(false);
   const [sidebarRefreshBusy, setSidebarRefreshBusy] = useState(false);
@@ -1714,10 +1879,13 @@ export function DashboardPage({
   const [videoAspectRatio, setVideoAspectRatio] = useState(DEFAULT_VIDEO_ASPECT_RATIO);
   const [videoStatus, setVideoStatus] = useState("云端视频待机");
   const [videoTransport, setVideoTransport] = useState<"idle" | "connecting" | "webrtc" | "mp4" | "error">("idle");
+  const [cloudVideoTargets, setCloudVideoTargets] = useState<CloudP2pVideoTarget[]>([]);
+  const [cloudVideoTargetValue, setCloudVideoTargetValue] = useState("");
+  const [cloudVideoCatalogStatus, setCloudVideoCatalogStatus] = useState("正在获取 P2P V2 在线推流");
   const [videoPushStatus, setVideoPushStatus] = useState<VideoPushStatus | null>(null);
-  const [videoPushStatusError, setVideoPushStatusError] = useState("");
   const [videoPushStatusUpdatedAt, setVideoPushStatusUpdatedAt] = useState("");
-  const [videoHeartbeatBaseline, setVideoHeartbeatBaseline] = useState<VideoHeartbeatBaseline | null>(null);
+  const [p2pRoomSummary, setP2pRoomSummary] = useState<P2pRoomSummary>(emptyP2pRoomSummary);
+  const [p2pV2RoomSummary, setP2pV2RoomSummary] = useState<P2pV2RoomSummary>(emptyP2pV2RoomSummary);
   const [trafficSnapshot, setTrafficSnapshot] = useState<TrafficMonitorSnapshot>(emptyTrafficMonitorSnapshot);
   const [trafficHistory, setTrafficHistory] = useState<TrafficChartPoint[]>([]);
   const [trafficMonitorError, setTrafficMonitorError] = useState("");
@@ -1756,6 +1924,7 @@ export function DashboardPage({
   const previewPeerRef = useRef<RTCPeerConnection | null>(null);
   const previewSocketRef = useRef<WebSocket | null>(null);
   const previewTimeoutRef = useRef<number | null>(null);
+  const cloudVideoPollAbortRef = useRef<AbortController | null>(null);
   const controlMonitorKeyboardRef = useRef<HTMLDivElement | null>(null);
   const controlMonitorColorAssignmentsRef = useRef<Map<string, ControlMonitorColorId>>(new Map());
   const localStreamEditSeqRef = useRef(0);
@@ -1770,6 +1939,20 @@ export function DashboardPage({
   const tencentCloudPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const tencentCloudPreviewStreamRef = useRef<MediaStream | null>(null);
   const tencentCloudPreviewStreamIdRef = useRef("");
+  const p2pPeerIdRef = useRef(makeP2pPeerId("console-push"));
+  const p2pEndpointIdRef = useRef(`console-video-${makeP2pPeerId("endpoint").slice(-12)}`);
+  const p2pV2ModeRef = useRef(false);
+  const p2pSignalConfigRef = useRef<P2pSignalConfig>({ iceServers: [] });
+  const p2pSignalBaseUrlRef = useRef(readSavedP2pEndpoint().signalBaseUrl);
+  const p2pRoomIdRef = useRef(readSavedP2pEndpoint().roomId);
+  const p2pSinceRef = useRef(0);
+  const p2pPollAbortRef = useRef<AbortController | null>(null);
+  const p2pHeartbeatRef = useRef<number | null>(null);
+  const p2pRawStreamRef = useRef<MediaStream | null>(null);
+  const p2pSendStreamRef = useRef<MediaStream | null>(null);
+  const p2pDrawTimerRef = useRef<number | null>(null);
+  const p2pConnectionsRef = useRef<Map<string, P2pViewerConnection>>(new Map());
+  const p2pPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     function clearPushCodeSelectionOnOutsidePointerDown(event: MouseEvent) {
@@ -1983,14 +2166,21 @@ export function DashboardPage({
     });
     if (nextStatus.connected && !accessInfo.webMode) {
       try {
-        const nextLocalStreamStatus = await getLocalStreamStatus();
+        const [nextLocalStreamStatus, nextP2pLocalPusherStatus] = await Promise.all([
+          getLocalStreamStatus(),
+          getP2pLocalPusherStatus(),
+        ]);
         setLocalStreamStatus(nextLocalStreamStatus);
         setLocalStreamConfig(nextLocalStreamStatus.config);
         setLocalStreamDirty(false);
+        setP2pLocalPusherStatus(nextP2pLocalPusherStatus);
+        setP2pPushRunning(nextP2pLocalPusherStatus.running);
+        setP2pSignalState(nextP2pLocalPusherStatus.running ? "live" : "idle");
       } catch {
         setLocalStreamStatus(emptyLocalStreamStatus);
         setLocalStreamConfig(defaultLocalStreamConfig);
         setLocalStreamDirty(false);
+        setP2pLocalPusherStatus(emptyP2pLocalPusherStatus);
       }
     }
     return nextStatus;
@@ -2016,30 +2206,6 @@ export function DashboardPage({
     }
 
     return succeeded;
-  }
-
-  async function handleRefreshVideoPushSummary() {
-    setError("");
-    try {
-      const nextStatus = await syncDashboardStatusSnapshot("refresh");
-      if (!nextStatus.connected) {
-        setVideoPushStatus(null);
-        setVideoPushStatusError("");
-        setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
-        setVideoHeartbeatBaseline(null);
-        return;
-      }
-
-      const nextVideoPushStatus = await getVideoPushStatus();
-      setVideoPushStatus(nextVideoPushStatus);
-      setVideoPushStatusError("");
-      setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
-      setVideoHeartbeatBaseline(buildVideoHeartbeatBaseline(nextVideoPushStatus));
-    } catch (err) {
-      setVideoPushStatusError(err instanceof Error ? err.message : "视频推流状态读取失败");
-      setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
-      setError(err instanceof Error ? err.message : "视频推流状态读取失败");
-    }
   }
 
   async function handleRefreshControlSignalSummary() {
@@ -2195,6 +2361,12 @@ export function DashboardPage({
   }, [status.connected]);
 
   useEffect(() => {
+    // The service panel now uses the P2P V2 viewer below. Keep this dormant
+    // legacy preview path temporarily so unrelated local-stream code stays untouched.
+    const legacyPreviewDisabled = true;
+    if (legacyPreviewDisabled) {
+      return undefined;
+    }
     const shouldPreview = videoEnabled && status.connected && activeView === "services";
     const videoElement = previewVideoRef.current;
 
@@ -2591,6 +2763,487 @@ export function DashboardPage({
   }, [activeView, status.connected, status.public_base_url, videoEnabled]);
 
   useEffect(() => {
+    if (activeView !== "services") {
+      return undefined;
+    }
+
+    let disposed = false;
+    let refreshing = false;
+    const signalBaseUrl = p2pViewEndpoint.signalBaseUrl || P2P_SIGNAL_BASE_URL;
+
+    const refreshTargets = async () => {
+      if (disposed || refreshing || !isPageVisible()) {
+        return;
+      }
+      refreshing = true;
+      try {
+        const rooms = (await fetchP2pV2ActiveRooms(signalBaseUrl)).filter(
+          (room) => Number(room.videoPusherCount || room.roleCounts?.["video-pusher"] || 0) > 0,
+        );
+        const roomEndpoints = await Promise.all(
+          rooms.map(async (room) => ({
+            room: room.room,
+            endpoints: await fetchP2pV2Endpoints(room.room, {
+              signalBaseUrl,
+              roomId: room.room,
+              watchUrl: buildP2pV2WatchPageUrl(room.room, "", signalBaseUrl),
+            }).catch(() => []),
+          })),
+        );
+        const targets = roomEndpoints.flatMap(({ room, endpoints }) =>
+          endpoints
+            .filter((endpoint) => endpoint.role === "video-pusher" && String(endpoint.endpointId || "").trim())
+            .map((endpoint) => ({
+              value: `${encodeURIComponent(room)}::${encodeURIComponent(endpoint.endpointId)}`,
+              signalBaseUrl,
+              roomId: room,
+              endpointId: endpoint.endpointId,
+              peerId: String(endpoint.peerId || ""),
+              displayName: String(endpoint.displayName || endpoint.endpointId),
+            })),
+        );
+        if (disposed) {
+          return;
+        }
+        setCloudVideoTargets(targets);
+        setCloudVideoCatalogStatus(
+          targets.length > 0
+            ? `当前有 ${targets.length} 个 P2P V2 视频推流端可观看`
+            : "当前没有正在推流的 P2P V2 房间",
+        );
+        setCloudVideoTargetValue((current) =>
+          !current || targets.some((target) => target.value === current) ? current : "",
+        );
+      } catch (err) {
+        if (!disposed) {
+          const message = err instanceof Error ? err.message : "在线推流读取失败";
+          setCloudVideoCatalogStatus(`P2P V2 在线推流读取失败：${message}`);
+        }
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    setCloudVideoTargets([]);
+    setCloudVideoTargetValue("");
+    setCloudVideoCatalogStatus("正在获取 P2P V2 在线推流");
+    void refreshTargets();
+    const timerId = window.setInterval(refreshTargets, VIDEO_PUSH_STATUS_POLL_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (isPageVisible()) {
+        void refreshTargets();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      disposed = true;
+      window.clearInterval(timerId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeView, p2pViewEndpoint.signalBaseUrl]);
+
+  useEffect(() => {
+    const target = cloudVideoTargets.find((item) => item.value === cloudVideoTargetValue);
+    const videoElement = previewVideoRef.current;
+
+    const clearVideoSurface = () => {
+      if (!videoElement) {
+        return;
+      }
+      videoElement.onloadedmetadata = null;
+      videoElement.onresize = null;
+      videoElement.onplaying = null;
+      videoElement.onwaiting = null;
+      videoElement.onstalled = null;
+      const currentStream = videoElement.srcObject;
+      if (currentStream instanceof MediaStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+      }
+      try {
+        videoElement.pause();
+      } catch {
+      }
+      videoElement.srcObject = null;
+      videoElement.removeAttribute("src");
+    };
+
+    cloudVideoPollAbortRef.current?.abort();
+    cloudVideoPollAbortRef.current = null;
+    previewPeerRef.current?.close();
+    previewPeerRef.current = null;
+    clearVideoSurface();
+
+    if (activeView !== "services" || !target || !videoElement) {
+      setVideoAspectRatio(DEFAULT_VIDEO_ASPECT_RATIO);
+      setVideoTransport("idle");
+      setVideoStatus(activeView === "services" ? "请选择 P2P V2 在线推流" : "云端视频待机");
+      return undefined;
+    }
+
+    let disposed = false;
+    let since = 0;
+    let currentPeer: RTCPeerConnection | null = null;
+    let remotePeerId = target.peerId;
+    let remoteEndpointId = target.endpointId;
+    let pendingCandidates: RTCIceCandidateInit[] = [];
+    let registered = false;
+    let reconnecting = false;
+    let lastReconnectAt = 0;
+    let lastVideoTime = 0;
+    let lastVideoProgressAt = Date.now();
+    const peerId = makeP2pPeerId("console-view");
+    const endpointId = `console-viewer-${makeP2pPeerId("endpoint").slice(-12)}`;
+    const connectionId = makeP2pPeerId("connection");
+    const abortController = new AbortController();
+    cloudVideoPollAbortRef.current = abortController;
+
+    const apiUrl = (path: string) => new URL(path, target.signalBaseUrl || P2P_SIGNAL_BASE_URL);
+    const endpointUrl = apiUrl(
+      `/api/v2/rooms/${encodeURIComponent(target.roomId)}/endpoints/${encodeURIComponent(endpointId)}`,
+    );
+
+    const sendSignal = async (message: P2pSignalMessage) => {
+      const response = await fetch(apiUrl(`/api/v2/rooms/${encodeURIComponent(target.roomId)}/message`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...message,
+          fromEndpointId: endpointId,
+          fromPeerId: peerId,
+          toEndpointId: message.toEndpointId || remoteEndpointId || target.endpointId,
+          toPeerId: message.toPeerId || message.to || remotePeerId,
+          connectionId,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`信令发送失败：HTTP ${response.status}`);
+      }
+    };
+
+    const registerEndpoint = async () => {
+      const response = await fetch(apiUrl(`/api/v2/rooms/${encodeURIComponent(target.roomId)}/endpoints`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpointId,
+          peerId,
+          role: "viewer",
+          displayName: "控制台云端视频窗口",
+          status: "waiting",
+          capabilities: { protocol: "webrtc", media: "video" },
+          metadata: { targetEndpointId: target.endpointId, source: "cloud-service-console" },
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || `观看端注册失败：HTTP ${response.status}`);
+      }
+      registered = true;
+    };
+
+    const heartbeatEndpoint = async () => {
+      const response = await fetch(endpointUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "heartbeat",
+          peerId,
+          status: currentPeer?.connectionState === "connected" ? "connected" : "waiting",
+        }),
+      });
+      if (response.status === 404) {
+        await registerEndpoint();
+      }
+    };
+
+    const closePeer = () => {
+      if (currentPeer) {
+        currentPeer.close();
+      }
+      if (previewPeerRef.current === currentPeer) {
+        previewPeerRef.current = null;
+      }
+      currentPeer = null;
+      pendingCandidates = [];
+    };
+
+    const sendViewerReady = async () => {
+      if (disposed || !registered) {
+        return;
+      }
+      if (currentPeer && !["failed", "closed", "disconnected"].includes(currentPeer.connectionState)) {
+        return;
+      }
+      await sendSignal({
+        kind: "viewer-ready",
+        toRole: "pusher",
+        toEndpointId: target.endpointId,
+        connectionId,
+        payload: { at: Date.now() },
+      });
+    };
+
+    const reconnectViewer = async (reason: string) => {
+      if (disposed || reconnecting || Date.now() - lastReconnectAt < 2000) {
+        return;
+      }
+      reconnecting = true;
+      lastReconnectAt = Date.now();
+      const previousPeerId = remotePeerId;
+      closePeer();
+      clearVideoSurface();
+      setVideoTransport("connecting");
+      setVideoStatus(reason);
+      try {
+        if (previousPeerId) {
+          await sendSignal({
+            kind: "viewer-reconnect",
+            to: previousPeerId,
+            toEndpointId: target.endpointId,
+            connectionId,
+            payload: { at: Date.now(), reason },
+          }).catch(() => undefined);
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 300));
+        await sendViewerReady();
+      } finally {
+        reconnecting = false;
+      }
+    };
+
+    const acceptOffer = async (message: P2pSignalMessage) => {
+      if (!message.payload?.sdp) {
+        return;
+      }
+      const candidatesBeforeOffer = pendingCandidates;
+      closePeer();
+      pendingCandidates = candidatesBeforeOffer;
+      remotePeerId = String(message.fromPeerId || message.from || target.peerId || "");
+      remoteEndpointId = String(message.fromEndpointId || target.endpointId);
+      const pc = new RTCPeerConnection({
+        iceServers: signalConfig.iceServers || [],
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
+      });
+      currentPeer = pc;
+      previewPeerRef.current = pc;
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          void sendSignal({
+            kind: "ice-candidate",
+            to: remotePeerId,
+            toEndpointId: remoteEndpointId,
+            connectionId,
+            payload: { candidate: event.candidate.toJSON() },
+          }).catch(() => undefined);
+        }
+      };
+      pc.onconnectionstatechange = () => {
+        if (disposed || currentPeer !== pc) {
+          return;
+        }
+        if (pc.connectionState === "connected") {
+          setVideoTransport("connecting");
+          setVideoStatus(`已连接 ${target.roomId}，等待视频首帧`);
+          lastVideoProgressAt = Date.now();
+        } else if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+          void reconnectViewer(`连接已${pc.connectionState === "failed" ? "失败" : "中断"}，正在重连`);
+        }
+      };
+      pc.ontrack = (event) => {
+        if (disposed || currentPeer !== pc) {
+          return;
+        }
+        const remoteStream = event.streams[0] || new MediaStream([event.track]);
+        videoElement.srcObject = remoteStream;
+        videoElement.muted = true;
+        videoElement.playsInline = true;
+        videoElement.onloadedmetadata = () => {
+          if (videoElement.videoWidth && videoElement.videoHeight) {
+            setVideoAspectRatio(videoElement.videoWidth / videoElement.videoHeight);
+          }
+        };
+        videoElement.onresize = videoElement.onloadedmetadata;
+        videoElement.onplaying = () => {
+          lastVideoTime = videoElement.currentTime;
+          lastVideoProgressAt = Date.now();
+          setVideoTransport("webrtc");
+          setVideoStatus(`正在观看 ${target.roomId} · ${target.displayName}`);
+        };
+        videoElement.onwaiting = () => setVideoStatus(`正在等待 ${target.roomId} 的视频帧`);
+        videoElement.onstalled = () => setVideoStatus(`${target.roomId} 画面暂时停顿，正在检测`);
+        void videoElement.play().catch(() => {
+          setVideoStatus("浏览器未能自动播放视频，请重新选择该推流端");
+        });
+      };
+
+      await pc.setRemoteDescription(message.payload.sdp);
+      const queuedCandidates = pendingCandidates;
+      pendingCandidates = [];
+      for (const candidate of queuedCandidates) {
+        await pc.addIceCandidate(candidate).catch(() => undefined);
+      }
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendSignal({
+        kind: "answer",
+        to: remotePeerId,
+        toEndpointId: remoteEndpointId,
+        connectionId,
+        payload: {
+          sdp: pc.localDescription || answer,
+          offerId: String(message.payload.offerId || ""),
+        },
+      });
+      setVideoStatus(`已应答 ${target.roomId} 的视频推流端`);
+    };
+
+    const handleMessage = async (message: P2pSignalMessage) => {
+      if (message.fromEndpointId && message.fromEndpointId !== target.endpointId) {
+        return;
+      }
+      if (message.kind === "pusher-online") {
+        await sendViewerReady();
+      } else if (message.kind === "offer" && message.payload?.sdp) {
+        await acceptOffer(message);
+      } else if (message.kind === "ice-candidate" && message.payload?.candidate) {
+        if (currentPeer?.remoteDescription) {
+          await currentPeer.addIceCandidate(message.payload.candidate).catch(() => undefined);
+        } else {
+          pendingCandidates.push(message.payload.candidate);
+        }
+      }
+    };
+
+    const pollMessages = async () => {
+      while (!disposed && !abortController.signal.aborted) {
+        try {
+          const url = apiUrl(`/api/v2/rooms/${encodeURIComponent(target.roomId)}/messages`);
+          url.searchParams.set("peerId", peerId);
+          url.searchParams.set("endpointId", endpointId);
+          url.searchParams.set("since", String(since));
+          url.searchParams.set("timeout", "5000");
+          const response = await fetch(url, { cache: "no-store", signal: abortController.signal });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          const payload = (await response.json()) as { messages?: P2pSignalMessage[] };
+          for (const message of payload.messages || []) {
+            try {
+              await handleMessage(message);
+              since = Math.max(since, Number(message.seq) || 0);
+            } catch (err) {
+              if (message.kind !== "offer") {
+                since = Math.max(since, Number(message.seq) || 0);
+              }
+              throw err;
+            }
+          }
+        } catch (err) {
+          if (disposed || abortController.signal.aborted) {
+            return;
+          }
+          const message = err instanceof Error ? err.message : "信令连接失败";
+          setVideoTransport("connecting");
+          setVideoStatus(`P2P V2 信令重试中：${message}`);
+          await new Promise((resolve) => window.setTimeout(resolve, 900));
+        }
+      }
+    };
+
+    let signalConfig: P2pSignalConfig = { iceServers: [] };
+    setVideoAspectRatio(DEFAULT_VIDEO_ASPECT_RATIO);
+    setVideoTransport("connecting");
+    setVideoStatus(`正在连接 ${target.roomId} · ${target.displayName}`);
+
+    void (async () => {
+      try {
+        const configResponse = await fetch(apiUrl("/api/config"), { cache: "no-store" });
+        if (!configResponse.ok) {
+          throw new Error(`信令配置 HTTP ${configResponse.status}`);
+        }
+        signalConfig = (await configResponse.json()) as P2pSignalConfig;
+        await registerEndpoint();
+        if (disposed) {
+          return;
+        }
+        void pollMessages();
+        await sendViewerReady();
+      } catch (err) {
+        if (!disposed) {
+          const message = err instanceof Error ? err.message : "P2P V2 观看启动失败";
+          setVideoTransport("error");
+          setVideoStatus(`P2P V2 观看失败：${message}`);
+        }
+      }
+    })();
+
+    const readyTimer = window.setInterval(() => void sendViewerReady().catch(() => undefined), 1500);
+    const heartbeatTimer = window.setInterval(() => void heartbeatEndpoint().catch(() => undefined), 5000);
+    const watchdogTimer = window.setInterval(() => {
+      if (disposed || document.hidden || !currentPeer || currentPeer.connectionState !== "connected" || !videoElement.srcObject) {
+        return;
+      }
+      if (videoElement.currentTime > lastVideoTime + 0.05) {
+        lastVideoTime = videoElement.currentTime;
+        lastVideoProgressAt = Date.now();
+        return;
+      }
+      if (Date.now() - lastVideoProgressAt >= 8000) {
+        void reconnectViewer("视频帧停住，正在自动重连");
+      }
+    }, 3000);
+
+    const notifyOffline = () => {
+      const signalPayload = JSON.stringify({
+        fromEndpointId: endpointId,
+        fromPeerId: peerId,
+        toEndpointId: target.endpointId,
+        toPeerId: remotePeerId,
+        connectionId,
+        kind: "viewer-offline",
+        payload: { at: Date.now(), reason: "控制台视频窗口已关闭" },
+      });
+      const signalUrl = apiUrl(`/api/v2/rooms/${encodeURIComponent(target.roomId)}/message`).toString();
+      const endpointPayload = JSON.stringify({ action: "offline", peerId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(signalUrl, new Blob([signalPayload], { type: "application/json" }));
+        navigator.sendBeacon(endpointUrl.toString(), new Blob([endpointPayload], { type: "application/json" }));
+        return;
+      }
+      void fetch(signalUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: signalPayload,
+        keepalive: true,
+      }).catch(() => undefined);
+      void fetch(endpointUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: endpointPayload,
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+
+    window.addEventListener("pagehide", notifyOffline);
+    return () => {
+      disposed = true;
+      abortController.abort();
+      if (cloudVideoPollAbortRef.current === abortController) {
+        cloudVideoPollAbortRef.current = null;
+      }
+      window.clearInterval(readyTimer);
+      window.clearInterval(heartbeatTimer);
+      window.clearInterval(watchdogTimer);
+      window.removeEventListener("pagehide", notifyOffline);
+      notifyOffline();
+      closePeer();
+      clearVideoSurface();
+    };
+  }, [activeView, cloudVideoTargetValue, p2pViewEndpoint.signalBaseUrl]);
+
+  useEffect(() => {
     const shouldMonitor = controlMonitorEnabled && status.connected && activeView === "services";
     let disposed = false;
 
@@ -2743,27 +3396,30 @@ export function DashboardPage({
       if (!isPageVisible() || !status.connected || !shouldPollVideoPushStatus || polling) {
         if (!status.connected && alive) {
           setVideoPushStatus(null);
-          setVideoPushStatusError("");
           setVideoPushStatusUpdatedAt("");
+          setP2pRoomSummary(emptyP2pRoomSummary);
+          setP2pV2RoomSummary(emptyP2pV2RoomSummary);
         }
         return;
       }
 
       polling = true;
       try {
-        const nextStatus = await getVideoPushStatus();
+        const [nextStatus] = await Promise.all([
+          getVideoPushStatus(),
+          refreshP2pRoomSummary(),
+          refreshP2pV2RoomSummary(),
+        ]);
         if (!alive) {
           return;
         }
         setVideoPushStatus(nextStatus);
-        setVideoPushStatusError("");
         setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
-      } catch (err) {
+      } catch {
         if (!alive) {
           return;
         }
         setVideoPushStatus(null);
-        setVideoPushStatusError(err instanceof Error ? err.message : "视频推流状态读取失败");
         setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
       } finally {
         polling = false;
@@ -2903,18 +3559,29 @@ export function DashboardPage({
       }
       polling = true;
       try {
-        const nextLocalStreamStatus = await getLocalStreamStatus();
+        const [nextLocalStreamStatus, nextP2pLocalPusherStatus] = await Promise.all([
+          getLocalStreamStatus(),
+          getP2pLocalPusherStatus(),
+        ]);
         if (!alive) {
           return;
         }
         setLocalStreamStatus(nextLocalStreamStatus);
+        setP2pLocalPusherStatus(nextP2pLocalPusherStatus);
+        setP2pPushRunning(nextP2pLocalPusherStatus.running);
+        setP2pSignalState(nextP2pLocalPusherStatus.running ? "live" : p2pPushBusy ? "pending" : "idle");
         setLocalStreamConfig((current) => {
           if (localStreamBusy || localStreamDirty || activeView === "localStream") {
             return current;
           }
           return nextLocalStreamStatus.config;
         });
-        if (!nextLocalStreamStatus.camera_connected && !nextLocalStreamStatus.push_visible && activeView === "localStream") {
+        if (
+          !nextLocalStreamStatus.camera_connected &&
+          !nextLocalStreamStatus.push_visible &&
+          !nextP2pLocalPusherStatus.running &&
+          activeView === "localStream"
+        ) {
           setActiveView("activity");
         }
       } catch {
@@ -2939,7 +3606,7 @@ export function DashboardPage({
       window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [status.connected, activeView, localStreamBusy, localStreamDirty, accessInfo.webMode]);
+  }, [status.connected, activeView, localStreamBusy, localStreamDirty, accessInfo.webMode, p2pPushBusy]);
 
   useEffect(() => {
     if (localStreamDirty) {
@@ -2947,6 +3614,43 @@ export function DashboardPage({
     }
     setLocalStreamDraft(buildLocalStreamDraft(localStreamConfig));
   }, [localStreamConfig, localStreamDirty]);
+
+  useEffect(() => {
+    if (p2pPushRunning || p2pPushBusy) {
+      return;
+    }
+
+    const preferredSignalBaseUrl = resolveDashboardP2pSignalBaseUrl(status, localStreamConfig);
+    if (!preferredSignalBaseUrl) {
+      return;
+    }
+
+    const currentEndpoint = normalizeP2pEndpointInput(
+      p2pRoomDraft || buildP2pWatchPageUrl(p2pRoomIdRef.current, p2pSignalBaseUrlRef.current),
+    );
+    const nextEndpoint = buildServerPreferredP2pEndpoint(currentEndpoint, preferredSignalBaseUrl);
+    if (nextEndpoint.watchUrl === currentEndpoint.watchUrl) {
+      return;
+    }
+
+    p2pSignalBaseUrlRef.current = nextEndpoint.signalBaseUrl;
+    p2pRoomIdRef.current = nextEndpoint.roomId;
+    setP2pRoomDraft(nextEndpoint.watchUrl);
+    setP2pViewEndpoint((current) => buildServerPreferredP2pEndpoint(current, preferredSignalBaseUrl));
+    rememberP2pLink(nextEndpoint.watchUrl);
+    if (activeView === "overview" || activeView === "localStream") {
+      void refreshP2pRoomSummary();
+    }
+  }, [
+    activeView,
+    localStreamConfig.cloud_public_host,
+    p2pPushBusy,
+    p2pPushRunning,
+    status.connected,
+    status.public_base_url,
+    status.ssh_target,
+    status.network_snapshot?.server?.ip,
+  ]);
 
   async function withAction(action: () => Promise<unknown>, options: ActionFlowOptions = {}) {
     if (options.focusActivity) {
@@ -3007,6 +3711,9 @@ export function DashboardPage({
     setError("");
     try {
       await logout();
+      if (accessInfo.webMode) {
+        await logoutAccount();
+      }
       setPortChecks(emptyStatus.port_checks);
       onLogoutDone();
     } catch (err) {
@@ -3221,6 +3928,33 @@ export function DashboardPage({
     window.open(previewUrl, "_blank", "noopener,noreferrer");
   }
 
+  function openP2pPushPanel() {
+    if (tencentCloudPushBusy || tencentCloudPushRunning || (p2pPushRunning && p2pV2Active)) {
+      return;
+    }
+
+    p2pV2ModeRef.current = false;
+    setTencentCloudPushOpen(false);
+    setP2pV2PushOpen(false);
+    setP2pPushOpen(true);
+    const endpoint = getActiveP2pEndpoint();
+    setP2pPushMessage(p2pPushRunning ? `P2P 推流中，观看地址：${endpoint.watchUrl}` : "P2P 推流面板已打开，确认参数后开始");
+    setLocalStreamMessage("");
+  }
+
+  function openP2pV2PushPanel() {
+    if (tencentCloudPushBusy || tencentCloudPushRunning || p2pPushBusy || (p2pPushRunning && !p2pV2Active)) {
+      return;
+    }
+
+    p2pV2ModeRef.current = true;
+    setTencentCloudPushOpen(false);
+    setP2pPushOpen(false);
+    setP2pV2PushOpen(true);
+    setP2pPushMessage("P2P V2 面板已打开，确认房间和参数后开始");
+    setLocalStreamMessage("");
+  }
+
   function patchLocalStreamNumberDraft(
     draftKey: LocalStreamNumberDraftKey,
     _configKey: LocalStreamNumberConfigKey,
@@ -3245,40 +3979,40 @@ export function DashboardPage({
     setLocalStreamDraft((current) => ({ ...current, [draftKey]: String(nextValue) }));
   }
 
-  function patchLocalStreamSizeConfig(field: LocalStreamSizeConfigKey, axis: "width" | "height", nextValue: number) {
-    localStreamEditSeqRef.current += 1;
-    setLocalStreamDirty(true);
-    setLocalStreamConfig((current) => {
-      const currentSize = parseLocalStreamSize(current[field]);
-      const nextWidth = axis === "width" ? nextValue : currentSize.width;
-      const nextHeight = axis === "height" ? nextValue : currentSize.height;
-      return {
-        ...current,
-        [field]: formatLocalStreamSize(nextWidth, nextHeight),
-      };
-    });
+  function patchViewerResolutionDraft(rawValue: string) {
+    markLocalStreamDraftDirty();
+    setLocalStreamDraft((current) => ({
+      ...current,
+      viewerResolution: rawValue,
+    }));
   }
 
-  function patchLocalStreamSizeDraft(
-    _field: LocalStreamSizeConfigKey,
-    draftKey: LocalStreamSizeDraftKey,
-    _axis: "width" | "height",
-    rawValue: string,
-  ) {
+  function commitViewerResolutionDraft(rawValue: string, fallbackWidth: number, fallbackHeight: number) {
     markLocalStreamDraftDirty();
-    setLocalStreamDraft((current) => ({ ...current, [draftKey]: rawValue }));
+    const nextSize = parseLocalStreamSize(rawValue, fallbackWidth, fallbackHeight);
+    setLocalStreamDraft((current) => ({
+      ...current,
+      viewerResolution: formatLocalStreamSize(nextSize.width, nextSize.height),
+    }));
   }
 
-  function commitLocalStreamSizeDraft(
-    field: LocalStreamSizeConfigKey,
-    draftKey: LocalStreamSizeDraftKey,
-    axis: "width" | "height",
-    rawValue: string,
-    fallback: number,
-  ) {
+  function patchViewerFramerateDraft(rawValue: string) {
     markLocalStreamDraftDirty();
-    const nextValue = parseDraftInteger(rawValue, fallback, 1);
-    setLocalStreamDraft((current) => ({ ...current, [draftKey]: String(nextValue) }));
+    setLocalStreamDraft((current) => ({
+      ...current,
+      inputFramerate: rawValue,
+      targetFramerate: rawValue,
+    }));
+  }
+
+  function commitViewerFramerateDraft(rawValue: string, fallback: number) {
+    markLocalStreamDraftDirty();
+    const nextValue = String(parseDraftInteger(rawValue, fallback, 1, 120));
+    setLocalStreamDraft((current) => ({
+      ...current,
+      inputFramerate: nextValue,
+      targetFramerate: nextValue,
+    }));
   }
 
   function patchLocalStreamBitrateDraft(rawValue: string) {
@@ -3500,7 +4234,6 @@ export function DashboardPage({
           ],
           tencent: response.tencent,
         }));
-        setVideoPushStatusError("");
         setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
       }
     } catch {
@@ -3541,7 +4274,6 @@ export function DashboardPage({
         availableModes: current?.legacy?.live ? ["legacy"] : [],
         tencent: response.tencent,
       }));
-      setVideoPushStatusError("");
       setVideoPushStatusUpdatedAt(formatUiLogTimestamp());
     }
   }
@@ -3597,10 +4329,12 @@ export function DashboardPage({
   }
 
   function openTencentCloudPushCodeDialog() {
-    if (tencentCloudPushBusy) {
+    if (tencentCloudPushBusy || p2pPushBusy || p2pPushRunning) {
       return;
     }
 
+    setP2pPushOpen(false);
+    setP2pV2PushOpen(false);
     setTencentCloudPushDraftUrl(tencentCloudPushUrl || readSavedTencentCloudPushUrl());
     setTencentCloudPushCodeError("");
     setTencentCloudPushCodeDialogOpen(true);
@@ -3651,6 +4385,8 @@ export function DashboardPage({
     setTencentCloudPushDraftUrl(rememberedPushUrl);
     setTencentCloudPushCodeError("");
     setTencentCloudPushCodeDialogOpen(false);
+    setP2pPushOpen(false);
+    setP2pV2PushOpen(false);
     setTencentCloudPushOpen(true);
     setTencentCloudPushMessage(
       tencentCloudPushRunning ? "腾讯云推流中，可到拉流页查看 robot_control" : "推流码已就绪，选择视频源后开始",
@@ -3662,7 +4398,13 @@ export function DashboardPage({
       return;
     }
 
-    setTencentCloudPlayDraftUrl(tencentCloudPlayUrl || readSavedTencentCloudPlayUrl());
+    const tencentCloudStatusPlayUrl = normalizeTencentCloudUrlInput(videoPushStatus?.tencent?.playUrl || "");
+    const defaultPlayUrl =
+      tencentCloudStatusPlayUrl ||
+      normalizeTencentCloudUrlInput(tencentCloudPlayUrl) ||
+      readSavedTencentCloudPlayUrl() ||
+      buildTencentCloudDefaultPlayUrl(status, videoPushStatus?.tencent?.streamName || "robot_control");
+    setTencentCloudPlayDraftUrl(defaultPlayUrl);
     setTencentCloudPlayError("");
     setTencentCloudPlayDialogOpen(true);
   }
@@ -3997,6 +4739,839 @@ export function DashboardPage({
     }
   }
 
+  function buildP2pVideoConfig(config: LocalStreamConfig): P2pVideoConfig {
+    const inputSize = parseLocalStreamSize(config.video_size, 1280, 720);
+    const outputSize = parseLocalStreamSize(config.output_video_size, inputSize.width, inputSize.height);
+    return {
+      captureWidth: Math.max(1, inputSize.width),
+      captureHeight: Math.max(1, inputSize.height),
+      outputWidth: Math.max(1, outputSize.width),
+      outputHeight: Math.max(1, outputSize.height),
+      inputFps: Math.min(120, Math.max(1, Number(config.input_framerate) || 30)),
+      fps: Math.min(120, Math.max(1, Number(config.target_framerate) || Number(config.input_framerate) || 30)),
+      bitrateKbps: Math.min(12000, Math.max(100, parseLocalStreamBitrateKbps(config.video_bitrate))),
+    };
+  }
+
+  function describeP2pLocalPusherStatus(status: P2PLocalPusherStatus) {
+    const profile = status.active_profile || {};
+    const width = Number(profile.outputWidth || profile.captureWidth || 0);
+    const height = Number(profile.outputHeight || profile.captureHeight || 0);
+    const fps = Number(profile.fps || profile.inputFps || 0);
+    const bitrateKbps = Number(profile.bitrateKbps || 0);
+    const encoder = String(profile.encoder || "").trim();
+    const camera = String(profile.camera || "").trim();
+    const parts = [`P2P 本地脚本推流中：${status.watch_url || buildP2pWatchPageUrl(status.room_id || P2P_DEFAULT_ROOM_ID)}`];
+    if (width && height && fps) {
+      parts.push(`${width}x${height}@${fps}`);
+    }
+    if (bitrateKbps) {
+      parts.push(`${bitrateKbps}kbps`);
+    }
+    if (encoder) {
+      parts.push(encoder);
+    }
+    if (camera) {
+      parts.push(camera);
+    }
+    return parts.join("，");
+  }
+
+  function p2pApiUrl(path: string) {
+    return new URL(path, p2pSignalBaseUrlRef.current || P2P_SIGNAL_BASE_URL);
+  }
+
+  function getActiveP2pEndpoint() {
+    const endpoint = normalizeP2pEndpointInput(p2pRoomDraft || buildP2pWatchPageUrl(p2pRoomIdRef.current, p2pSignalBaseUrlRef.current));
+    const activeEndpoint = {
+      signalBaseUrl: p2pSignalBaseUrlRef.current || endpoint.signalBaseUrl,
+      roomId: p2pRoomIdRef.current || endpoint.roomId,
+      watchUrl: buildP2pWatchPageUrl(p2pRoomIdRef.current || endpoint.roomId, p2pSignalBaseUrlRef.current || endpoint.signalBaseUrl),
+    };
+    return buildServerPreferredP2pEndpoint(activeEndpoint, resolveDashboardP2pSignalBaseUrl(status, localStreamConfig));
+  }
+
+  function getActiveP2pRoomId() {
+    return getActiveP2pEndpoint().roomId;
+  }
+
+  async function fetchP2pActiveRooms(signalBaseUrl: string) {
+    const roomsUrl = new URL("/api/rooms", signalBaseUrl || P2P_SIGNAL_BASE_URL);
+    const response = await fetch(roomsUrl, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as P2pRoomsResponse;
+    return Array.isArray(payload.rooms)
+      ? payload.rooms
+          .filter((room) => String(room.room || "").trim())
+          .sort((a, b) => String(a.room || "").localeCompare(String(b.room || "")))
+      : [];
+  }
+
+  async function fetchP2pV2ActiveRooms(signalBaseUrl: string) {
+    const roomsUrl = new URL("/api/v2/rooms", signalBaseUrl || P2P_SIGNAL_BASE_URL);
+    const response = await fetch(roomsUrl, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as P2pV2RoomsResponse;
+    return Array.isArray(payload.rooms)
+      ? payload.rooms
+          .filter((room) => String(room.room || "").trim())
+          .sort((a, b) => String(a.room || "").localeCompare(String(b.room || "")))
+      : [];
+  }
+
+  async function refreshP2pRoomSummary() {
+    const endpoint = getActiveP2pEndpoint();
+    try {
+      const rooms = await fetchP2pActiveRooms(endpoint.signalBaseUrl);
+      setP2pRoomSummary({ rooms, updatedAt: formatUiLogTimestamp(), error: "" });
+      return rooms;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "P2P 房间状态读取失败";
+      setP2pRoomSummary({ rooms: [], updatedAt: formatUiLogTimestamp(), error: message });
+      return [];
+    }
+  }
+
+  async function refreshP2pV2RoomSummary() {
+    const endpoint = getActiveP2pEndpoint();
+    try {
+      const rooms = await fetchP2pV2ActiveRooms(endpoint.signalBaseUrl);
+      setP2pV2RoomSummary({ rooms, updatedAt: formatUiLogTimestamp(), error: "" });
+      return rooms;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "P2P V2 房间状态读取失败";
+      setP2pV2RoomSummary({ rooms: [], updatedAt: formatUiLogTimestamp(), error: message });
+      return [];
+    }
+  }
+
+  async function loadP2pSignalConfig() {
+    const response = await fetch(p2pApiUrl("/api/config"), { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`P2P 信令服务器不可用：HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as P2pSignalConfig;
+    p2pSignalConfigRef.current = {
+      ...payload,
+      iceServers: Array.isArray(payload.iceServers) ? payload.iceServers : [],
+    };
+  }
+
+  async function sendP2pSignal(message: P2pSignalMessage) {
+    const v2 = p2pV2ModeRef.current;
+    const response = await fetch(p2pApiUrl(`/api/${v2 ? "v2/" : ""}rooms/${encodeURIComponent(getActiveP2pRoomId())}/message`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(v2
+        ? {
+            ...message,
+            fromEndpointId: p2pEndpointIdRef.current,
+            fromPeerId: p2pPeerIdRef.current,
+          }
+        : {
+            ...message,
+            from: p2pPeerIdRef.current,
+            fromRole: "pusher",
+          }),
+    });
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const payload = await response.json();
+        detail = payload?.error ? `：${payload.error}` : "";
+      } catch {
+        detail = "";
+      }
+      throw new Error(`P2P 信令发送失败：HTTP ${response.status}${detail}`);
+    }
+    return response.json();
+  }
+
+  async function registerP2pV2VideoEndpoint(videoConfig: P2pVideoConfig) {
+    const response = await fetch(p2pApiUrl(`/api/v2/rooms/${encodeURIComponent(getActiveP2pRoomId())}/endpoints`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpointId: p2pEndpointIdRef.current,
+        peerId: p2pPeerIdRef.current,
+        role: "video-pusher",
+        displayName: `控制台视频端 ${p2pEndpointIdRef.current.slice(-8)}`,
+        status: "waiting",
+        capabilities: { watchable: true, media: "video", protocol: "webrtc" },
+        metadata: { video: videoConfig, source: "cloud-service-console" },
+      }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || `V2 视频端注册失败：HTTP ${response.status}`);
+    }
+  }
+
+  async function heartbeatP2pV2Endpoint(videoConfig: P2pVideoConfig) {
+    const response = await fetch(
+      p2pApiUrl(`/api/v2/rooms/${encodeURIComponent(getActiveP2pRoomId())}/endpoints/${encodeURIComponent(p2pEndpointIdRef.current)}`),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "heartbeat",
+          peerId: p2pPeerIdRef.current,
+          status: p2pConnectionsRef.current.size > 0 ? "connected" : "waiting",
+          metadata: { video: videoConfig, viewerCount: p2pConnectionsRef.current.size },
+        }),
+      },
+    );
+    if (response.status === 404) {
+      await registerP2pV2VideoEndpoint(videoConfig);
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`V2 视频端心跳失败：HTTP ${response.status}`);
+    }
+  }
+
+  async function unregisterP2pV2Endpoint() {
+    await fetch(
+      p2pApiUrl(`/api/v2/rooms/${encodeURIComponent(getActiveP2pRoomId())}/endpoints/${encodeURIComponent(p2pEndpointIdRef.current)}`),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "offline", peerId: p2pPeerIdRef.current }),
+        keepalive: true,
+      },
+    ).catch(() => undefined);
+  }
+
+  async function resetP2pRoomSignal() {
+    const endpoint = getActiveP2pEndpoint();
+    p2pSignalBaseUrlRef.current = endpoint.signalBaseUrl;
+    p2pRoomIdRef.current = endpoint.roomId;
+    const roomId = endpoint.roomId;
+    const response = await fetch(p2pApiUrl(`/api/rooms/${encodeURIComponent(roomId)}/reset`), { method: "POST" });
+    if (!response.ok) {
+      throw new Error(`P2P 信令清空失败：HTTP ${response.status}`);
+    }
+  }
+
+  function attachP2pPreviewStream(stream?: MediaStream | null) {
+    const nextStream = stream || p2pSendStreamRef.current || p2pRawStreamRef.current;
+    const videoElement = p2pPreviewVideoRef.current;
+    if (!videoElement || !nextStream) {
+      return;
+    }
+    if (videoElement.srcObject !== nextStream) {
+      videoElement.srcObject = nextStream;
+    }
+    videoElement.muted = true;
+    videoElement.playsInline = true;
+    void Promise.resolve(videoElement.play()).catch(() => undefined);
+  }
+
+  function stopMediaStream(stream: MediaStream | null) {
+    stream?.getTracks().forEach((track) => track.stop());
+  }
+
+  async function buildP2pOutgoingStream(rawStream: MediaStream, videoConfig: P2pVideoConfig) {
+    const rawVideoTrack = rawStream.getVideoTracks()[0];
+    if (
+      videoConfig.outputWidth === videoConfig.captureWidth &&
+      videoConfig.outputHeight === videoConfig.captureHeight &&
+      videoConfig.fps === videoConfig.inputFps
+    ) {
+      return rawStream;
+    }
+    if (!rawVideoTrack || typeof document === "undefined") {
+      return rawStream;
+    }
+
+    const sourceVideo = document.createElement("video");
+    sourceVideo.muted = true;
+    sourceVideo.playsInline = true;
+    sourceVideo.srcObject = rawStream;
+    await sourceVideo.play();
+
+    const canvas = document.createElement("canvas");
+    canvas.width = videoConfig.outputWidth;
+    canvas.height = videoConfig.outputHeight;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx || !canvas.captureStream) {
+      return rawStream;
+    }
+
+    const draw = () => {
+      if (p2pDrawTimerRef.current === null) {
+        return;
+      }
+      try {
+        ctx.drawImage(sourceVideo, 0, 0, canvas.width, canvas.height);
+      } catch {
+        // The next animation frame will retry while the source video warms up.
+      }
+      p2pDrawTimerRef.current = window.setTimeout(draw, Math.max(16, Math.round(1000 / videoConfig.fps)));
+    };
+    if (p2pDrawTimerRef.current !== null) {
+      window.clearTimeout(p2pDrawTimerRef.current);
+    }
+    p2pDrawTimerRef.current = -1;
+    draw();
+
+    const outgoing = canvas.captureStream(videoConfig.fps);
+    rawStream.getAudioTracks().forEach((track) => outgoing.addTrack(track));
+    return outgoing;
+  }
+
+  async function openP2pCameraStream(videoConfig: P2pVideoConfig) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("当前浏览器不支持摄像头采集");
+    }
+    const constraints: MediaStreamConstraints = {
+      video: {
+        width: { ideal: videoConfig.captureWidth },
+        height: { ideal: videoConfig.captureHeight },
+        frameRate: { ideal: videoConfig.inputFps, max: videoConfig.inputFps },
+      },
+      audio: false,
+    };
+    return navigator.mediaDevices.getUserMedia(constraints);
+  }
+
+  function applyP2pSenderBitrate(sender: RTCRtpSender, videoConfig: P2pVideoConfig) {
+    try {
+      const params = sender.getParameters();
+      params.encodings = params.encodings && params.encodings.length ? params.encodings : [{}];
+      params.encodings[0].maxBitrate = videoConfig.bitrateKbps * 1000;
+      params.encodings[0].priority = "high";
+      sender.setParameters(params).catch(() => undefined);
+    } catch {
+      // Browser support differs; WebRTC can still push without an explicit max bitrate.
+    }
+  }
+
+  function updateP2pViewerCount() {
+    setP2pViewerCount(p2pConnectionsRef.current.size);
+  }
+
+  function handleP2pRoomDraftChange(value: string) {
+    setP2pRoomDraft(value.trim());
+    if (!p2pPushRunning) {
+      const endpoint = buildServerPreferredP2pEndpoint(
+        normalizeP2pEndpointInput(value),
+        resolveDashboardP2pSignalBaseUrl(status, localStreamConfig),
+      );
+      p2pSignalBaseUrlRef.current = endpoint.signalBaseUrl;
+      p2pRoomIdRef.current = endpoint.roomId;
+    }
+  }
+
+  async function connectP2pViewer(
+    viewerId: string,
+    videoConfig: P2pVideoConfig,
+    viewerEndpointId = viewerId,
+    connectionId = makeP2pPeerId("connection"),
+  ) {
+    if (!p2pSendStreamRef.current || p2pConnectionsRef.current.has(viewerId)) {
+      return;
+    }
+
+    const pc = new RTCPeerConnection({
+      iceServers: p2pSignalConfigRef.current.iceServers || [],
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require",
+    });
+    const connection: P2pViewerConnection = { pc, viewerId, viewerEndpointId, connectionId, status: "connecting" };
+    p2pConnectionsRef.current.set(viewerId, connection);
+    updateP2pViewerCount();
+
+    p2pSendStreamRef.current.getTracks().forEach((track) => {
+      const sender = pc.addTrack(track, p2pSendStreamRef.current as MediaStream);
+      if (track.kind === "video") {
+        applyP2pSenderBitrate(sender, videoConfig);
+      }
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        void sendP2pSignal({
+          kind: "ice-candidate",
+          to: viewerId,
+          toEndpointId: viewerEndpointId,
+          toPeerId: viewerId,
+          connectionId,
+          payload: { candidate: event.candidate.toJSON() },
+        });
+      }
+    };
+    pc.onconnectionstatechange = () => {
+      connection.status = pc.connectionState;
+      if (pc.connectionState === "connected") {
+        setP2pSignalState("live");
+        setP2pPushMessage(`P2P 推流中：${videoConfig.outputWidth}x${videoConfig.outputHeight}@${videoConfig.fps}，${p2pConnectionsRef.current.size} 个观看端`);
+      } else if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        p2pConnectionsRef.current.delete(viewerId);
+        updateP2pViewerCount();
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendP2pSignal({
+      kind: "offer",
+      to: viewerId,
+      toEndpointId: viewerEndpointId,
+      toPeerId: viewerId,
+      connectionId,
+      payload: { sdp: pc.localDescription || offer, video: videoConfig },
+    });
+    setP2pPushMessage(`已向观看端 ${viewerId.slice(0, 8)} 发送 P2P offer`);
+  }
+
+  function closeP2pViewerConnection(viewerId: string) {
+    const connection = p2pConnectionsRef.current.get(viewerId);
+    if (!connection) {
+      return false;
+    }
+    connection.pc.close();
+    p2pConnectionsRef.current.delete(viewerId);
+    updateP2pViewerCount();
+    return true;
+  }
+
+  async function handleP2pSignalMessage(message: P2pSignalMessage, videoConfig: P2pVideoConfig) {
+    const senderId = message.fromPeerId || message.from || "";
+    const senderEndpointId = message.fromEndpointId || senderId;
+    if (message.kind === "viewer-offline" && senderId) {
+      if (closeP2pViewerConnection(senderId)) {
+        setP2pPushMessage(`观看端 ${senderId.slice(0, 8)} 已离开`);
+      }
+      return;
+    }
+    if (message.kind === "viewer-reconnect" && senderId) {
+      closeP2pViewerConnection(senderId);
+      await connectP2pViewer(senderId, videoConfig, senderEndpointId, message.connectionId);
+      return;
+    }
+    if ((message.kind === "viewer-ready" || message.kind === "connect-request") && senderId) {
+      await connectP2pViewer(senderId, videoConfig, senderEndpointId, message.connectionId);
+      return;
+    }
+    if (message.kind === "answer" && senderId && message.payload?.sdp) {
+      const connection = p2pConnectionsRef.current.get(senderId);
+      if (connection) {
+        await connection.pc.setRemoteDescription(message.payload.sdp);
+        setP2pPushMessage(`观看端 ${senderId.slice(0, 8)} 已应答`);
+      }
+      return;
+    }
+    if (message.kind === "ice-candidate" && senderId && message.payload?.candidate) {
+      const connection = p2pConnectionsRef.current.get(senderId);
+      if (connection) {
+        await connection.pc.addIceCandidate(message.payload.candidate).catch(() => undefined);
+      }
+    }
+  }
+
+  async function pollP2pMessages(videoConfig: P2pVideoConfig) {
+    p2pPollAbortRef.current?.abort();
+    const abortController = new AbortController();
+    p2pPollAbortRef.current = abortController;
+    const roomId = getActiveP2pRoomId();
+    while (p2pPollAbortRef.current === abortController && !abortController.signal.aborted) {
+      try {
+        const v2 = p2pV2ModeRef.current;
+        const url = p2pApiUrl(`/api/${v2 ? "v2/" : ""}rooms/${encodeURIComponent(roomId)}/messages`);
+        url.searchParams.set("peerId", p2pPeerIdRef.current);
+        if (v2) {
+          url.searchParams.set("endpointId", p2pEndpointIdRef.current);
+        } else {
+          url.searchParams.set("role", "pusher");
+        }
+        url.searchParams.set("since", String(p2pSinceRef.current));
+        url.searchParams.set("timeout", String(P2P_SIGNAL_POLL_TIMEOUT_MS));
+        const response = await fetch(url, { cache: "no-store", signal: abortController.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = (await response.json()) as { messages?: P2pSignalMessage[] };
+        for (const message of payload.messages || []) {
+          p2pSinceRef.current = Math.max(p2pSinceRef.current, Number(message.seq) || 0);
+          await handleP2pSignalMessage(message, videoConfig);
+        }
+      } catch {
+        if (abortController.signal.aborted) {
+          return;
+        }
+        setP2pSignalState("pending");
+        setP2pPushMessage("P2P 信令重试中...");
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+      }
+    }
+  }
+
+  function startP2pHeartbeat(videoConfig: P2pVideoConfig) {
+    if (p2pHeartbeatRef.current !== null) {
+      window.clearInterval(p2pHeartbeatRef.current);
+    }
+    p2pHeartbeatRef.current = window.setInterval(() => {
+      if (p2pV2ModeRef.current) {
+        void heartbeatP2pV2Endpoint(videoConfig).catch(() => undefined);
+        return;
+      }
+      void sendP2pSignal({
+        kind: "pusher-heartbeat",
+        toRole: "viewer",
+        payload: { at: Date.now(), video: videoConfig },
+      }).catch(() => undefined);
+    }, 5000);
+  }
+
+  async function stopP2pPush(options: { silent?: boolean } = {}) {
+    if (!options.silent) {
+      setP2pPushBusy(true);
+    }
+    if (!accessInfo.webMode) {
+      try {
+        const nextStatus = await stopP2pLocalPusher();
+        setP2pLocalPusherStatus(nextStatus);
+        setP2pPushRunning(nextStatus.running);
+        setP2pSignalState(nextStatus.running ? "live" : "idle");
+        setP2pViewerCount(0);
+        if (!options.silent) {
+          setP2pPushMessage(nextStatus.running ? describeP2pLocalPusherStatus(nextStatus) : "P2P 推流已停止");
+        }
+        void refreshP2pRoomSummary();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "P2P 推流停止失败";
+        if (!options.silent) {
+          setP2pPushMessage(message);
+          setError(message);
+        }
+      } finally {
+        if (!options.silent) {
+          setP2pPushBusy(false);
+        }
+      }
+      return;
+    }
+    p2pPollAbortRef.current?.abort();
+    p2pPollAbortRef.current = null;
+    if (p2pHeartbeatRef.current !== null) {
+      window.clearInterval(p2pHeartbeatRef.current);
+      p2pHeartbeatRef.current = null;
+    }
+    if (p2pDrawTimerRef.current !== null) {
+      window.clearTimeout(p2pDrawTimerRef.current);
+      p2pDrawTimerRef.current = null;
+    }
+    p2pConnectionsRef.current.forEach((connection) => connection.pc.close());
+    p2pConnectionsRef.current.clear();
+    updateP2pViewerCount();
+    stopMediaStream(p2pRawStreamRef.current);
+    if (p2pSendStreamRef.current && p2pSendStreamRef.current !== p2pRawStreamRef.current) {
+      stopMediaStream(p2pSendStreamRef.current);
+    }
+    p2pRawStreamRef.current = null;
+    p2pSendStreamRef.current = null;
+    const stoppingV2 = p2pV2ModeRef.current;
+    await sendP2pSignal({
+      kind: "pusher-offline",
+      toRole: "viewer",
+      payload: { at: Date.now() },
+    }).catch(() => undefined);
+    if (stoppingV2) {
+      await unregisterP2pV2Endpoint();
+    }
+    const videoElement = p2pPreviewVideoRef.current;
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.srcObject = null;
+    }
+    setP2pPushRunning(false);
+    setP2pV2Active(false);
+    setP2pSignalState("idle");
+    void refreshP2pRoomSummary();
+    if (!options.silent) {
+      setP2pPushMessage("P2P 推流已停止");
+      setP2pPushBusy(false);
+    }
+  }
+
+  async function handleStartP2pPush() {
+    if (p2pPushBusy) {
+      return;
+    }
+
+    setP2pPushBusy(true);
+    setError("");
+    setP2pSignalState("pending");
+    try {
+      if (tencentCloudPushRunning || tencentCloudPushBusy) {
+        throw new Error("腾讯云正在推流，请先停止腾讯云推流");
+      }
+      if (accessInfo.webMode && !window.isSecureContext) {
+        throw new Error("P2P 推流需要 HTTPS 或 localhost，当前入口无法打开摄像头");
+      }
+      const p2pCameraReady = accessInfo.webMode
+        ? browserCameraProbe.status === "available"
+        : localStreamStatus.camera_connected;
+      if (!p2pCameraReady) {
+        throw new Error(accessInfo.webMode ? browserCameraProbe.note || "未检测到可用摄像头" : "未检测到可用摄像头，请先运行本地配置或检查摄像头");
+      }
+
+      const requestedConfig = normalizeLocalStreamConfig(
+        applyLocalStreamDraftToConfig(localStreamConfig, localStreamDraft),
+      );
+      setLocalStreamConfig(requestedConfig);
+      setLocalStreamDraft(buildLocalStreamDraft(requestedConfig));
+      setLocalStreamDirty(false);
+      const videoConfig = buildP2pVideoConfig(requestedConfig);
+      const endpoint = rememberP2pLink(getActiveP2pEndpoint().watchUrl);
+      setP2pRoomDraft(endpoint.watchUrl);
+      p2pSignalBaseUrlRef.current = endpoint.signalBaseUrl;
+      p2pRoomIdRef.current = endpoint.roomId;
+
+      if (!accessInfo.webMode) {
+        if (p2pV2ModeRef.current) {
+          throw new Error("P2P V2 当前使用浏览器推流端；本地脚本接入将在 V2 配置规范下单独提供");
+        }
+        setP2pPushMessage("正在启动本地 P2P 推流脚本...");
+        const savedLocalStreamStatus = await saveLocalStreamConfig(requestedConfig);
+        const committedConfig = savedLocalStreamStatus.config;
+        setLocalStreamStatus(savedLocalStreamStatus);
+        setLocalStreamConfig(committedConfig);
+        setLocalStreamDraft(buildLocalStreamDraft(committedConfig));
+        const nextStatus = await startP2pLocalPusher(committedConfig, endpoint.watchUrl);
+        setP2pLocalPusherStatus(nextStatus);
+        setP2pPushRunning(nextStatus.running);
+        setP2pSignalState(nextStatus.running ? "live" : "pending");
+        setP2pViewerCount(0);
+        setP2pPushMessage(
+          nextStatus.running
+            ? `${describeP2pLocalPusherStatus(nextStatus)}，观看地址：${nextStatus.watch_url || endpoint.watchUrl}`
+            : nextStatus.message || "P2P 本地脚本已启动，等待确认状态",
+        );
+        void refreshP2pRoomSummary();
+        return;
+      }
+
+      await stopP2pPush({ silent: true });
+      p2pSinceRef.current = 0;
+      p2pPeerIdRef.current = makeP2pPeerId("console-push");
+
+      setP2pPushMessage("正在连接 P2P 信令服务器...");
+      await loadP2pSignalConfig();
+      setP2pPushMessage("正在打开摄像头...");
+      const rawStream = await openP2pCameraStream(videoConfig);
+      p2pRawStreamRef.current = rawStream;
+      p2pSendStreamRef.current = await buildP2pOutgoingStream(rawStream, videoConfig);
+      attachP2pPreviewStream(p2pSendStreamRef.current);
+
+      if (p2pV2ModeRef.current) {
+        await registerP2pV2VideoEndpoint(videoConfig);
+      }
+
+      setP2pPushRunning(true);
+      setP2pV2Active(p2pV2ModeRef.current);
+      setP2pSignalState("live");
+      void pollP2pMessages(videoConfig);
+      if (!p2pV2ModeRef.current) {
+        await sendP2pSignal({
+          kind: "pusher-online",
+          toRole: "viewer",
+          payload: { at: Date.now(), video: videoConfig },
+        });
+      }
+      startP2pHeartbeat(videoConfig);
+      void refreshP2pRoomSummary();
+      setP2pPushMessage(
+        p2pV2ModeRef.current
+          ? `P2P V2 已注册：房间 ${endpoint.roomId}，端 ${p2pEndpointIdRef.current}，等待定向观看请求`
+          : `P2P 推流中：${endpoint.watchUrl}，${videoConfig.outputWidth}x${videoConfig.outputHeight}@${videoConfig.fps} ${videoConfig.bitrateKbps}kbps，等待观看端`,
+      );
+    } catch (err) {
+      if (accessInfo.webMode || !p2pV2ModeRef.current) {
+        await stopP2pPush({ silent: true });
+      }
+      const message = err instanceof Error ? err.message : "P2P 推流启动失败";
+      setP2pV2Active(false);
+      setP2pPushMessage(message);
+      setError(message);
+    } finally {
+      setP2pPushBusy(false);
+    }
+  }
+
+  function openP2pViewerDialog() {
+    if (p2pPushBusy) {
+      return;
+    }
+    const endpoint = p2pLocalPusherStatus.running && p2pLocalPusherStatus.watch_url
+      ? normalizeP2pEndpointInput(p2pLocalPusherStatus.watch_url)
+      : getActiveP2pEndpoint();
+    setP2pViewError("");
+    setP2pViewEndpoint(endpoint);
+    setP2pViewRooms([]);
+    setP2pViewDialogOpen(true);
+    void refreshP2pViewRooms(endpoint);
+  }
+
+  function closeP2pViewerDialog() {
+    if (p2pPushBusy) {
+      return;
+    }
+    setP2pViewDialogOpen(false);
+    setP2pViewError("");
+  }
+
+  async function refreshP2pViewRooms(endpoint = p2pViewEndpoint) {
+    setP2pViewLoading(true);
+    setP2pViewError("");
+    try {
+      const rooms = await fetchP2pActiveRooms(endpoint.signalBaseUrl);
+      setP2pViewRooms(rooms);
+      setP2pRoomSummary({ rooms, updatedAt: formatUiLogTimestamp(), error: "" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "P2P 房间列表加载失败";
+      setP2pViewRooms([]);
+      setP2pViewError(`房间列表加载失败：${message}`);
+      setP2pRoomSummary({ rooms: [], updatedAt: formatUiLogTimestamp(), error: message });
+    } finally {
+      setP2pViewLoading(false);
+    }
+  }
+
+  async function openP2pViewerPage(watchUrl: string) {
+    const parsed = new URL(watchUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("P2P 观看链接协议无效");
+    }
+    const resolvedWatchUrl = parsed.toString();
+    setP2pPushMessage(`正在打开 P2P 观看页面：${resolvedWatchUrl}`);
+    await handleOpenLocalStreamPreview(resolvedWatchUrl);
+  }
+
+  function openP2pViewerRoom(roomId: string) {
+    const normalizedRoomId = normalizeP2pRoomInput(roomId);
+    if (!normalizedRoomId) {
+      setP2pViewError("房间 ID 无效");
+      return;
+    }
+    const watchUrl = buildP2pWatchPageUrl(normalizedRoomId, p2pViewEndpoint.signalBaseUrl);
+    setP2pViewDialogOpen(false);
+    void openP2pViewerPage(watchUrl).catch((err) => {
+      const message = err instanceof Error ? err.message : "P2P 观看页面打开失败";
+      setP2pViewError(message);
+      setError(message);
+    });
+  }
+
+  function openP2pV2ViewerDialog() {
+    if (p2pPushBusy) {
+      return;
+    }
+    const endpoint = getActiveP2pEndpoint();
+    setP2pViewEndpoint(endpoint);
+    setP2pV2RoomDraft(endpoint.roomId);
+    setP2pV2Rooms([]);
+    setP2pV2Endpoints([]);
+    setP2pV2ViewError("");
+    setP2pV2EndpointSummary("正在获取在线房间");
+    setP2pV2ViewDialogOpen(true);
+    void refreshP2pV2Rooms(endpoint, endpoint.roomId);
+  }
+
+  function closeP2pV2ViewerDialog() {
+    if (p2pV2ViewLoading) {
+      return;
+    }
+    setP2pV2ViewDialogOpen(false);
+    setP2pV2ViewError("");
+  }
+
+  async function fetchP2pV2Endpoints(roomId: string, endpoint: P2pEndpoint) {
+    const url = new URL(`/api/v2/rooms/${encodeURIComponent(roomId)}/endpoints`, endpoint.signalBaseUrl);
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as P2pV2EndpointsResponse;
+    return Array.isArray(payload.endpoints) ? payload.endpoints.filter((endpoint) => endpoint.role !== "viewer") : [];
+  }
+
+  function applyP2pV2Endpoints(endpoints: P2pV2Endpoint[]) {
+    setP2pV2Endpoints(endpoints);
+    setP2pV2EndpointSummary(
+      endpoints.length > 0
+        ? `找到 ${endpoints.length} 个在线端，其中 ${endpoints.filter((item) => item.role === "video-pusher").length} 个可观看`
+        : "当前房间没有正在发送请求的端",
+    );
+  }
+
+  async function refreshP2pV2Rooms(endpoint = p2pViewEndpoint, preferredRoom = p2pV2RoomDraft) {
+    setP2pV2ViewLoading(true);
+    setP2pV2ViewError("");
+    try {
+      const rooms = await fetchP2pV2ActiveRooms(endpoint.signalBaseUrl);
+      setP2pV2Rooms(rooms);
+      setP2pV2RoomSummary({ rooms, updatedAt: formatUiLogTimestamp(), error: "" });
+      if (!rooms.length) {
+        setP2pV2RoomDraft("");
+        setP2pV2Endpoints([]);
+        setP2pV2EndpointSummary("当前没有在线的 P2P V2 房间");
+        return;
+      }
+      const normalizedPreferredRoom = normalizeP2pRoomInput(preferredRoom);
+      const selectedRoom = rooms.some((item) => item.room === normalizedPreferredRoom)
+        ? normalizedPreferredRoom
+        : rooms[0].room;
+      setP2pV2RoomDraft(selectedRoom);
+      applyP2pV2Endpoints(await fetchP2pV2Endpoints(selectedRoom, endpoint));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "在线房间加载失败";
+      setP2pV2Rooms([]);
+      setP2pV2Endpoints([]);
+      setP2pV2EndpointSummary("在线房间加载失败");
+      setP2pV2ViewError(`在线房间加载失败：${message}`);
+      setP2pV2RoomSummary({ rooms: [], updatedAt: formatUiLogTimestamp(), error: message });
+    } finally {
+      setP2pV2ViewLoading(false);
+    }
+  }
+
+  async function selectP2pV2Room(roomId: string) {
+    setP2pV2RoomDraft(roomId);
+    setP2pV2ViewLoading(true);
+    setP2pV2ViewError("");
+    setP2pV2Endpoints([]);
+    setP2pV2EndpointSummary("正在获取房间内的在线端");
+    try {
+      applyP2pV2Endpoints(await fetchP2pV2Endpoints(roomId, p2pViewEndpoint));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "端列表加载失败";
+      setP2pV2EndpointSummary("端列表加载失败");
+      setP2pV2ViewError(`端列表加载失败：${message}`);
+    } finally {
+      setP2pV2ViewLoading(false);
+    }
+  }
+
+  function openP2pV2Endpoint(endpoint: P2pV2Endpoint) {
+    if (endpoint.role !== "video-pusher") {
+      return;
+    }
+    const roomId = normalizeP2pRoomInput(p2pV2RoomDraft);
+    const watchUrl = buildP2pV2WatchPageUrl(roomId, endpoint.endpointId, p2pViewEndpoint.signalBaseUrl);
+    setP2pV2ViewDialogOpen(false);
+    void openP2pViewerPage(watchUrl).catch((err) => {
+      const message = err instanceof Error ? err.message : "P2P V2 观看页面打开失败";
+      setP2pV2ViewError(message);
+      setError(message);
+    });
+  }
+
   useEffect(() => {
     if (!tencentCloudPushRunning) {
       return undefined;
@@ -4055,22 +5630,16 @@ export function DashboardPage({
       clearSetupMessageTimer();
       stopTencentCloudWebPlayer();
       void stopTencentCloudPush({ silent: true });
+      void stopP2pPush({ silent: true });
     };
   }, []);
 
   function renderTrafficMonitorPanel() {
     const nowMs = trafficHistory[trafficHistory.length - 1]?.timestampMs || trafficSnapshot.timestamp_ms || Date.now();
     const windowStartMs = nowMs - TRAFFIC_MONITOR_WINDOW_MS;
-    const sampledPoints = (trafficHistory.length > 0
-      ? trafficHistory
-      : [{ timestampMs: nowMs, rxBps: 0, txBps: 0 }]).filter((point) => point.timestampMs >= windowStartMs - TRAFFIC_MONITOR_POLL_INTERVAL_MS);
-    const firstSamplePoint = sampledPoints[0] || { timestampMs: nowMs, rxBps: 0, txBps: 0 };
-    const latestPoint = sampledPoints[sampledPoints.length - 1] || firstSamplePoint;
-    const chartPoints = [
-      { timestampMs: windowStartMs, rxBps: firstSamplePoint.rxBps, txBps: firstSamplePoint.txBps },
-      ...sampledPoints.filter((point) => point.timestampMs > windowStartMs && point.timestampMs < nowMs - 1),
-      { timestampMs: nowMs, rxBps: latestPoint.rxBps, txBps: latestPoint.txBps },
-    ];
+    const sampledPoints = trafficHistory.filter((point) => point.timestampMs >= windowStartMs - TRAFFIC_MONITOR_POLL_INTERVAL_MS);
+    const latestPoint = sampledPoints[sampledPoints.length - 1] || { timestampMs: nowMs, rxBps: 0, txBps: 0 };
+    const chartPoints = sampledPoints.length > 0 ? sampledPoints : [latestPoint];
     const chartWidth = 640;
     const chartHeight = 156;
     const paddingX = 22;
@@ -4092,7 +5661,7 @@ export function DashboardPage({
     const downloadLinePath = buildSmoothTrafficPath(downloadChartPoints);
     const uploadLinePath = buildSmoothTrafficPath(uploadChartPoints);
     const buildAreaPath = (points: TrafficChartSvgPoint[], linePath: string) => {
-      if (!linePath) {
+      if (!linePath || points.length < 2) {
         return "";
       }
       const firstX = points[0]?.x ?? paddingX;
@@ -4332,63 +5901,99 @@ export function DashboardPage({
   }
 
   function renderVideoPushStatusCard() {
-    const activeModes = videoPushStatus?.availableModes || [];
-    const headline = videoPushStatusError
+    const p2pRoomCount = p2pRoomSummary.rooms.length;
+    const p2pV2VideoRooms = p2pV2RoomSummary.rooms.filter((room) => Number(room.videoPusherCount || 0) > 0);
+    const p2pPushedByThisMachine = Boolean(
+      (p2pPushRunning && !p2pV2Active) || (!accessInfo.webMode && p2pLocalPusherStatus.running),
+    );
+    const p2pV2PushedByThisMachine = Boolean(p2pPushRunning && p2pV2Active);
+    const p2pDisplayedRoomCount = Math.max(p2pRoomCount, p2pPushedByThisMachine ? 1 : 0);
+    const p2pV2DisplayedRoomCount = Math.max(p2pV2VideoRooms.length, p2pV2PushedByThisMachine ? 1 : 0);
+    const p2pActive = p2pDisplayedRoomCount > 0;
+    const p2pV2ActiveNow = p2pV2DisplayedRoomCount > 0;
+    const combinedActiveModeCount = Number(p2pActive) + Number(p2pV2ActiveNow);
+    const summaryReadFailed = Boolean(p2pRoomSummary.error && p2pV2RoomSummary.error);
+    const headline = summaryReadFailed
       ? "读取失败"
       : status.connected
-        ? videoPushHeadline(videoPushStatus)
+        ? combinedActiveModeCount > 1
+          ? "多链路推流"
+          : p2pActive
+            ? "P2P推流"
+            : p2pV2ActiveNow
+              ? "P2P V2推流"
+              : "未推流"
         : "未连接";
-    const note = videoPushStatusError
-      ? videoPushStatusError
+    const note = summaryReadFailed
+      ? `P2P：${p2pRoomSummary.error}；P2P V2：${p2pV2RoomSummary.error}`
       : videoPushStatusUpdatedAt
         ? `每 5 秒刷新 · 最近 ${videoPushStatusUpdatedAt}`
         : status.connected
           ? "正在读取服务器推流状态"
           : "连接服务器后显示推流状态";
-    const legacy = videoPushStatus?.legacy;
-    const tencent = videoPushStatus?.tencent;
-    const legacyPushedByThisMachine = !accessInfo.webMode && Boolean(localStreamStatus.running && legacy?.live);
-    const tencentPushedByThisMachine = Boolean(tencentCloudPushRunning && tencent?.live);
+    const p2pLampClass = p2pPushedByThisMachine ? "local" : p2pActive ? "live" : p2pRoomSummary.error ? "pending" : "off";
+    const p2pV2LampClass = p2pV2PushedByThisMachine
+      ? "local"
+      : p2pV2ActiveNow
+        ? "live"
+        : p2pV2RoomSummary.error
+          ? "pending"
+          : "off";
+    const p2pSummaryLabel = p2pActive ? `${p2pDisplayedRoomCount} 个房间` : p2pRoomSummary.error ? "读取失败" : "无房间";
+    const p2pV2SummaryLabel = p2pV2ActiveNow
+      ? `${p2pV2DisplayedRoomCount} 个房间`
+      : p2pV2RoomSummary.error
+        ? "读取失败"
+        : "无房间";
+    const p2pSummaryNote = p2pPushedByThisMachine
+      ? "本机正在 P2P 推流"
+      : p2pActive
+        ? "当前域名有房间正在直播"
+        : p2pRoomSummary.error
+          ? p2pRoomSummary.error
+          : "当前没有正在推流的房间";
+    const p2pV2SummaryNote = p2pV2PushedByThisMachine
+      ? "本机正在 P2P V2 推流"
+      : p2pV2ActiveNow
+        ? "当前域名有 V2 视频房间"
+        : p2pV2RoomSummary.error
+          ? p2pV2RoomSummary.error
+          : "当前没有正在推流的视频房间";
     const headlineClass =
       !status.connected
         ? "offline"
-        : videoPushStatus?.conflict || activeModes.length > 1
+        : combinedActiveModeCount > 1
         ? "conflict"
-        : videoPushStatus?.activeMode === "offline"
+        : combinedActiveModeCount === 0
           ? "offline"
-          : videoPushStatusError
+          : summaryReadFailed
             ? "error"
             : "active";
 
     return (
-      <button
-        type="button"
-        className="panel summary-card summary-card-button video-push-summary-card"
-        onClick={() => void handleRefreshVideoPushSummary()}
-        title="手动刷新视频推流状态"
-      >
+      <div className="panel summary-card video-push-summary-card">
         <div className="summary-card-title">视频推流状态</div>
         <div className={`summary-card-value video-push-summary-value ${headlineClass}`}>{headline}</div>
         <div className="video-push-mode-grid">
-          <div className="video-push-mode-row">
-            <span className={`local-stream-signal-lamp ${videoModeLampClassForLocal(legacy, legacyPushedByThisMachine)}`} aria-hidden="true" />
+          <button className="video-push-mode-row" type="button" onClick={openP2pViewerDialog}>
+            <span className={`local-stream-signal-lamp ${p2pLampClass}`} aria-hidden="true" />
             <div>
-              <span>旧链路</span>
-              <strong>{videoModeStateLabel(legacy)}</strong>
-              <small>{videoModeNote(legacy, STREAM_NAME, videoHeartbeatBaseline?.legacy)}</small>
+              <span>P2P</span>
+              <strong>{p2pSummaryLabel}</strong>
+              <small>{p2pSummaryNote}</small>
             </div>
-          </div>
-          <div className="video-push-mode-row">
-            <span className={`local-stream-signal-lamp ${videoModeLampClassForLocal(tencent, tencentPushedByThisMachine)}`} aria-hidden="true" />
+          </button>
+          <button className="video-push-mode-row" type="button" onClick={openP2pV2ViewerDialog}>
+            <span className={`local-stream-signal-lamp ${p2pV2LampClass}`} aria-hidden="true" />
             <div>
-              <span>腾讯云</span>
-              <strong>{videoModeStateLabel(tencent)}</strong>
-              <small>{videoModeNote(tencent, "robot_control", videoHeartbeatBaseline?.tencent)}</small>
+              <span>P2P V2</span>
+              <strong>{p2pV2SummaryLabel}</strong>
+              <small>{p2pV2SummaryNote}</small>
             </div>
-          </div>
+          </button>
         </div>
         <div className="summary-card-note">{note}</div>
-      </button>
+      </div>
     );
   }
 
@@ -4473,10 +6078,18 @@ export function DashboardPage({
           </div>
         </section>
 
-        <section className="summary-grid">
+        <section className="summary-grid overview-status-grid">
+          <Suspense
+            fallback={(
+              <div className="panel summary-card p2p-topology-card p2p-topology-loading">
+                <span>正在加载 P2P V2 通信拓扑</span>
+              </div>
+            )}
+          >
+            <P2pCommunicationTopology signalBaseUrl={p2pViewEndpoint.signalBaseUrl} theme={theme} />
+          </Suspense>
           {renderVideoPushStatusCard()}
           {renderControlSignalStatusCard()}
-          <SummaryCard title="公网入口" value={status.public_base_url} note="浏览器与 API 访问地址" />
         </section>
 
         <section className="metric-grid">
@@ -4506,8 +6119,15 @@ export function DashboardPage({
   }
 
   function renderServices() {
-    const previewActive = videoEnabled && status.connected;
-    const previewReady = videoTransport === "webrtc" || videoTransport === "mp4";
+    const previewActive = Boolean(cloudVideoTargetValue);
+    const previewReady = videoTransport === "webrtc";
+    const cloudVideoOptions = cloudVideoTargets.map((target) => ({
+      value: target.value,
+      label: target.roomId,
+      description: target.displayName === target.endpointId
+        ? `视频推流端 · ${target.endpointId}`
+        : `${target.displayName} · ${target.endpointId}`,
+    }));
     const pressedControlKeysSet = new Set(controlMonitorPressedKeys);
     const activeControlMonitorClients = controlMonitorClients;
     const controlMonitorClientsByKey = new Map<string, ControlMonitorColoredClient[]>();
@@ -4640,24 +6260,16 @@ export function DashboardPage({
       controlMonitorEndToEndConnected
         ? "online"
         : "offline";
-    const previewOverlayTitle = !videoEnabled
-      ? "视频预览已关闭"
-      : !status.connected
-        ? "请先连接云服务器"
-        : videoTransport === "connecting"
-          ? "正在连接云端视频"
-          : videoTransport === "error"
-            ? "视频预览失败"
-            : videoTransport === "mp4"
-              ? "正在播放 MP4 预览"
-              : "正在播放 WebRTC 预览";
-    const previewOverlayNote = !videoEnabled
-      ? "打开右上角开关后开始拉取画面"
-      : !status.connected
-        ? "当前未建立云端会话"
-        : videoTransport === "connecting"
-          ? `${videoStatus}，最多等待约 7 秒`
-          : videoStatus;
+    const previewOverlayTitle = !cloudVideoTargetValue
+      ? cloudVideoTargets.length > 0
+        ? "请选择在线推流"
+        : "当前没有在线推流"
+      : videoTransport === "connecting"
+        ? "正在连接 P2P V2 视频"
+        : videoTransport === "error"
+          ? "P2P V2 视频连接失败"
+          : "P2P V2 视频已连接";
+    const previewOverlayNote = !cloudVideoTargetValue ? cloudVideoCatalogStatus : videoStatus;
 
     return (
       <section className="service-view-grid">
@@ -4705,14 +6317,16 @@ export function DashboardPage({
             <div className="video-panel-header">
               <div>
                 <div className="section-title">云端视频窗口</div>
-                <div className="section-subtitle">查看当前云服务器接收到的 main-camera 画面</div>
+                <div className="section-subtitle">选择 P2P V2 在线房间与视频推流端</div>
               </div>
-              <ToggleSwitch
-                checked={videoEnabled}
-                size="lg"
-                ariaLabel="toggle cloud video preview"
-                disabled={busy}
-                onClick={() => setVideoEnabled((current) => !current)}
+              <AppSelect
+                className="cloud-video-select"
+                label="在线 P2P V2 推流"
+                value={cloudVideoTargetValue}
+                options={cloudVideoOptions}
+                placeholder={cloudVideoTargets.length > 0 ? "选择房间与推流端" : "当前没有在线推流"}
+                disabled={cloudVideoTargets.length === 0}
+                onChange={setCloudVideoTargetValue}
               />
             </div>
 
@@ -4736,13 +6350,7 @@ export function DashboardPage({
               </div>
             </div>
             <div className="section-subtitle">
-              {videoTransport === "webrtc"
-                ? `WebRTC · ${videoStatus}`
-                : videoTransport === "mp4"
-                  ? `MP4 · ${videoStatus}`
-                  : videoTransport === "connecting"
-                    ? `Connecting · ${videoStatus}`
-                    : videoStatus}
+              {cloudVideoTargetValue ? `P2P V2 · ${videoStatus}` : cloudVideoCatalogStatus}
             </div>
           </div>
 
@@ -4988,7 +6596,7 @@ export function DashboardPage({
     const localStreamStartDisabled =
       webLocalStreamMode || !streamReady || localStreamBusy || localStreamSetupBusy || localStreamOccupiedByOther;
     const localStreamStartTooltip = webLocalStreamMode
-      ? "网页端暂不支持旧链路推流，请使用腾讯云推流"
+      ? "网页端暂不支持旧链路推流，请使用腾讯云或 P2P 推流"
       : localStreamOccupiedByOther
       ? "其他人正在推流"
       : !streamReady
@@ -5015,12 +6623,56 @@ export function DashboardPage({
       : tencentCloudPushStartDisabled;
     const tencentCloudPushActionTooltip = !tencentCloudPushActionIsStopping ? webTencentCloudPushBlockedReason || undefined : undefined;
     const tencentCloudConfigActive = tencentCloudPushOpen || tencentCloudPushRunning;
-    const legacyOnlyControlsDisabled = tencentCloudConfigActive;
+    const p2pConfigActive = p2pPushOpen || p2pV2PushOpen || p2pPushRunning;
+    const webPushConfigActive = tencentCloudConfigActive || p2pConfigActive;
+    const legacyOnlyControlsDisabled = webPushConfigActive;
+    const browserPushControlsDisabled = tencentCloudPushBusy || tencentCloudPushRunning || p2pPushBusy || p2pPushRunning;
+    const p2pPushActionIsStopping = p2pPushRunning;
+    const p2pCameraReady = webLocalStreamMode
+      ? browserCameraProbe.status === "available"
+      : cameraConnected;
+    const p2pPushActionDisabled = p2pPushActionIsStopping
+      ? p2pPushBusy
+      : p2pPushBusy || tencentCloudPushBusy || tencentCloudPushRunning || (webLocalStreamMode && !window.isSecureContext) || !p2pCameraReady;
+    const p2pPushActionTooltip = !p2pPushActionIsStopping
+      ? tencentCloudPushBusy || tencentCloudPushRunning
+        ? "腾讯云正在推流，请先停止腾讯云推流"
+        : webLocalStreamMode && !window.isSecureContext
+        ? "P2P 推流需要 HTTPS 或 localhost"
+        : !p2pCameraReady
+          ? webLocalStreamMode
+            ? browserCameraProbe.note || "未检测到可用摄像头"
+            : "未检测到可用摄像头，请先运行本地配置或检查摄像头"
+          : undefined
+      : undefined;
     const legacyOnlyFieldClass = legacyOnlyControlsDisabled ? "field local-stream-field-disabled" : "field";
     const legacyOnlyToggleClass = legacyOnlyControlsDisabled
       ? "toggle-line local-stream-toggle local-stream-field-disabled"
       : "toggle-line local-stream-toggle";
-    const legacyOnlyFieldTitle = legacyOnlyControlsDisabled ? "腾讯云推流不使用此项" : undefined;
+    const legacyOnlyFieldTitle = legacyOnlyControlsDisabled
+      ? p2pConfigActive
+        ? webLocalStreamMode
+          ? "网页 P2P 推流不使用此项"
+          : "P2P 本地脚本推流不使用此项"
+        : "腾讯云推流不使用此项"
+      : undefined;
+    const p2pLocalEncoderEnabled = p2pConfigActive && !webLocalStreamMode;
+    const encoderFieldDisabled = browserPushControlsDisabled || (legacyOnlyControlsDisabled && !p2pLocalEncoderEnabled);
+    const browserOutputLabelClass = browserPushControlsDisabled ? "field local-stream-field-disabled" : "field";
+    const p2pLocalProfile = p2pLocalPusherStatus.active_profile || {};
+    const p2pLocalProfileWidth = Number(p2pLocalProfile.outputWidth || p2pLocalProfile.captureWidth || 0);
+    const p2pLocalProfileHeight = Number(p2pLocalProfile.outputHeight || p2pLocalProfile.captureHeight || 0);
+    const p2pLocalProfileFps = Number(p2pLocalProfile.fps || p2pLocalProfile.inputFps || 0);
+    const p2pLocalProfileBitrate = Number(p2pLocalProfile.bitrateKbps || 0);
+    const p2pLocalProfileEncoder = String(p2pLocalProfile.encoder || "").trim() || "-";
+    const p2pLocalProfileCamera = String(p2pLocalProfile.camera || "").trim();
+    const p2pLocalOutputLabel =
+      p2pLocalProfileWidth && p2pLocalProfileHeight && p2pLocalProfileFps
+        ? `${p2pLocalProfileWidth}x${p2pLocalProfileHeight}@${p2pLocalProfileFps}`
+        : "-";
+    const p2pPanelSubtitle = webLocalStreamMode
+      ? "浏览器直接采集本机摄像头，通过 P2P WebRTC 向观看端发送视频"
+      : "小程序调用本地 P2P 推流脚本，按下方摄像头、分辨率、帧率、码率和编码器参数推流";
     const webCameraStateLabel = browserCameraAvailable
       ? "WEB READY"
       : browserCameraProbe.status === "checking"
@@ -5088,6 +6740,22 @@ export function DashboardPage({
       },
     ] as const;
     const localStreamSignals = baseLocalStreamSignals.map((signal) => {
+      if (!webLocalStreamMode && signal.key === "push" && p2pLocalPusherStatus.running) {
+        return {
+          ...signal,
+          state: "live",
+          value: "P2P中",
+          note: `本地 P2P 脚本正在 ${p2pLocalPusherStatus.room_id || P2P_DEFAULT_ROOM_ID} 房间推流`,
+        };
+      }
+      if (!webLocalStreamMode && signal.key === "pull" && p2pLocalPusherStatus.running) {
+        return {
+          ...signal,
+          state: "pending",
+          value: "可观看",
+          note: p2pLocalPusherStatus.watch_url || buildP2pWatchPageUrl(p2pLocalPusherStatus.room_id),
+        };
+      }
       if (!webLocalStreamMode) {
         return signal;
       }
@@ -5095,42 +6763,52 @@ export function DashboardPage({
         return {
           ...signal,
           state: "pending",
-          value: "仅腾讯云",
+          value: "Web 推流",
           note: "旧链路开始推流暂不可用",
         };
       }
       if (signal.key === "push") {
         return {
           ...signal,
-          state: tencentCloudPushRunning || tencentCloudRestorableByThisBrowser ? "live" : tencentCloudOccupiedByOther ? "pending" : "off",
-          value: tencentCloudPushRunning
-            ? "推流中"
-            : tencentCloudRestorableByThisBrowser
-              ? "可恢复"
-              : tencentCloudOccupiedByOther
-                ? "占用中"
-                : "未推流",
-          note: tencentCloudPushRunning
-            ? "正在通过腾讯云 WebRTC 推流"
-            : tencentCloudRestorableByThisBrowser
-              ? "当前浏览器可继续管理这路推流"
-              : tencentCloudOccupiedByOther
-                ? "其他人正在腾讯云推流"
-                : "等待腾讯云推流启动",
+          state: p2pPushRunning || tencentCloudPushRunning || tencentCloudRestorableByThisBrowser ? "live" : tencentCloudOccupiedByOther ? "pending" : "off",
+          value: p2pPushRunning
+            ? "P2P中"
+            : tencentCloudPushRunning
+              ? "推流中"
+              : tencentCloudRestorableByThisBrowser
+                ? "可恢复"
+                : tencentCloudOccupiedByOther
+                  ? "占用中"
+                  : "未推流",
+          note: p2pPushRunning
+            ? `正在通过 P2P WebRTC 推流，${p2pViewerCount} 个观看端`
+            : tencentCloudPushRunning
+              ? "正在通过腾讯云 WebRTC 推流"
+              : tencentCloudRestorableByThisBrowser
+                ? "当前浏览器可继续管理这路推流"
+                : tencentCloudOccupiedByOther
+                  ? "其他人正在腾讯云推流"
+                  : "等待腾讯云或 P2P 推流启动",
         };
       }
       if (signal.key === "pull") {
         return {
           ...signal,
-          state: tencentCloudPlayOpen ? "live" : "off",
-          value: tencentCloudPlayOpen ? "已打开" : "未打开",
-          note: tencentCloudPlayOpen ? "网页端观看窗口已打开" : tencentCloudViewerReady ? "可打开腾讯云观看页" : "可在腾讯云推流成功后打开观看",
+          state: tencentCloudPlayOpen || p2pViewerCount > 0 ? "live" : "off",
+          value: tencentCloudPlayOpen || p2pViewerCount > 0 ? "已打开" : "未打开",
+          note: p2pViewerCount > 0
+            ? `${p2pViewerCount} 个 P2P 观看端已加入`
+            : tencentCloudPlayOpen
+              ? "网页端观看窗口已打开"
+              : tencentCloudViewerReady || p2pPushRunning
+                ? "可打开网页端观看页"
+                : "可在推流成功后打开观看",
         };
       }
       return signal;
     });
     const localStreamAllSignalsLive = localStreamSignals.every((signal) => signal.state === "live");
-    const cameraSelectOptions: LocalStreamSelectOption[] = [
+    const cameraSelectOptions = [
       {
         value: "",
         label: "自动选择",
@@ -5142,17 +6820,18 @@ export function DashboardPage({
         description: camera.id ? `${camera.source} · ${camera.id}` : camera.source,
       })),
     ];
-    const inputFormatOptions: LocalStreamSelectOption[] = [
+    const inputFormatOptions = [
       { value: "", label: "默认", description: "自动识别输入格式" },
       { value: "mjpeg", label: "MJPEG", description: "多帧图像输入" },
     ];
-    const videoEncoderOptions: LocalStreamSelectOption[] = [
+    const videoEncoderOptions = [
       { value: "libx264", label: "libx264", description: "通用软件编码" },
       { value: "h264_nvenc", label: "h264_nvenc", description: "NVIDIA 硬编" },
+      { value: "hevc_nvenc", label: "hevc_nvenc", description: "NVIDIA HEVC 硬编，浏览器兼容性取决于观看端" },
       { value: "h264_amf", label: "h264_amf", description: "AMD 硬编，失败后自动降级" },
       { value: "h264_qsv", label: "h264_qsv", description: "Intel QSV 硬编" },
     ];
-    const publicSchemeOptions: LocalStreamSelectOption[] = [
+    const publicSchemeOptions = [
       { value: "http", label: "HTTP", description: "标准明文公网入口" },
       { value: "https", label: "HTTPS", description: "加密公网入口" },
     ];
@@ -5166,7 +6845,7 @@ export function DashboardPage({
               <div className="section-title">本地推流</div>
               <div className="section-subtitle">
                 {webLocalStreamMode
-                  ? "网页端仅支持腾讯云 WebRTC 推流；旧链路开始推流暂不可用"
+                  ? "网页端支持腾讯云 WebRTC 与 P2P 推流；旧链路开始推流暂不可用"
                   : "本机摄像头推送到当前登录云服务器的 main-camera 流"}
               </div>
             </div>
@@ -5210,10 +6889,24 @@ export function DashboardPage({
             </span>
             <Button
               variant="secondary"
-              disabled={localStreamBusy || localStreamSetupBusy}
+              disabled={localStreamBusy || localStreamSetupBusy || p2pPushBusy || p2pPushRunning}
               onClick={openTencentCloudPushCodeDialog}
             >
-              腾讯云推流 (BETA)
+              腾讯云推流
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={localStreamBusy || localStreamSetupBusy || tencentCloudPushBusy || tencentCloudPushRunning || (p2pPushRunning && p2pV2Active)}
+              onClick={openP2pPushPanel}
+            >
+              P2P推流 (BETA)
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={localStreamBusy || localStreamSetupBusy || tencentCloudPushBusy || tencentCloudPushRunning || p2pPushBusy || (p2pPushRunning && !p2pV2Active)}
+              onClick={openP2pV2PushPanel}
+            >
+              P2P推流 V2
             </Button>
             <Button
               variant="secondary"
@@ -5228,7 +6921,7 @@ export function DashboardPage({
             <div className="tencent-cloud-push-card">
               <div className="tencent-cloud-push-header">
                 <div>
-                  <div className="section-title">腾讯云推流 (BETA)</div>
+                  <div className="section-title">腾讯云推流</div>
                   <div className="section-subtitle">浏览器直接采集摄像头、麦克风或屏幕，推到腾讯云直播 WebRTC 地址</div>
                 </div>
                 <button
@@ -5286,7 +6979,7 @@ export function DashboardPage({
                 </div>
 
                 <div className="tencent-cloud-push-controls">
-                  <LocalStreamSelect
+                  <AppSelect
                     className="tencent-cloud-push-source"
                     label="视频源"
                     value={tencentCloudPushSource}
@@ -5330,8 +7023,168 @@ export function DashboardPage({
                 <Button
                   variant="secondary"
                   loading={tencentCloudPlayBusy}
-                  disabled={!tencentCloudViewerReady || tencentCloudPlayBusy}
-                  onClick={() => void startTencentCloudWebPlayer(tencentCloudViewerUrl)}
+                  disabled={tencentCloudPlayBusy}
+                  onClick={openTencentCloudPlayDialog}
+                >
+                  网页端观看
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {p2pPushOpen || p2pV2PushOpen ? (
+            <div className="tencent-cloud-push-card p2p-push-card">
+              <div className="tencent-cloud-push-header">
+                <div>
+                  <div className="section-title">{p2pV2PushOpen ? "P2P推流 V2" : "P2P推流 (BETA)"}</div>
+                  <div className="section-subtitle">
+                    {p2pV2PushOpen
+                      ? "浏览器视频端注册到指定房间，观看端选择具体视频端后建立定向 WebRTC 连接"
+                      : p2pPanelSubtitle}
+                  </div>
+                </div>
+                <button
+                  className="tencent-cloud-push-close"
+                  type="button"
+                  onClick={() => {
+                    setP2pPushOpen(false);
+                    setP2pV2PushOpen(false);
+                  }}
+                  aria-label="关闭 P2P 推流面板"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="tencent-cloud-push-grid">
+                <div className="tencent-cloud-push-main">
+                  <div className="field tencent-cloud-push-url">
+                    <span>{p2pV2PushOpen ? "P2P V2 房间链接" : "P2P 链接"}</span>
+                    <div className="tencent-cloud-push-code-display">
+                      <div className="tencent-cloud-push-code-value">
+                        <input
+                          className="p2p-room-input"
+                          value={p2pRoomDraft}
+                          disabled={p2pPushRunning || p2pPushBusy}
+                          onChange={(event) => handleP2pRoomDraftChange(event.target.value)}
+                          onBlur={() => {
+                            const endpoint = rememberP2pLink(getActiveP2pEndpoint().watchUrl);
+                            setP2pRoomDraft(endpoint.watchUrl);
+                            p2pSignalBaseUrlRef.current = endpoint.signalBaseUrl;
+                            p2pRoomIdRef.current = endpoint.roomId;
+                          }}
+                          aria-label="P2P 推流链接"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        disabled={p2pV2PushOpen || p2pPushBusy}
+                        onClick={() => void resetP2pRoomSignal().then(() => {
+                          p2pSinceRef.current = 0;
+                          setP2pPushMessage("P2P 信令已清空");
+                        }).catch((err) => {
+                          const message = err instanceof Error ? err.message : "P2P 信令清空失败";
+                          setP2pPushMessage(message);
+                          setError(message);
+                        })}
+                      >
+                        {p2pV2PushOpen ? "V2 自动清理" : "清空信令"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {webLocalStreamMode ? (
+                    <div className="tencent-cloud-push-preview-shell">
+                      <div className="tencent-cloud-push-preview-frame">
+                        <div className="tencent-cloud-push-preview">
+                          <video
+                            ref={p2pPreviewVideoRef}
+                            className="tencent-cloud-push-preview-video"
+                            muted
+                            playsInline
+                            autoPlay
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p2p-local-script-panel">
+                      <div className="p2p-local-script-status">
+                        <span className={`local-stream-signal-lamp ${p2pLocalPusherStatus.running ? "live" : p2pSignalState === "pending" ? "pending" : "off"}`} aria-hidden="true" />
+                        <div>
+                          <strong>{p2pLocalPusherStatus.running ? "本地脚本正在后台推流" : p2pLocalPusherStatus.available ? "本地脚本已就绪" : "未找到本地 P2P 脚本"}</strong>
+                          <small>{p2pLocalPusherStatus.message || p2pLocalPusherStatus.project_path || "请确认 E:\\Desktop\\123\\p2p-local-pusher 存在"}</small>
+                        </div>
+                      </div>
+                      <div className="p2p-local-script-grid">
+                        <div>
+                          <span>房间</span>
+                          <strong>{p2pLocalPusherStatus.room_id || getActiveP2pEndpoint().roomId}</strong>
+                        </div>
+                        <div>
+                          <span>输出</span>
+                          <strong>{p2pLocalOutputLabel}</strong>
+                        </div>
+                        <div>
+                          <span>编码器</span>
+                          <strong>{p2pLocalProfileEncoder}</strong>
+                        </div>
+                        <div>
+                          <span>码率</span>
+                          <strong>{p2pLocalProfileBitrate ? `${p2pLocalProfileBitrate} kbps` : "-"}</strong>
+                        </div>
+                      </div>
+                      <div className="p2p-local-script-link">
+                        <span>观看地址</span>
+                        <strong>{p2pLocalPusherStatus.watch_url || getActiveP2pEndpoint().watchUrl}</strong>
+                      </div>
+                      {p2pLocalProfileCamera ? (
+                        <div className="p2p-local-script-link">
+                          <span>摄像头</span>
+                          <strong>{p2pLocalProfileCamera}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                <div className="tencent-cloud-push-controls">
+                  <div className="p2p-push-stat-grid">
+                    <div>
+                      <span>{webLocalStreamMode ? "本页连接" : "进程"}</span>
+                      <strong>{webLocalStreamMode ? `${p2pViewerCount} 个` : p2pLocalPusherStatus.pid ? `PID ${p2pLocalPusherStatus.pid}` : "-"}</strong>
+                    </div>
+                    <div>
+                      <span>信令</span>
+                      <strong>{p2pSignalState === "live" ? "已连接" : p2pSignalState === "pending" ? "连接中" : "未连接"}</strong>
+                    </div>
+                  </div>
+                  <div className={`tencent-cloud-push-status p2p-push-status-row ${p2pPushRunning ? "live" : "idle"}`}>
+                    <span
+                      className={`local-stream-signal-lamp ${p2pPushRunning ? "live" : p2pSignalState === "pending" ? "pending" : "off"}`}
+                      aria-hidden="true"
+                    />
+                    <strong>{p2pPushMessage}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="local-stream-actions">
+                <span className="local-stream-action-tooltip" title={p2pPushActionTooltip}>
+                  <Button
+                    variant={p2pPushActionIsStopping ? "danger" : "primary"}
+                    loading={p2pPushBusy}
+                    disabled={p2pPushActionDisabled}
+                    onClick={p2pPushActionIsStopping ? () => void stopP2pPush() : handleStartP2pPush}
+                  >
+                    {p2pPushActionIsStopping ? "停止P2P推流" : "开始P2P推流"}
+                  </Button>
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled={p2pPushBusy}
+                  onClick={p2pV2PushOpen ? openP2pV2ViewerDialog : openP2pViewerDialog}
                 >
                   网页端观看
                 </Button>
@@ -5346,16 +7199,16 @@ export function DashboardPage({
           ) : null}
 
           <div className="local-stream-form-grid">
-            <LocalStreamSelect
-              className={legacyOnlyControlsDisabled ? "local-stream-field-disabled" : ""}
+            <AppSelect
+              className={p2pConfigActive && browserPushControlsDisabled ? "local-stream-field-disabled" : legacyOnlyControlsDisabled ? "local-stream-field-disabled" : ""}
               label="摄像头"
               value={localStreamConfig.camera_name}
               options={cameraSelectOptions}
               placeholder="自动选择"
-              disabled={legacyOnlyControlsDisabled}
+              disabled={browserPushControlsDisabled || (!p2pConfigActive && legacyOnlyControlsDisabled)}
               onChange={(nextValue) => patchLocalStreamConfig({ camera_name: nextValue })}
             />
-            <LocalStreamSelect
+            <AppSelect
               className={legacyOnlyControlsDisabled ? "local-stream-field-disabled" : ""}
               label="输入格式"
               value={localStreamConfig.input_format}
@@ -5364,135 +7217,50 @@ export function DashboardPage({
               disabled={legacyOnlyControlsDisabled}
               onChange={(nextValue) => patchLocalStreamConfig({ input_format: nextValue })}
             />
-            <LocalStreamSelect
-              className={legacyOnlyControlsDisabled ? "local-stream-field-disabled" : ""}
+            <AppSelect
+              className={encoderFieldDisabled ? "local-stream-field-disabled" : ""}
               label="编码器"
               value={localStreamConfig.video_encoder}
               options={videoEncoderOptions}
               placeholder="libx264"
-              disabled={legacyOnlyControlsDisabled}
+              disabled={encoderFieldDisabled}
               onChange={(nextValue) => patchLocalStreamConfig({ video_encoder: nextValue })}
             />
-            <label className={legacyOnlyFieldClass} title={legacyOnlyFieldTitle}>
-              <span>采集分辨率</span>
-              <div className="local-stream-dimension-pair">
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  value={localStreamDraft.videoWidth}
-                  aria-label="采集宽度"
-                  disabled={legacyOnlyControlsDisabled}
-                  onChange={(event) => patchLocalStreamSizeDraft("video_size", "videoWidth", "width", event.target.value)}
-                  onBlur={(event) =>
-                    commitLocalStreamSizeDraft("video_size", "videoWidth", "width", event.target.value, inputSize.width)
-                  }
-                />
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  value={localStreamDraft.videoHeight}
-                  aria-label="采集高度"
-                  disabled={legacyOnlyControlsDisabled}
-                  onChange={(event) => patchLocalStreamSizeDraft("video_size", "videoHeight", "height", event.target.value)}
-                  onBlur={(event) =>
-                    commitLocalStreamSizeDraft("video_size", "videoHeight", "height", event.target.value, inputSize.height)
-                  }
-                />
-              </div>
-            </label>
-            <label className="field">
-              <span>输出分辨率</span>
-              <div className="local-stream-dimension-pair">
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  value={localStreamDraft.outputWidth}
-                  aria-label="输出宽度"
-                  onChange={(event) =>
-                    patchLocalStreamSizeDraft("output_video_size", "outputWidth", "width", event.target.value)
-                  }
-                  onBlur={(event) =>
-                    commitLocalStreamSizeDraft(
-                      "output_video_size",
-                      "outputWidth",
-                      "width",
-                      event.target.value,
-                      outputSize.width,
-                    )
-                  }
-                />
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  value={localStreamDraft.outputHeight}
-                  aria-label="输出高度"
-                  onChange={(event) =>
-                    patchLocalStreamSizeDraft("output_video_size", "outputHeight", "height", event.target.value)
-                  }
-                  onBlur={(event) =>
-                    commitLocalStreamSizeDraft(
-                      "output_video_size",
-                      "outputHeight",
-                      "height",
-                      event.target.value,
-                      outputSize.height,
-                    )
-                  }
-                />
-              </div>
-            </label>
-            <label className={legacyOnlyFieldClass} title={legacyOnlyFieldTitle}>
-              <span>采集帧率</span>
+            <label className={browserOutputLabelClass}>
+              <span>观看分辨率</span>
               <input
                 className="input"
-                type="number"
-                min={1}
-                max={120}
-                value={localStreamDraft.inputFramerate}
-                disabled={legacyOnlyControlsDisabled}
-                onChange={(event) =>
-                  patchLocalStreamNumberDraft("inputFramerate", "input_framerate", event.target.value, 1, 120)
-                }
+                type="text"
+                inputMode="text"
+                value={localStreamDraft.viewerResolution}
+                aria-label="观看分辨率"
+                placeholder="1920x1080"
+                disabled={browserPushControlsDisabled}
+                onChange={(event) => patchViewerResolutionDraft(event.target.value)}
                 onBlur={(event) =>
-                  commitLocalStreamNumberDraft(
-                    "inputFramerate",
-                    "input_framerate",
-                    event.target.value,
-                    localStreamConfig.input_framerate,
-                    1,
-                    120,
-                  )
+                  commitViewerResolutionDraft(event.target.value, outputSize.width, outputSize.height)
                 }
               />
             </label>
-            <label className="field">
-              <span>目标帧率</span>
+            <label className={browserOutputLabelClass}>
+              <span>观看帧率</span>
               <input
                 className="input"
                 type="number"
                 min={1}
                 max={120}
                 value={localStreamDraft.targetFramerate}
-                onChange={(event) =>
-                  patchLocalStreamNumberDraft("targetFramerate", "target_framerate", event.target.value, 1, 120)
-                }
+                disabled={browserPushControlsDisabled}
+                onChange={(event) => patchViewerFramerateDraft(event.target.value)}
                 onBlur={(event) =>
-                  commitLocalStreamNumberDraft(
-                    "targetFramerate",
-                    "target_framerate",
+                  commitViewerFramerateDraft(
                     event.target.value,
-                    localStreamConfig.target_framerate,
-                    1,
-                    120,
+                    localStreamConfig.target_framerate || localStreamConfig.input_framerate,
                   )
                 }
               />
             </label>
-            <label className="field">
+            <label className={browserOutputLabelClass}>
               <span>视频码率</span>
               <div className="local-stream-input-with-unit">
                 <input
@@ -5500,6 +7268,7 @@ export function DashboardPage({
                   type="number"
                   min={1}
                   value={localStreamDraft.videoBitrateKbps}
+                  disabled={browserPushControlsDisabled}
                   onChange={(event) => patchLocalStreamBitrateDraft(event.target.value)}
                   onBlur={(event) => commitLocalStreamBitrateDraft(event.target.value, bitrateKbps)}
                 />
@@ -5608,7 +7377,7 @@ export function DashboardPage({
           </div>
 
           <div className="local-stream-server-grid">
-            <LocalStreamSelect
+            <AppSelect
               className={legacyOnlyControlsDisabled ? "local-stream-field-disabled" : ""}
               label="公网协议"
               value={localStreamConfig.cloud_public_scheme}
@@ -5709,10 +7478,6 @@ export function DashboardPage({
     );
   }
 
-  function renderGames() {
-    return <TankTroublePanel theme={theme} localCountryCode={status.network_snapshot.local.country_code} canRunSetup={canRunAdminActions} />;
-  }
-
   const localStreamAvailable = accessInfo.webMode
     ? browserCameraProbe.status !== "unavailable"
     : canRunAdminActions && (localStreamStatus.camera_connected || localStreamStatus.push_visible);
@@ -5726,7 +7491,7 @@ export function DashboardPage({
       theme={theme}
       updater={updater}
       onlineCount={onlineCount}
-      accessRoleLabel={accessInfo.webMode ? (accessInfo.admin ? "管理员入口" : "普通用户入口") : ""}
+      accessRoleLabel={accessInfo.webMode ? `${accessInfo.username} · ${accessInfo.admin ? "管理员" : "普通用户"}` : ""}
       activeView={activeView}
       localStreamAvailable={localStreamAvailable}
       canRunSetup={canRunAdminActions}
@@ -5736,7 +7501,7 @@ export function DashboardPage({
       setupProgress={setupProgress}
       setupMessage={setupMessage}
       setupTone={setupTone}
-      scrollLocked={activeView === "games"}
+      scrollLocked={false}
       onViewChange={setActiveView}
       onRefresh={handleDashboardRefresh}
       onInstallUpdate={onInstallUpdate}
@@ -5752,7 +7517,10 @@ export function DashboardPage({
       {activeView === "health" ? renderHealth() : null}
       {activeView === "activity" ? renderActivity() : null}
       {activeView === "localStream" ? renderLocalStream() : null}
-      {activeView === "games" ? renderGames() : null}
+      {activeView === "models" ? <ModelLibraryPanel theme={theme} /> : null}
+      {activeView === "settings" ? (
+        <SystemSettingsPanel accessInfo={accessInfo} onAccessInfoChange={onAccessInfoChange} />
+      ) : null}
 
       {setupPasswordDialogOpen ? createPortal(
         <div className="setup-password-overlay" role="presentation">
@@ -5868,6 +7636,134 @@ export function DashboardPage({
               </Button>
             </div>
           </form>
+        </div>,
+        document.body,
+      ) : null}
+
+      {p2pViewDialogOpen ? createPortal(
+        <div className="setup-password-overlay" role="presentation">
+          <div className="setup-password-dialog tencent-cloud-push-dialog p2p-room-picker-dialog panel" role="dialog" aria-modal="true">
+            <div>
+              <div className="section-title">选择 P2P 房间</div>
+              <div className="section-subtitle">显示当前 P2P 域名下正在直播的房间，点击房间 ID 直接观看。</div>
+            </div>
+            <div className="p2p-room-picker-domain">
+              <span>当前域名</span>
+              <strong>{p2pViewEndpoint.signalBaseUrl}</strong>
+            </div>
+            <div className="p2p-room-picker-list" aria-live="polite">
+              {p2pViewLoading ? (
+                <div className="p2p-room-picker-empty">正在获取正在推流的房间...</div>
+              ) : p2pViewRooms.length > 0 ? (
+                p2pViewRooms.map((room) => (
+                  <button
+                    className="p2p-room-picker-item"
+                    type="button"
+                    key={room.room}
+                    onClick={() => openP2pViewerRoom(room.room)}
+                  >
+                    <strong>{room.room}</strong>
+                    <span>{Number(room.viewerCount || 0)} 个观看端</span>
+                  </button>
+                ))
+              ) : (
+                <div className="p2p-room-picker-empty">当前没有正在推流的房间</div>
+              )}
+            </div>
+            {p2pViewError ? <div className="setup-password-error">{p2pViewError}</div> : null}
+            <div className="setup-password-actions">
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={p2pPushBusy || p2pViewLoading}
+                onClick={() => void refreshP2pViewRooms()}
+              >
+                刷新
+              </Button>
+              <Button variant="ghost" type="button" disabled={p2pPushBusy} onClick={closeP2pViewerDialog}>
+                取消
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+
+      {p2pV2ViewDialogOpen ? createPortal(
+        <div className="setup-password-overlay" role="presentation">
+          <div className="setup-password-dialog tencent-cloud-push-dialog p2p-room-picker-dialog p2p-v2-picker-dialog panel" role="dialog" aria-modal="true">
+            <div>
+              <div className="section-title">选择 P2P V2 在线端</div>
+              <div className="section-subtitle">先选择在线房间，再选择视频推流端观看；其他类型的端只显示状态。</div>
+            </div>
+            <div className="p2p-room-picker-domain">
+              <span>当前域名</span>
+              <strong>{p2pViewEndpoint.signalBaseUrl}</strong>
+            </div>
+            <AppSelect
+              className="p2p-v2-room-select"
+              label="在线房间"
+              value={p2pV2RoomDraft}
+              options={p2pV2Rooms.map((room) => ({
+                value: room.room,
+                label: room.room,
+                description: `${Number(room.endpointCount || 0)} 个在线端 · ${Number(room.videoPusherCount || 0)} 个视频端`,
+              }))}
+              placeholder={p2pV2ViewLoading ? "正在获取在线房间..." : "当前没有在线房间"}
+              disabled={p2pV2ViewLoading || p2pV2Rooms.length === 0}
+              onChange={(roomId) => void selectP2pV2Room(roomId)}
+            />
+            <div className="p2p-v2-search-summary" aria-live="polite">{p2pV2EndpointSummary}</div>
+            <div className="p2p-room-picker-list p2p-v2-endpoint-list" aria-live="polite">
+              {p2pV2ViewLoading ? (
+                <div className="p2p-room-picker-empty">正在获取房间内的在线端...</div>
+              ) : p2pV2Endpoints.length > 0 ? (
+                p2pV2Endpoints.map((endpoint) => {
+                  const watchable = endpoint.role === "video-pusher";
+                  const requestedEndpointId = String(endpoint.requestedEndpointId || "").trim();
+                  const assignmentHint = requestedEndpointId && requestedEndpointId !== endpoint.endpointId
+                    ? `，原始端口名：${requestedEndpointId}`
+                    : "";
+                  return (
+                    <button
+                      className={`p2p-room-picker-item p2p-v2-endpoint-item${watchable ? " watchable" : " readonly"}`}
+                      type="button"
+                      key={endpoint.endpointId}
+                      disabled={!watchable}
+                      title={watchable
+                        ? `打开该视频端的观看页面${assignmentHint}`
+                        : `${p2pV2RoleLabel(endpoint.role)}不可作为视频观看目标${assignmentHint}`}
+                      onClick={() => openP2pV2Endpoint(endpoint)}
+                    >
+                      <span className={`p2p-v2-endpoint-lamp ${endpoint.status || "waiting"}`} aria-hidden="true" />
+                      <span className="p2p-v2-endpoint-copy">
+                        <strong>{endpoint.endpointId}</strong>
+                        <small>Node ID：{endpoint.nodeId || "旧端未上报"}</small>
+                      </span>
+                      <span className="p2p-v2-endpoint-meta">
+                        <small>{p2pV2RoleLabel(endpoint.role)}</small>
+                        <small>{p2pV2StatusLabel(endpoint.status)}</small>
+                      </span>
+                    </button>
+                  );
+                })
+              ) : null}
+            </div>
+            {p2pV2ViewError ? <div className="setup-password-error">{p2pV2ViewError}</div> : null}
+            <div className="setup-password-actions">
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={p2pV2ViewLoading}
+                onClick={() => void refreshP2pV2Rooms()}
+              >
+                刷新房间
+              </Button>
+              <Button variant="ghost" type="button" disabled={p2pV2ViewLoading} onClick={closeP2pV2ViewerDialog}>
+                取消
+              </Button>
+            </div>
+          </div>
         </div>,
         document.body,
       ) : null}

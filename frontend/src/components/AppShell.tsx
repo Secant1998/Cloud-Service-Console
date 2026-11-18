@@ -4,7 +4,7 @@ import type { NetworkSnapshot } from "../types/cloud";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
-type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "games";
+type ConsoleView = "overview" | "services" | "health" | "activity" | "localStream" | "models" | "settings";
 
 type AppShellProps = PropsWithChildren<{
   networkSnapshot: NetworkSnapshot;
@@ -215,7 +215,7 @@ export function AppShell({
         onViewChange={onViewChange}
         onRefresh={onSidebarRefresh}
       />
-      <main className="main-scroll">
+      <main className={`main-scroll${activeView === "models" ? " model-library-page" : ""}`}>
         <Topbar
           title={title}
           statusText={statusText}
@@ -238,7 +238,7 @@ export function AppShell({
         <div className="content-fade-shell">
           <div
             ref={contentScrollRef}
-            className={`content-scroll${scrollLocked ? " content-scroll-locked" : ""}${edgeFade.top ? " fade-top" : ""}${edgeFade.bottom ? " fade-bottom" : ""}`}
+            className={`content-scroll${scrollLocked ? " content-scroll-locked" : ""}${edgeFade.top && activeView !== "models" ? " fade-top" : ""}${edgeFade.bottom ? " fade-bottom" : ""}`}
           >
             {children}
           </div>

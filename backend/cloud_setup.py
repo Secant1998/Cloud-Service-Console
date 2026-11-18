@@ -256,12 +256,24 @@ class CloudBundleConfig:
         return f"{self.control_signaling_base_url}/health"
 
     @property
-    def control_browser_offer_url(self) -> str:
-        return f"{self.control_signaling_base_url}/browser-offer?session=robot-control&client_id=frontend-a"
+    def control_frontend_offer_url(self) -> str:
+        return f"{self.control_signaling_base_url}/frontend-offer?session=robot-control&client_id=frontend-a"
 
     @property
-    def control_robot_next_offer_url(self) -> str:
-        return f"{self.control_signaling_base_url}/robot-next-offer?session=robot-control&robot_client_id=arm-001-receiver"
+    def control_compute_next_offer_url(self) -> str:
+        return f"{self.control_signaling_base_url}/compute-next-offer?session=robot-control&compute_client_id=compute-a"
+
+    @property
+    def command_signaling_base_url(self) -> str:
+        return f"{self.public_base_url}/command/webrtc"
+
+    @property
+    def command_compute_offer_url(self) -> str:
+        return f"{self.command_signaling_base_url}/compute-offer?session=robot-command&client_id=compute-a"
+
+    @property
+    def command_edge_next_offer_url(self) -> str:
+        return f"{self.command_signaling_base_url}/edge-next-offer?session=robot-command&edge_client_id=arm-edge-a"
 
     @property
     def remote_www(self) -> str:
@@ -694,6 +706,11 @@ done
                 f"CLOUD_CONSOLE_DEFAULT_SSH_USER={cfg.ssh_user}",
                 f'CLOUD_CONSOLE_ADMIN_TOKEN="{self._safe_token_env_value(cfg.web_console_admin_token)}"',
                 f'CLOUD_CONSOLE_USER_TOKEN="{self._safe_token_env_value(cfg.web_console_user_token)}"',
+                "# Machine capture upload credentials are preserved across redeployments.",
+                "TELEBOT_CAPTURE_UPLOAD_TOKEN=",
+                "TELEBOT_FRONTEND_SIGNAL_TOKEN=",
+                "TELEBOT_COMPUTE_SIGNAL_TOKEN=",
+                "TELEBOT_SIGNAL_ADMIN_TOKEN=",
                 "",
             ]
         )
@@ -709,6 +726,8 @@ Type=simple
 User={cfg.ssh_user}
 WorkingDirectory={cfg.web_console_backend_dir}
 EnvironmentFile={cfg.web_console_env_path}
+EnvironmentFile=-{cfg.remote_base}/control-signaling.env
+EnvironmentFile=-/opt/webrtc-p2p-video/p2p-v2-auth.env
 ExecStart={cfg.web_console_remote_base}/.venv/bin/python launcher.py
 Restart=always
 RestartSec=2
@@ -1194,11 +1213,28 @@ unit_state="$(systemctl is-enabled "$SERVICE" 2>/dev/null || true)"
 changed=0
 if [ "$current_hash" != "$EXPECTED_HASH" ]; then
   TMP_DIR="$(mktemp -d)"
+  PRESERVED_RUNTIME_ENV="$(mktemp)"
   tar -xzf "$ARCHIVE" -C "$TMP_DIR"
-  sudo mkdir -p "$BASE"
-  sudo rm -rf "$BASE/backend" "$BASE/frontend" "$BASE/storage" "$BASE/cloud-console-web.env" "$BASE/README.web-deploy.txt" "$BASE/.bundle-manifest.json"
-  sudo cp -a "$TMP_DIR/cloud-service-console-web/." "$BASE/"
-  rm -rf "$TMP_DIR"
+  sudo mkdir -p "$BASE" "$BASE/storage"
+  if [ -f "$BASE/cloud-console-web.env" ]; then
+    grep -E '^(TELEBOT_CONTROL_SIGNAL_BASE_URL|TELEBOT_SIGNAL_ADMIN_TOKEN|TELEBOT_FRONTEND_SIGNAL_TOKEN|TELEBOT_COMPUTE_SIGNAL_TOKEN|TELEBOT_CAPTURE_UPLOAD_TOKEN)=' \
+      "$BASE/cloud-console-web.env" > "$PRESERVED_RUNTIME_ENV" || true
+  fi
+  sudo rm -rf "$BASE/backend" "$BASE/frontend" "$BASE/cloud-console-web.env" "$BASE/cloud-service-console-web.service" "$BASE/README.web-deploy.txt" "$BASE/.bundle-manifest.json"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/backend" "$BASE/backend"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/frontend" "$BASE/frontend"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/cloud-console-web.env" "$BASE/cloud-console-web.env"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/cloud-service-console-web.service" "$BASE/cloud-service-console-web.service"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/README.web-deploy.txt" "$BASE/README.web-deploy.txt"
+  sudo cp -a "$TMP_DIR/cloud-service-console-web/.bundle-manifest.json" "$BASE/.bundle-manifest.json"
+  if [ ! -f "$BASE/storage/cloud-console-login.json" ]; then
+    sudo cp -a "$TMP_DIR/cloud-service-console-web/storage/cloud-console-login.json" "$BASE/storage/cloud-console-login.json"
+  fi
+  if [ -s "$PRESERVED_RUNTIME_ENV" ]; then
+    sudo tee -a "$BASE/cloud-console-web.env" < "$PRESERVED_RUNTIME_ENV" >/dev/null
+  fi
+  sudo chmod 0600 "$BASE/cloud-console-web.env"
+  rm -rf "$TMP_DIR" "$PRESERVED_RUNTIME_ENV"
   changed=1
 fi
 
@@ -1888,6 +1924,7 @@ Wants=network-online.target
 Type=simple
 User={cfg.ssh_user}
 WorkingDirectory={cfg.remote_base}
+EnvironmentFile=-{cfg.remote_base}/control-signaling.env
 ExecStart=/usr/bin/python3 {cfg.remote_control_script} --host 127.0.0.1 --port {cfg.control_signaling_internal_port}
 Restart=always
 RestartSec=2
@@ -2014,6 +2051,19 @@ server {{
     }}
 
     location /control/webrtc/ {{
+        proxy_http_version 1.1;
+        proxy_pass http://127.0.0.1:{cfg.control_signaling_internal_port};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }}
+
+    location /command/webrtc/ {{
         proxy_http_version 1.1;
         proxy_pass http://127.0.0.1:{cfg.control_signaling_internal_port};
         proxy_set_header Host $host;

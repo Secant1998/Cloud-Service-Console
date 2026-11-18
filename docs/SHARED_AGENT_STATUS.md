@@ -1,0 +1,6097 @@
+# Shared Agent Status
+
+Last updated: 2026-11-18
+
+## Model Library: RoboCasa Completion And Source Handoff
+
+- Completed the 60 missing standalone v0.2 fixture imports without changing the
+  previous 5,971 catalog rows; the server now indexes 6,031 entries. The RoboCasa
+  subset has 2,598 entries and all 90 standalone v0.2 fixtures.
+- Added 22 articulated models with 76 movable joints and 8 models with named
+  button contact geometry. Device-state trigger behavior still requires a runtime
+  adapter. Fifteen composition templates and 22 registry YAMLs are archived, not
+  counted as additional standalone models.
+- `scripts/supplement_robocasa_library.py` owns pinned preparation, portable
+  conversion and checked incremental activation. The paired simulator owns
+  `asset_robocasa_fixtures.py`, visual shell-inertia compatibility, URDF virtual
+  frames and native multi-joint binding compatibility. No prompt change was made.
+- Source, license/provenance and normalized assets are on the server under
+  `catalog/.imports/robocasa-v02-756598a5be52-completion/`. Simulator metadata is
+  synchronized; bulk files download on demand. The unused RoboCasa365 mirror ZIP
+  was removed after verification; the matching v0.2 resource archive was retained.
+- All 60 native models compiled, all 76 joints were probed and all new manifests
+  and viewer controls were checked. Five representative models loaded through
+  the simulator. Web slider checks rendered sink/stove motion, but complete
+  browser checks remain unpassed due to page waits/closure and drag targeting.
+- Source handoff covers both repositories' pending source work. Keep temporary
+  reports, local credentials, user trial records and bulk model files out of Git.
+  Application/installer version remains 0.3.68; see `MODEL_LIBRARY.md` for scope.
+- Publication checks: backend pytest 86 passed; frontend joint tests 5 passed;
+  TypeScript/Vite production build passed. The paired simulator's platform suite
+  ran 174 tests (170 passed, 4 skipped), and its targeted import/native-trajectory
+  suite ran 121 tests (117 passed, 4 skipped). These checks do not replace the
+  separately documented incomplete browser or real-hardware validation.
+
+## UI Design Agent: Model Card Hover
+
+- Fixed `frontend/src/styles/model-library.css`: lighting is behind images rather than in a full-card overlay; tilt, shadows and category crossfades remain.
+- Confirmed cause with real thumbnails and installed Dark Reader 4.9.134 in a disposable test profile. Its CSS changed the reflection to an opaque dark fill. No user extension settings were changed.
+- Updated `scripts/verify_model_library_ui.py` and added `scripts/verify_model_card_hover.py` for real-model/extension paint checks. Evidence: `reports/model-card-hover-20261105/`.
+- Added `scripts/deploy_web_assets.py` for scoped static deployments with hashed-asset verification, atomic HTML replacement and backup/rollback, without backend changes or service restarts.
+- Frontend build and full card layout/tilt/carousel checks passed, including desktop/mobile and both themes. Static deployment completed with rollback at `/opt/cloud-service-console-web/backups/web-assets-20261104T181244Z`. No version, installer or GitHub update.
+- Hosted verification also passed with Dark Reader active: real thumbnails remained visible at each hover corner and after carousel advance in both page themes (`reports/model-card-hover-20261105/online-darkreader/`).
+
+## Model Library: Interactive Joints
+
+- Marker refinement: rotation uses an arc on the extended axis; translation starts at the moving assembly's center and follows it. View nodes now optionally include native `mass` / `center_of_mass`; missing inertia uses geometry center.
+
+- Added native URDF joint metadata to the view manifest and separate local motion transforms in the Three.js viewer.
+- Joint buttons select/highlight moving parts; sliders, numeric input and direct part dragging operate within native limits. Nested and mimic joints, reset, camera controls and full-screen/mobile layouts are supported.
+- Source audit covered 2,347 articulated models / 11,971 moving joints; 23 malformed or zero-range source joints remain visibly disabled.
+- Updated only the model-library backend and built frontend on the server, with rollback snapshots. Model files, robot services, package version and installers are unchanged. No GitHub push.
+- Checks and screenshots are in `reports/model-joints-20261105/`; API and operation details are in `docs/MODEL_LIBRARY.md`.
+
+## UI Design Agent: Console Icon
+
+- Changed `scripts/make_icon.py`, `src-tauri/icons/`, `frontend/index.html`, login/sidebar components, icon assets and related CSS to use the user's supplied image consistently.
+- Web deployment is complete; only frontend static assets and its HTML entry were updated. No cloud service configuration or process was changed.
+- Production build, icon format/size checks, light/dark screenshots, mobile layout and the public login page passed verification.
+- Desktop icon resources are ready for the next build. No executable/installer build, version bump, commit, tag or GitHub release was performed for this change.
+
+## Current Version
+
+- App version: 0.3.68
+- Latest commit: fe8cf0a
+- Latest tag: v0.3.68
+- Latest installer: `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+- Latest copied EXEs: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`
+
+## Active Ownership
+
+- Video Link Agent: video ingest, go2rtc cloud video services, preview, video health.
+- Control Signal Agent: WebRTC control signaling, control broker, side-channel control monitor keyboard.
+- Tank Trouble Agent: bundled Tank Trouble game, cloud room service, spectator/monitor pages, game assets.
+- UI Design Agent: global UI style, layout, shared interaction patterns.
+
+## Recent Updates
+
+### 2026-08-13 14:53 - Video Link Agent - External Frontend Terminal Auto-Activation
+
+- Scope:
+  - Fixed VS Code terminal auto-activation for the external Telebot repository root and `apps/frontend` sub-workspace.
+  - Added a workspace-scoped default PowerShell profile that activates the root `.venv` while bypassing the blocking execution policy for that terminal process only.
+- Changed files:
+  - External Telebot `.vscode/settings.json`
+  - External Telebot `apps/frontend/.vscode/settings.json`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - VS Code development terminals only.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no runtime behavior change.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no application UI change.
+- Validation:
+  - Both workspace settings parse successfully.
+  - Root and frontend-only activation tests used the root `.venv`, Python 3.11.9, and editable `telebot 0.2.0a0`.
+- Cross-agent notes:
+  - No action required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-08-11 17:19 - Video Link Agent - P2P QoE Human Report And Field Guide
+
+- Scope:
+  - Added a valid embedded Chinese `fieldGuide` to newly downloaded P2P viewer QoE JSON files.
+  - Added the actual detected values at the top as a human-readable report with session/environment, transport, video/playback, automatic conclusions, and a per-sample key-metric timeline.
+  - It explains null/delta/cumulative conventions, units, enum values, summary statistics, and every exported session/sample metric.
+  - Top-level export schema is now `3`; existing raw `session`, `summary`, and `samples` structures remain compatible for machine processing.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\public\qoe-collector.js`
+  - Remote Hong Kong `/opt/webrtc-p2p-video/public/qoe-collector.js`
+  - Remote Guangzhou `/opt/webrtc-p2p-video-gz/public/qoe-collector.js`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Only downloaded QoE result readability and file size changed; sampling and media behavior are unchanged.
+- Cloud impact:
+  - Replaced only the collector static asset on Hong Kong and Guangzhou after creating timestamped backups.
+  - Both P2P services stayed active and were not restarted; no Nginx, TURN, port, domain, room, or service configuration changed.
+- Chain impact:
+  - Video link: QoE export metadata added.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no console UI or global style change.
+- Validation:
+  - `node --check public\qoe-collector.js`
+  - Existing-record field coverage and JSON serialize/parse round-trip checks passed.
+  - Successful TURN/720p30 and no-video/ICE-checking records generated correctly differentiated Chinese reports and automatic conclusions.
+  - Remote/internal SHA-256 matched local on both servers.
+  - Public Hong Kong and Guangzhou scripts returned HTTP 200 with schema v3; both `/api/config` endpoints returned `ok: true`.
+- Follow-ups:
+  - Previously downloaded schema-v1 files remain unchanged; start and stop a new collection to receive the embedded guide.
+- Cross-agent notes:
+  - No action required from Control Signal, Tank Trouble, or UI Design agents.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted Cloud Service Console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; current app/tag remains `0.3.68` / `v0.3.68`.
+
+### 2026-08-07 17:20 - Video Link Agent - Frontend-Only VS Code Interpreter Fallback
+
+- Scope:
+  - Added a nested VS Code interpreter configuration for the external Telebot `apps/frontend` workspace.
+  - Opening only the frontend folder now selects the root Windows `.venv` and resolves `telebot_common`.
+- Changed files:
+  - External `telebot-main_new0.2-0803/apps/frontend/.vscode/settings.json`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - VS Code development environment only.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change.
+  - Tank Trouble: no change.
+  - UI: no application UI change.
+- Validation:
+  - Root Windows interpreter imported `telebot_common` successfully.
+  - Reopened the frontend folder in a new VS Code window.
+- Cross-agent notes:
+  - No action required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-08-06 10:31 - Video Link Agent - P2P Viewer Local QoE Collection
+
+- Scope:
+  - Added an opt-in bottom-right `开始采集` / `停止并保存` control to the standalone P2P watch page.
+  - The viewer browser records one-second receiver-side WebRTC, decoding, rendering, stall, freeze, route, environment, and optional capture-to-display samples.
+  - Results stay on the viewing machine: IndexedDB backup plus a downloaded structured JSON session file.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\qoe-collector.js`
+  - Remote Hong Kong `/opt/webrtc-p2p-video/public`
+  - Remote Guangzhou `/opt/webrtc-p2p-video-gz/public`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P viewing behavior is unchanged unless the viewer explicitly starts collection; `getStats()` sampling is read-only and runs once per second.
+- Cloud impact:
+  - Deployed only P2P static watch assets to Hong Kong and Guangzhou, with timestamped backups.
+  - `webrtc-p2p-video.service` and `webrtc-p2p-video-gz.service` remained active and were not restarted.
+- Chain impact:
+  - Video link: added local viewer-side QoE collection and export.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: one scoped bottom-right watch-page control; no global console style change.
+- Validation:
+  - `node --check public\shared.js`
+  - `node --check public\qoe-collector.js`
+  - Desktop and 390x844 browser smoke passed; start, sampling, stop, and save confirmation passed.
+  - Hong Kong and Guangzhou watch page, collector script, configuration API, and room API returned HTTP 200.
+  - Hong Kong public browser smoke reported no console warnings/errors.
+- Follow-ups:
+  - End-to-end capture latency remains nullable unless the sender/browser exposes capture timestamps; source-frame timestamping can be added in a later measurement phase.
+- Cross-agent notes:
+  - No coordination required from Control Signal, Tank Trouble, or UI Design agents.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no; only standalone P2P watch static assets were deployed.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-08-03 13:03 - Video Link Agent - External Telebot VS Code Environment
+
+- Scope:
+  - Explicit user-requested IDE/runtime setup for the external `telebot-main_new0.2-0803` teammate project.
+  - Created a Windows Python 3.11 environment, installed dependencies/editable workspace, and added VS Code interpreter/debug settings.
+- Changed files:
+  - External project `.venv` and `.vscode/settings.json`, `.vscode/launch.json`, `.vscode/extensions.json`.
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - VS Code now resolves `telebot_common` and can launch frontend/Compute from the repository root.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change.
+  - Tank Trouble: no change.
+  - UI: development environment only.
+- Validation:
+  - Major Python imports passed; frontend/Compute profiles validated; frontend listened on HTTPS `8445`; all temporary frontend/video-worker processes were stopped after the smoke run.
+- Cross-agent notes:
+  - Control Signal Agent should note that no control protocol or configuration values were changed.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-29 10:15 - Video Link Agent - Local Desktop Target Migration
+
+- Scope:
+  - Changed the installed desktop console's local-stream host and UI draft from `150.109.100.30` to `43.154.250.82`.
+  - Kept standalone P2P configuration on the stable `p2p.cityulive.com` domain.
+- Changed files:
+  - `%LOCALAPPDATA%\CloudServiceConsole\local-stream-config.json`
+  - `%LOCALAPPDATA%\CloudServiceConsole\local-stream-ui-draft.json`
+  - `%LOCALAPPDATA%\CloudServiceConsole\local-stream\camera-push-command.json`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Reopening the installed desktop app now uses the new Hong Kong host for saved local-stream settings.
+- Cloud impact:
+  - None; no remote file or service changed.
+- Chain impact:
+  - Video link: local desktop target migrated.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no source change; runtime draft value only.
+- Validation:
+  - Remembered login, local-stream config, UI draft, and cached camera push command parsed successfully and all target `43.154.250.82`.
+  - Desktop app was not running during modification.
+- Follow-ups:
+  - Legacy go2rtc WebRTC UDP `19090` remains outside this local-settings step.
+- Cross-agent notes:
+  - No action required from other agents.
+- Build / release:
+  - EXE packaged: no; runtime settings are external to the executable.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-29 02:48 - Video Link Agent - Hong Kong Server IP Migration
+
+- Scope:
+  - Changed the current Hong Kong cloud target from `150.109.100.30` to `43.154.250.82`.
+  - Repaired migrated video endpoints, go2rtc WebRTC candidate, telemetry TURN host, coturn NAT mapping, and hosted-console default/login host.
+- Changed files:
+  - `scripts\deploy_web_console.py`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Local `%LOCALAPPDATA%\CloudServiceConsole\cloud-console-login.json`
+  - Remote video/console configuration files documented in `docs\VIDEO_LINK_AGENT.md` section 107.
+- Runtime impact:
+  - Hong Kong direct-IP setup, SRT ingest metadata, go2rtc WebRTC candidates, hosted console default host, and TURN public candidates now use `43.154.250.82`.
+  - Normal domain traffic remains on the old server until DNS A records are switched.
+- Cloud impact:
+  - Restarted `coturn`, `go2rtc-cloud`, `go2rtc-telemetry-relay`, and `cloud-service-console-web` on `43.154.250.82`.
+  - No cloud service names or public ports changed.
+- Chain impact:
+  - Video link: Hong Kong legacy/P2P supporting configuration migrated to the new IP.
+  - Control signal: broker code/service untouched; shared coturn NAT mapping was updated and requires a post-DNS-cutover control WebRTC check.
+  - Tank Trouble: no change.
+  - UI: no visual or interaction change.
+- Validation:
+  - Direct new-IP video status and endpoint metadata returned HTTP 200.
+  - Deployment-script and remembered-login target checks both returned `43.154.250.82`.
+  - New-server HTTPS virtual hosts and certificates passed host-pinned checks.
+  - Public UDP reached `19091` and `20000`; coturn returned a valid STUN response on UDP `3478`.
+  - TCP `19090` is reachable, but UDP `19090` did not reach the server and remains a cloud-security-group follow-up.
+  - Nine inspected cloud services were `active` after migration; active-session checks were idle before restart.
+- Follow-ups:
+  - Change `console.cityulive.com` and `p2p.cityulive.com` A records to `43.154.250.82`, then verify public HTTPS, P2P TURN relay, legacy SRT ingest, and control WebRTC.
+  - Add an inbound UDP `19090` rule for `43.154.250.82` in the cloud security group.
+- Cross-agent notes:
+  - Control Signal Agent should validate control WebRTC after DNS cutover because coturn is shared; no control files were modified.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console code deployed: no; migrated copy was configured and its service restarted.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-08 21:37 - Video Link Agent - Console P2P Region Auto Selection
+
+- Scope:
+  - Updated the Cloud Service Console P2P push/watch link behavior so known/default P2P links follow the logged-in server region.
+  - Guangzhou server identity (`111.230.62.106`, `p2p-gz.dlcourse.online`, or `p2p-gz.cityulive.com`) now maps to `https://p2p-gz.dlcourse.online/watch.html?room=<room>`.
+  - Other known/default P2P links map to Hong Kong `https://p2p.cityulive.com/watch.html?room=<room>`.
+  - Custom non-default P2P domains are preserved.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+- Runtime impact:
+  - Hosted console P2P panel now changes default P2P address automatically when logging into Guangzhou versus Hong Kong/default servers.
+  - Desktop source has the same UI logic, but the copied desktop EXE was not replaced because the Tauri/Cargo build stalled.
+- Cloud impact:
+  - Redeployed hosted web console on `150.109.100.30`.
+  - Restarted only `cloud-service-console-web.service`.
+  - No P2P signaling service, legacy go2rtc ingest service, Tencent Cloud Live service, control signaling service, Tank Trouble service, nginx, or coturn restart.
+- Chain impact:
+  - Video link: P2P console address selection changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: scoped P2P panel behavior change only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `python scripts\deploy_web_console.py`
+  - Hosted web console health check passed on `http://127.0.0.1:18080/api/health`.
+  - Deploy script confirmed `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn` stayed `active` before and after deployment.
+- Follow-ups:
+  - Re-run desktop packaging later if a fresh local EXE is required; `cmd /c npm run installer:build` stalled for 20 minutes during Tauri/Cargo build and was stopped.
+- Cross-agent notes:
+  - Other Agents only need to know that the hosted console P2P panel now auto-selects Guangzhou P2P when connected to `111.230.62.106`.
+- Build / release:
+  - EXE packaged: attempted but not completed; existing `E:\Cloud-Service-Console` EXEs were not replaced.
+  - Hosted web console deployed: yes.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-08 20:59 - Video Link Agent - Guangzhou P2P dlcourse Deployment
+
+- Scope:
+  - Redeployed the Guangzhou P2P video service using `https://p2p-gz.dlcourse.online` as the current Guangzhou public P2P push/watch domain.
+  - Synced local `E:\Desktop\123\webrtc-p2p-video` `server.py`, `public/*`, and `config.guangzhou.json` to remote `111.230.62.106:/opt/webrtc-p2p-video-gz`.
+  - Installed `config.guangzhou.json` as remote `config.json`, so `/api/config` returns `p2p-gz.dlcourse.online` STUN/TURN entries.
+  - Updated the master handoff index to mark `p2p-gz.dlcourse.online` as the current Guangzhou public P2P entry and keep `p2p-gz.cityulive.com` as blocked/not-for-use until its Tencent webblock/ICP issue is resolved.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\server.py`
+  - External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\index.html`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\push.html`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\style.css`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\watch.html`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/server.py`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/public/*`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Guangzhou P2P signaling/watch endpoint is refreshed and should be used as `https://p2p-gz.dlcourse.online`.
+  - Existing active Guangzhou P2P sessions, if any, would have been interrupted by the signaling service restart.
+- Cloud impact:
+  - Restarted only `webrtc-p2p-video-gz.service` on `111.230.62.106`.
+  - `nginx` and `coturn` were checked and remained active; neither was restarted.
+  - No public port, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: Guangzhou P2P service deployed/refreshed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - Remote `systemctl is-active webrtc-p2p-video-gz.service nginx coturn` returned `active`, `active`, `active`.
+  - Remote `curl -s http://127.0.0.1:8099/api/config` returned `p2p-gz.dlcourse.online` STUN/TURN entries.
+  - Public `https://p2p-gz.dlcourse.online/api/config` returned HTTP 200 with `p2p-gz.dlcourse.online` STUN/TURN entries.
+  - Public `https://p2p-gz.dlcourse.online/api/rooms` returned HTTP 200 and `rooms: []`.
+  - Public `https://p2p-gz.dlcourse.online/watch.html?room=robot` returned HTTP 200.
+  - Public `https://p2p-gz.dlcourse.online/shared.js` contains `VIEWER_FRAME_STALL_MS = 4000`, `VIEWER_RECONNECT_COOLDOWN_MS = 2000`, and `viewer-reconnect`.
+- Follow-ups:
+  - Use `https://p2p-gz.dlcourse.online` in Guangzhou pusher configs and viewer links.
+  - Do not use `https://p2p-gz.cityulive.com` until the Tencent webblock/ICP access issue is resolved.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: yes, Guangzhou only.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-08 20:32 - Video Link Agent - P2P New Server Deployment Guide
+
+- Scope:
+  - Added a step-by-step Markdown guide for deploying the current P2P video service on another server.
+  - The guide covers DNS, cloud security group ports, Ubuntu packages, uploading `webrtc-p2p-video`, `config.json`, `webrtc-p2p-video.service`, nginx HTTPS, coturn STUN/TURN, validation, `p2p-local-pusher` configuration, watch URLs, room status APIs, and troubleshooting.
+  - Uses placeholders such as `p2p-new.example.com` and `SERVER_PUBLIC_IP` so a teammate can adapt it.
+- Changed files:
+  - `docs\P2P_VIDEO_NEW_SERVER_DEPLOYMENT_GUIDE.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Documentation-only.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, P2P signaling server code, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: deployment documentation added.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - Reviewed external `E:\Desktop\123\webrtc-p2p-video` structure and `config.json`.
+  - Reviewed external `E:\Desktop\123\p2p-local-pusher\config\pusher.config.json` shape.
+  - Verified the new guide contains key deployment topics: `p2p-new.example.com`, `SERVER_PUBLIC_IP`, `webrtc-p2p-video.service`, `coturn`, `p2p-local-pusher`, `/api/config`, `watch.html`, and TURN relay port range `49152-49200`.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-07 12:25 - Video Link Agent - P2P File Transfer Room Auto Reset
+
+- Scope:
+  - Added short-lifecycle cleanup to the standalone P2P file-transfer tool.
+  - Sender or receiver waiting alone now times out after `advanced.peerWaitTimeoutSeconds`, default 60 seconds.
+  - On single-side wait timeout, the script requests `/api/rooms/<room>/reset` before exiting.
+  - After successful transfer and receiver verification, both sides request room reset before exiting.
+  - README now recommends dedicated file-transfer rooms such as `robot-file`.
+  - Recreated `file_transfer.config.json` as a compatible shared-config template with the same timeout.
+- Changed files:
+  - External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - File-transfer rooms are cleaned up after one side waits alone or after a successful transfer.
+  - The scripts call the existing P2P signaling room reset API at runtime.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: external P2P file-transfer script lifecycle improved.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - Loaded sender, receiver, and shared template configs successfully; all use `peerWaitTimeoutSeconds: 60`.
+  - Receiver-only timeout smoke test in room `codex-timeout-reset-8d21e68b` with a 3-second temporary timeout exited with error and logged `Room reset requested`; public status returned `peers: []` and `messageCount: 0`.
+  - End-to-end completion smoke test in room `codex-complete-reset-4420cf24` transferred a 40.0 KB file, both processes exited `0`, SHA-256 matched, both logged room reset, and public status returned `peers: []` and `messageCount: 0`.
+- Follow-ups:
+  - Keep file transfer on a dedicated room to avoid intentionally resetting rooms used by other P2P features.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-07 12:19 - Video Link Agent - P2P File Transfer Windows Path Config Fix
+
+- Scope:
+  - Fixed standalone P2P file-transfer config parsing for pasted Windows paths with single backslashes.
+  - Updated current sender and receiver configs to use forward-slash Windows paths.
+  - Added tolerant parsing for `sendPath`, `sendFile`, and `saveDir` so values like `E:\Desktop\123` no longer trigger `Invalid \escape`.
+  - Updated README path guidance.
+- Changed files:
+  - External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Users can paste normal Windows paths into sender/receiver path fields without JSON escape failures.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: external P2P file-transfer script config parsing improved.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - Loaded `sender.config.json` and `receiver.config.json` successfully.
+  - Loaded a temporary config containing single-backslash Windows paths such as `D:\test\abc.txt` and `E:\Desktop\123` successfully.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-07 12:03 - Video Link Agent - P2P File Transfer Split Configs
+
+- Scope:
+  - Split the standalone P2P file-transfer tool config into sender and receiver configs.
+  - Sender defaults to `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`.
+  - Receiver defaults to `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`.
+  - Updated Windows and Linux/macOS start scripts to read the matching config by default.
+  - Updated Python CLI defaults so `send` and `receive` also use different config files when `--config` is omitted.
+  - Kept `file_transfer.config.json` as a compatible shared-config template only.
+- Changed files:
+  - External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - External `E:\Desktop\123\p2p-file-transfer\config\sender.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\config\receiver.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\send_file.cmd`
+  - External `E:\Desktop\123\p2p-file-transfer\send_file.sh`
+  - External `E:\Desktop\123\p2p-file-transfer\receive_file.cmd`
+  - External `E:\Desktop\123\p2p-file-transfer\receive_file.sh`
+  - External `E:\Desktop\123\p2p-file-transfer\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Optional external P2P file-transfer scripts now avoid sender/receiver config field mixing.
+  - Running sender and receiver on the same machine is supported; they use different peer IDs and only need the same room.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: external P2P file-transfer script configuration improved.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py send --help`
+  - `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py receive --help`
+  - Local end-to-end smoke test with separate sender/receiver configs in room `codex-split-config-32237724`.
+  - Smoke test transferred a 36.0 KB file, both processes exited `0`, and source/received SHA-256 matched.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-07 11:47 - Video Link Agent - P2P File Transfer Folder Packaging
+
+- Scope:
+  - Updated the standalone P2P file-transfer tool so sender paths can be a file or a folder.
+  - Added `sendPath` as the primary sender config field while keeping old `sendFile` compatibility.
+  - Added `packFolder`; when true, a folder in `sendPath` is packed into a temporary zip before transfer.
+  - Receiver saves folder transfers as `folder-name.zip` and does not auto-extract them.
+  - Sender and receiver can safely share one config file because each side ignores fields it does not use.
+- Changed files:
+  - External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Optional external P2P file-transfer scripts now support folder send paths by packaging them as zip files.
+  - File transfer remains on a separate WebRTC peer connection and does not share the video/control DataChannel queue.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: external P2P file-transfer utility gained folder packaging support.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py send --help`
+  - `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py receive --help`
+  - Local end-to-end folder smoke test in room `codex-folder-smoke-6bc2197c`.
+  - Smoke test packed a folder with nested files and an empty directory, transferred `source_folder.zip`, both processes exited `0`, and received zip contents matched source folder contents.
+- Follow-ups:
+  - None required unless the user wants automatic receiver-side unzip.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-07 11:32 - Video Link Agent - Standalone P2P File Transfer Scripts
+
+- Scope:
+  - Added a standalone P2P file-transfer tool at `E:\Desktop\123\p2p-file-transfer`.
+  - Sender and receiver transfer one file through a dedicated WebRTC `file-transfer` DataChannel.
+  - The tool reuses the existing P2P signaling server only for room pairing and SDP exchange.
+  - Both sides use the same room and can start in either order; the sender creates the offer and the receiver answers.
+  - Sender and receiver show live status, speed, percentage, ETA, and terminal progress bars.
+  - Receiver verifies size and SHA-256 when verification is enabled.
+- Changed files:
+  - External `E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - External `E:\Desktop\123\p2p-file-transfer\config\file_transfer.config.json`
+  - External `E:\Desktop\123\p2p-file-transfer\setup_local.cmd`
+  - External `E:\Desktop\123\p2p-file-transfer\setup_local.sh`
+  - External `E:\Desktop\123\p2p-file-transfer\send_file.cmd`
+  - External `E:\Desktop\123\p2p-file-transfer\send_file.sh`
+  - External `E:\Desktop\123\p2p-file-transfer\receive_file.cmd`
+  - External `E:\Desktop\123\p2p-file-transfer\receive_file.sh`
+  - External `E:\Desktop\123\p2p-file-transfer\README.md`
+  - External `E:\Desktop\123\p2p-file-transfer\requirements.txt`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - New optional external P2P file-transfer scripts are available.
+  - File transfer uses a separate WebRTC peer connection and does not share the video/control DataChannel queue.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: external P2P file-transfer utility added.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py`
+  - `python E:\Desktop\123\p2p-file-transfer\scripts\file_transfer.py --help`
+  - Local end-to-end smoke test with one receiver process and one sender process in room `codex-file-smoke-4b3299f4`.
+  - Smoke test transferred a 48.8 KB file, both processes exited `0`, and source/received SHA-256 matched.
+- Follow-ups:
+  - If larger-file testing is needed, tune `advanced.chunkSizeBytes` and `advanced.maxBufferedBytes` in `config\file_transfer.config.json`.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-07-02 11:55 - Video Link Agent - P2P Signaling Peer Auto-Expire
+
+- Scope:
+  - Added automatic peer expiration to the P2P signaling server so stale viewer/pusher peer records are removed after heartbeat loss.
+  - Default peer TTL is 60 seconds through `peerTtlSeconds`.
+  - Active pusher freshness still uses the existing 15-second `pusherTtlSeconds`.
+  - Pruning now runs on active room listing, room status reads, message publishing, and long-poll heartbeat handling.
+  - Fixes stale watcher counts such as old `robot111` viewer peers staying visible after all viewers closed.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\server.py`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video/server.py`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/server.py`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P room status and room lists no longer retain dead peers indefinitely.
+  - Existing P2P media sessions are not proxied or modified by this service; the change only affects signaling/status bookkeeping.
+- Cloud impact:
+  - Deployed to Hong Kong P2P signaling and restarted only `webrtc-p2p-video.service`.
+  - Deployed to Guangzhou P2P signaling and restarted only `webrtc-p2p-video-gz.service`.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: P2P signaling/status cleanup changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - Remote Hong Kong `systemctl is-active webrtc-p2p-video.service` returned `active`.
+  - Remote Guangzhou `systemctl is-active webrtc-p2p-video-gz.service` returned `active`.
+  - `https://p2p.cityulive.com/api/rooms/robot111/status` returned `peers: []`, `messageCount: 0`, inactive pusher.
+  - `https://p2p.cityulive.com/api/rooms` returned `rooms: []`.
+  - `https://p2p-gz.dlcourse.online/api/config` and `https://p2p-gz.dlcourse.online/api/rooms` returned HTTP 200 with valid JSON.
+- Follow-ups:
+  - None required unless the user wants a different peer TTL value.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - P2P signaling server deployed: yes, Hong Kong and Guangzhou.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 12:56 - Video Link Agent - P2P Script Live Relay No-Backlog Fix
+
+- Scope:
+  - User observed that script `h264` starts a new viewer several seconds behind and catches up, while `h264_amf` can start more than 30 seconds behind and freeze before catching up.
+  - Identified aiortc `MediaRelay.subscribe(...)` default buffered mode as the likely old-frame backlog source.
+  - Changed standalone script viewer track relay to `self.relay.subscribe(self.player.video, buffered=False)`, so viewers receive the newest live frame instead of draining an old per-viewer queue.
+  - Synced the fix to the active `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` tree, the maintained `E:\Desktop\123\p2p-local-pusher` tree, and refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - External package `E:\Desktop\123\p2p-local-pusher.zip`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - New P2P viewers from the standalone script path should start closer to live instead of replaying queued old frames.
+  - Already-running standalone P2P pusher processes must be stopped and started again to load the no-backlog relay fix.
+- Cloud impact:
+  - No cloud runtime changed or restarted.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: standalone P2P script relay buffering changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - Confirmed both script trees now use `buffered=False` for viewer track relay.
+  - Rebuilt `E:\Desktop\123\p2p-local-pusher.zip`.
+- Follow-ups:
+  - Restart the local standalone script pusher before retesting h264 and h264_amf.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no new package for this fix.
+  - Hosted web console deployed: no.
+  - P2P signaling web assets deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 12:44 - Video Link Agent - P2P Periodic Keyframe And Faster Viewer Recovery
+
+- Scope:
+  - Reviewed the provided freeze recording and confirmed the physical wall clock continues while the displayed P2P video frame freezes, then recovers after reconnect.
+  - Added a one-second periodic keyframe safety interval in the standalone script pusher H.264 encoder path.
+  - Preserved frame `pts` / `time_base` after frame reformatting before encoding.
+  - Set encoder GOP size to about one second and disabled B-frames when available through PyAV.
+  - Shortened the P2P watch-page frozen-frame watchdog from about 12 seconds to about 4 seconds and reconnect cooldown from about 6 seconds to about 2 seconds.
+  - Synced the fix to the active `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` tree, the maintained `E:\Desktop\123\p2p-local-pusher` tree, and refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - External package `E:\Desktop\123\p2p-local-pusher.zip`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video/public/shared.js`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/public/shared.js`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - New P2P viewers should recover faster if they briefly decode then freeze on startup.
+  - Standalone script pushers now emit periodic keyframes even without a viewer-side keyframe request.
+  - Already-running standalone P2P pusher processes must be stopped and started again to load this script fix.
+- Cloud impact:
+  - Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+  - Restarted only `webrtc-p2p-video.service` and `webrtc-p2p-video-gz.service`; both returned `active`.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: P2P script keyframe behavior and P2P viewer reconnect timing changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - Rebuilt `E:\Desktop\123\p2p-local-pusher.zip`.
+  - Public `https://p2p.cityulive.com/shared.js` and `https://p2p-gz.dlcourse.online/shared.js` contain `VIEWER_FRAME_STALL_MS = 4000` and `VIEWER_RECONNECT_COOLDOWN_MS = 2000`.
+- Follow-ups:
+  - Restart the local standalone script pusher before retesting.
+  - If the 12-hour black-screen case repeats, capture `logs\pusher.out.log` plus the viewer URL with `&debug=1`.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, Tencent Live, legacy video, or global UI code.
+- Build / release:
+  - EXE packaged: no new package for this fix.
+  - Hosted web console deployed: no.
+  - P2P signaling web assets deployed: yes, Hong Kong and Guangzhou.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 12:08 - Video Link Agent - P2P Script Keyframe Startup Fix
+
+- Scope:
+  - Investigated standalone P2P local script cases where a new viewer froze on the first frame or showed black while older viewers could keep playing.
+  - Fixed the P2P watch-page freeze detector so received bytes alone no longer count as healthy video progress.
+  - Updated the active script pusher at `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher` to request keyframes from the aiortc `RTCRtpSender`.
+  - Added a short keyframe burst for each new viewer connection.
+  - Synced the fix to `E:\Desktop\123\p2p-local-pusher` and refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - External `E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - External package `E:\Desktop\123\p2p-local-pusher.zip`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video/public/shared.js`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/public/shared.js`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - New P2P viewers should be less likely to freeze on the first decoded frame or start black.
+  - Viewer auto-reconnect now triggers when packets/bytes continue but decoded frames and video time do not progress.
+  - Already-running standalone P2P pusher processes must be stopped and started again to load the keyframe burst fix.
+- Cloud impact:
+  - Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+  - Restarted only `webrtc-p2p-video.service` and `webrtc-p2p-video-gz.service`.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, Tencent Cloud Live protocol, hosted console deployment, or desktop EXE changed.
+- Chain impact:
+  - Video link: P2P script/watch reconnect and keyframe startup behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no change.
+  - UI: no Cloud Service Console UI bundle change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0605\p2p-local-pusher\scripts\pusher.py`
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - Public `https://p2p.cityulive.com/api/rooms` and `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+  - Existing chain services remained active after deployment: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Follow-ups:
+  - Restart the local standalone script pusher before retesting.
+  - If the 12-hour black-screen case repeats, capture `logs\pusher.out.log` plus the viewer URL with `&debug=1`.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal, Tank Trouble, or global UI code.
+- Build / release:
+  - EXE packaged: no new package for this fix.
+  - Hosted web console deployed: no.
+  - P2P signaling web assets deployed: yes, Hong Kong and Guangzhou.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 01:46 - Video Link Agent - P2P Viewer Freeze Auto-Reconnect
+
+- Scope:
+  - Added P2P watch-page self-healing for viewer freezes where WebRTC still reports `connected` but video frames stop advancing.
+  - Viewer now tracks video time / decoded frames / received bytes and reconnects after about 12 seconds without progress.
+  - Viewer also rechecks immediately when the tab becomes visible again.
+  - Added `viewer-reconnect` handling for browser P2P pushers and standalone local script pushers.
+  - Refreshed the standalone P2P local pusher folder and zip package.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - External `E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\pusher.py`
+  - External package `E:\Desktop\123\p2p-local-pusher.zip`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video/public/shared.js`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/public/shared.js`
+  - Remote hosted web console under `150.109.100.30:/opt/cloud-service-console-web`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console.exe`
+  - Local `E:\Cloud-Service-Console\cloud-console-backend.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+- Runtime impact:
+  - P2P watch pages can recover from idle/browser/background connection stalls without manual refresh.
+  - Browser P2P push and standalone script P2P push can rebuild a viewer peer connection on request.
+  - Already-running standalone P2P pusher processes must be stopped and started again before they load the new script-side handler.
+- Cloud impact:
+  - Deployed P2P watch-page `shared.js` to Hong Kong and Guangzhou P2P signaling services.
+  - Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+  - No public port, domain, cloud service name, legacy go2rtc ingest setting, or Tencent Cloud Live protocol changed.
+- Chain impact:
+  - Video link: P2P viewer/pusher reconnect behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Legacy video link: no change.
+  - Tencent Cloud Live: no protocol change.
+  - UI: minimal local-stream P2P push compatibility only, no global style change.
+- Validation:
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\pusher.py`
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\pusher.py E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://p2p.cityulive.com/shared.js` and `https://p2p-gz.dlcourse.online/shared.js` returned `200` and contained `VIEWER_FRAME_STALL_MS`.
+  - Public `https://p2p.cityulive.com/api/rooms` and `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+  - Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+  - Existing chain services remained active after deployment: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Follow-ups:
+  - If a current standalone script push is running, stop/start it once to load the new reconnect logic.
+  - If freezes still happen after this, collect the watch URL with `&debug=1` and check whether the path is direct P2P or TURN relay.
+- Cross-agent notes:
+  - Other Agents do not need to change control-signal or Tank Trouble code.
+  - Frontend/UI Agents should keep using the existing P2P watch URL; the watch page now handles auto-reconnect internally.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - P2P signaling web assets deployed: yes, Hong Kong and Guangzhou.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 01:19 - Video Link Agent - Overview P2P Room Status
+
+- Scope:
+  - Added P2P status to the overview `视频推流状态` card.
+  - The card now shows `旧链路`, `腾讯云`, and `P2P`.
+  - P2P status counts active rooms from the current P2P signaling domain's `/api/rooms`.
+  - P2P lamp is green when at least one room is streaming, and blue when this console / local app is one of the active P2P pushers.
+  - Existing 5-second video status polling and manual refresh now also refresh the P2P room summary.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console.exe`
+  - Local `E:\Cloud-Service-Console\cloud-console-backend.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+  - Remote hosted web console under `150.109.100.30:/opt/cloud-service-console-web`
+- Runtime impact:
+  - Overview status UI changed for desktop EXE and hosted web console.
+  - Adds a lightweight read of the existing P2P `/api/rooms` endpoint during video status refresh.
+- Cloud impact:
+  - Hosted web console redeployed.
+  - Restarted only `cloud-service-console-web.service`.
+  - No P2P signaling service, go2rtc service, Tencent Cloud Live protocol, public port, domain, or cloud service name changed.
+- Chain impact:
+  - Video link: changed overview status display and P2P room-status read.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live / P2P / legacy video protocols: no protocol behavior change.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+  - Public `https://p2p.cityulive.com/api/rooms` returned `ok: true` with the active `robot` room.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents should treat the P2P overview row as read-only status fed by the existing video P2P signaling API.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-05 01:09 - Video Link Agent - Web Push Panel Mutual Exclusion
+
+- Scope:
+  - Fixed local-stream web push mode panels so Tencent Cloud push and P2P push cannot stay open at the same time.
+  - Opening Tencent Cloud closes the P2P panel first; opening P2P closes the Tencent Cloud panel first.
+  - If one web push mode is busy or actively pushing, the other mode's entry button is disabled.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console.exe`
+  - Local `E:\Cloud-Service-Console\cloud-console-backend.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+  - Remote hosted web console under `150.109.100.30:/opt/cloud-service-console-web`
+- Runtime impact:
+  - Local-stream UI state coordination changed for desktop EXE and hosted web console.
+  - Prevents stacked Tencent/P2P push panels in the same page.
+- Cloud impact:
+  - Hosted web console redeployed.
+  - Restarted only `cloud-service-console-web.service`.
+  - No P2P signaling service, go2rtc service, Tencent Cloud Live protocol, public port, domain, or cloud service name changed.
+- Chain impact:
+  - Video link: changed local-stream UI only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live / P2P / legacy video protocols: no protocol behavior change.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.com/api/health` with admin bearer token returned `backend-ready`.
+  - Public fallback `http://150.109.100.30:18080/api/health` with admin bearer token returned `backend-ready`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents should keep web push mode panels mutually exclusive unless explicitly asked to support simultaneous panels.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-04 22:57 - Video Link Agent - Viewer Resolution Single Input
+
+- Scope:
+  - Fixed the local-stream `观看分辨率` editor so users edit one `WIDTHxHEIGHT` value instead of two adjacent width/height number inputs.
+  - Prevents drag-selecting height from accidentally focusing the width input and typing into the wrong field.
+  - Accepts `x`, `×`, `*`, or whitespace as separators and normalizes to `WIDTHxHEIGHT` on blur.
+  - Keeps mapping the single viewer resolution to both `video_size` and `output_video_size`.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console.exe`
+  - Local `E:\Cloud-Service-Console\cloud-console-backend.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+  - Remote hosted web console under `150.109.100.30:/opt/cloud-service-console-web`
+- Runtime impact:
+  - Local-stream parameter UI changed for desktop EXE and hosted web console.
+  - Existing config schema remains compatible.
+- Cloud impact:
+  - Hosted web console redeployed.
+  - Restarted only `cloud-service-console-web.service`.
+  - No P2P signaling service, go2rtc service, Tencent Cloud Live protocol, public port, domain, or cloud service name changed.
+- Chain impact:
+  - Video link: changed local-stream UI only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live / P2P / legacy video protocols: no protocol behavior change.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Local built JS contains `观看分辨率`; old `观看宽度` / `观看高度` inputs are absent.
+  - Public fallback health `http://150.109.100.30:18080/api/health` with admin bearer token returned `backend-ready`.
+  - Public HTTPS domain check from this machine could not resolve `console.cityulive.com`; server-side deploy health check passed.
+- Follow-ups:
+  - Check local DNS / resolver if `console.cityulive.com` stays unresolved on this machine.
+- Cross-agent notes:
+  - Other Agents should keep the local-stream resolution as a single viewer-facing field unless explicitly asked otherwise.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-04 22:41 - Video Link Agent - Viewer-Facing Local Push Parameters
+
+- Scope:
+  - Simplified the local-stream parameter UI so users only edit viewer-facing video settings.
+  - Replaced separate capture/output resolution controls with one `观看分辨率`.
+  - Replaced separate capture/target frame-rate controls with one `观看帧率`.
+  - Internally maps the single viewer resolution to both `video_size` and `output_video_size`, and the single viewer frame rate to both `input_framerate` and `target_framerate`.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console.exe`
+  - Local `E:\Cloud-Service-Console\cloud-console-backend.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`
+  - Local `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`
+  - Remote hosted web console under `150.109.100.30:/opt/cloud-service-console-web`
+- Runtime impact:
+  - Local-stream UI and config mapping changed for desktop EXE and hosted web console.
+  - Existing config schema remains compatible; underlying video settings still populate the old internal fields.
+- Cloud impact:
+  - Hosted web console redeployed.
+  - Restarted only `cloud-service-console-web.service`.
+  - No P2P signaling service, go2rtc service, Tencent Cloud Live protocol, public port, domain, or cloud service name changed.
+- Chain impact:
+  - Video link: changed local-stream UI/config mapping.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: uses the simplified viewer-facing settings but protocol behavior unchanged.
+  - Legacy go2rtc video: uses the simplified viewer-facing settings but protocol behavior unchanged.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx docs\VIDEO_LINK_AGENT.md frontend\IMPLEMENTATION_LOG.md docs\SHARED_AGENT_STATUS.md`
+  - Public console asset contains `观看分辨率` / `观看帧率` and no longer contains old capture/output labels.
+  - `https://console.cityulive.com/api/health?access_token=xhfang` returned `backend-ready`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents should not reintroduce separate capture/output local-stream controls unless explicitly requested.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-02 21:35 - Video Link Agent - P2P Local Pusher Classmate Compatibility Sync
+
+- Scope:
+  - Synced useful fixes from the classmate-tested `p2p-local-pusher-0602` copy into the currently maintained external P2P local pusher script/package.
+  - Linux camera enumeration now deprioritizes loopback / virtual devices such as `v4l2loopback`, `loopback`, and `/dev/video20`.
+  - Setup now recreates a copied Python virtual environment when that venv exists but is unusable on the current machine.
+  - Preserved the generic current config; did not copy classmate machine-specific camera paths or conda FFmpeg paths.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\common.py`
+  - External `E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\setup_local.py`
+  - External `E:\Desktop\123\p2p-local-pusher.zip`
+  - Backup `E:\Desktop\123\p2p-local-pusher.zip.bak-20260602213522`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Only future use of the external P2P local pusher script/package changes.
+  - Cloud Service Console desktop app, backend, hosted web console, and current running services were not changed.
+- Cloud impact:
+  - None. No cloud service, domain, public port, P2P signaling service, go2rtc service, Tencent Live behavior, or Nginx route changed.
+- Chain impact:
+  - Video link: external P2P local pusher compatibility improved.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\setup_local.py`
+  - `python -m py_compile E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\setup_local.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\stop_local.py E:\wsl\p2p-local-pusher-0601\p2p-local-pusher\scripts\supervisor.py`
+  - Confirmed `E:\Desktop\123\p2p-local-pusher.zip` contains 14 user-facing files and the updated scripts.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents do not need to change anything unless they distribute or document the external P2P local pusher package.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-06-02 01:11 - Video Link Agent - P2P Viewer Room Picker
+
+- Scope:
+  - Added `GET /api/rooms` to the standalone P2P signaling service so clients can list only rooms with an active pusher on the selected P2P domain.
+  - Changed console P2P "网页端观看" from manual URL entry to a clickable room list.
+  - Empty domains now show `当前没有正在推流的房间`.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - External `E:\Desktop\123\webrtc-p2p-video\server.py`
+  - External `E:\Desktop\123\webrtc-p2p-video\server.js`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+- Runtime impact:
+  - P2P viewer opening flow changed in desktop app and hosted web console.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+  - P2P signaling services now expose a read-only active-room list endpoint.
+- Cloud impact:
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+  - Existing HK chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+  - GZ checks also kept `cloud-service-console-tank-trouble` active.
+- Chain impact:
+  - Video link: P2P viewing flow and P2P signaling API changed.
+  - Control signal: no change.
+  - Tank Trouble: no logic change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+- Validation:
+  - `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - Local Node smoke test for `GET /api/rooms`.
+  - Remote `python3 -m py_compile` on HK/GZ P2P `server.py`.
+  - Public `https://p2p.cityulive.com/api/rooms` returned active rooms during validation.
+  - Public `https://p2p-gz.dlcourse.online/api/rooms` returned `ok: true`.
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public console asset check found `选择 P2P 房间`, `当前没有正在推流的房间`, and `/api/rooms`.
+  - `https://console.cityulive.com/api/health?access_token=xhfang` returned `backend-ready`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents should preserve P2P `GET /api/rooms` if copying or regenerating the standalone P2P signaling service.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 17:41 - Video Link Agent - P2P Viewer Card Cleanup
+
+- Scope:
+  - Removed the top P2P "房间观看端" viewer-count card from the local-stream P2P panel.
+  - Removed the lower inline refresh button; the lower status strip now keeps only the lamp and push message.
+  - Removed unused manual P2P room viewer refresh state/helper/style code.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P panel layout changed in desktop app and hosted web console.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `cloud-service-console-web.service`.
+  - Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Chain impact:
+  - Video link: P2P panel UI changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - P2P signaling service: no change.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public console asset check confirmed no `房间观看端` text and no `p2p-viewer-refresh` class remain; `p2p-push-status-row` remains.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 17:03 - Video Link Agent - P2P Refresh Button Placement
+
+- Scope:
+  - Moved the P2P viewer-count refresh action from the large "房间观看端" stat card into the lower status strip.
+  - The compact refresh button is aligned with the left status lamp and current status message.
+  - The top "房间观看端" card is now read-only count/time display.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P panel button placement changed in desktop app and hosted web console.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `cloud-service-console-web.service`.
+  - Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Chain impact:
+  - Video link: P2P panel UI changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - P2P signaling service: no change.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public console asset check found `p2p-push-status-row` and `p2p-viewer-refresh-button-inline`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 16:20 - Video Link Agent - P2P Viewer Offline Cleanup
+
+- Scope:
+  - Fixed stale P2P room viewer counts after watch pages were closed.
+  - P2P watch pages now send `viewer-offline` on manual stop, `pagehide`, and `beforeunload`.
+  - P2P signaling servers remove peers from room status on `viewer-offline` / `pusher-offline`.
+  - Console P2P pusher closes/removes peer connections when it receives `viewer-offline`.
+  - Manual room viewer count fallback freshness window changed from 45 seconds to 12 seconds.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\server.js`
+  - External `E:\Desktop\123\webrtc-p2p-video\server.py`
+  - External `E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Normal watch-page closes now clear the room viewer count immediately.
+  - Abnormal closes should age out from the console count after about 12 seconds.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Deployed P2P signaling/static-page files to HK and GZ.
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `webrtc-p2p-video.service`, `webrtc-p2p-video-gz.service`, and `cloud-service-console-web.service`.
+- Chain impact:
+  - Video link: P2P viewer presence cleanup changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: video-module P2P status behavior changed only inside local-stream P2P panel.
+- Validation:
+  - `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public P2P watch JS on HK/GZ contains `viewer-offline`, `notifyViewerOffline`, and `pagehide`.
+  - Temporary room API tests on HK and GZ verified `viewer-ready` adds a peer and `viewer-offline` removes it immediately.
+  - Current `robot` room checks showed `freshViewers=0` on both HK and GZ.
+  - HK services remained active: `webrtc-p2p-video`, `nginx`, `coturn`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, and `cloud-service-console-web`.
+  - GZ services remained active: `webrtc-p2p-video-gz`, `nginx`, `coturn`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `cloud-service-console-web`, and `cloud-service-console-tank-trouble`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 15:51 - Video Link Agent - P2P Manual Viewer Count Refresh
+
+- Scope:
+  - Added a manual "房间观看端" refresh card to the P2P panel in both desktop app and hosted web console.
+  - The refresh button parses the current full P2P link, queries that link's signal domain at `/api/rooms/{room}/status`, and counts fresh viewer peers in the current room.
+  - Viewer count is manual-only; no continuous polling was added.
+  - Existing browser-side live connection count was renamed to "本页连接" to distinguish it from room-wide watchers.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P panel can manually show current fresh viewer count for the selected domain and room.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `cloud-service-console-web.service`.
+  - Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Chain impact:
+  - Video link: P2P console status UI changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: video-module UI changed only inside local-stream P2P panel.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `Invoke-RestMethod https://p2p.cityulive.com/api/rooms/robot/status`
+  - `Invoke-RestMethod https://p2p-gz.dlcourse.online/api/rooms/robot/status`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.com/api/access?access_token=xhfang` returned admin role.
+  - Public `https://console.cityulive.com/api/access?access_token=cmc5006` returned user role.
+  - Public `https://console.cityulive.com/api/health?access_token=xhfang` returned `backend-ready`.
+  - Deployed JS contains `房间观看端`, `手动刷新后显示当前房间观看人数`, and `本页连接`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 13:24 - Video Link Agent - P2P Full Watch-Link Console Input
+
+- Scope:
+  - Changed desktop app and hosted web console P2P panel from room-only input to full watch-link input.
+  - Default P2P link is `https://p2p.cityulive.com/watch.html?room=robot`.
+  - Browser P2P push parses signal domain and room from the link.
+  - P2P viewer dialog now asks for a full watch link and defaults to the current push link.
+  - Desktop backend P2P local-script start accepts `watch_url` and writes both `signalBaseUrl` and `roomId` into standalone pusher config.
+  - Web deploy script now defaults to fixed access tokens `xhfang` and `cmc5006`.
+- Changed files:
+  - `backend\p2p_local_pusher.py`
+  - `backend\main.py`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `scripts\deploy_web_console.py`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Desktop app P2P local-script push now follows the full link domain and room.
+  - Hosted web console P2P browser push/view now follows the full link domain and room.
+  - Local desktop EXEs and installers were rebuilt/copied into `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Hosted web console was redeployed on `150.109.100.30`.
+  - Restarted only `cloud-service-console-web.service`.
+  - Existing chain services remained active: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, and `coturn`.
+- Chain impact:
+  - Video link: P2P console input/start/view behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: video-module UI changed only inside local-stream P2P panel/dialog.
+- Validation:
+  - `python -m py_compile backend\p2p_local_pusher.py backend\main.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.com/api/access?access_token=xhfang` returned admin role.
+  - Public `https://console.cityulive.com/api/access?access_token=cmc5006` returned user role.
+  - Public `https://console.cityulive.com/api/health?access_token=xhfang` returned `backend-ready`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: yes, `0.3.68`.
+  - Hosted web console deployed: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 12:59 - Video Link Agent - Standalone P2P Existing Process Guard
+
+- Scope:
+  - Updated standalone local P2P `start_local` behavior.
+  - Existing background pusher process(es) now block startup before requested config is printed.
+  - The prompt lists existing PID(s), says no new push was started, and instructs the user to run `stop_local` before `start_local`.
+  - Removed the confusing existing-process path that printed old active push details below a new config attempt.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - External `E:\Desktop\123\p2p-local-pusher.zip`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Standalone local P2P pusher will not start a second local pusher while old local pusher processes are present.
+  - Users must run `stop_local` first for changed config values to take effect.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P script startup guard changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `$env:P2P_NO_PAUSE='1'; cmd /c E:\wsl\p2p-local-pusher\start_local.cmd`
+  - Verified existing background processes produce a blocking prompt and no new pusher is started.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 12:22 - Video Link Agent - Standalone P2P Fallback Output Alignment
+
+- Scope:
+  - Updated the standalone local P2P pusher fallback logic.
+  - Same-resolution lower-FPS profiles are tried before larger fallback resolutions.
+  - After fallback, actual capture, WebRTC output, and browser playback use the same selected mode instead of hidden output scaling.
+  - User-requested settings in `config\pusher.config.json` remain the preferred next-start target; active runtime files record the selected fallback.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\wsl\p2p-local-pusher\scripts\common.py`
+  - External `E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+  - External `E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - External `E:\Desktop\123\p2p-local-pusher.zip`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Standalone local P2P pusher now reports and sends the actual selected fallback mode.
+  - Verified example: requested `640x480 @ 60 fps`, active `Capture 640x480 @ 30 fps`, active `Output 640x480 @ 30 fps`.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P script behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `$env:P2P_NO_PAUSE='1'; cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd; cmd /c E:\wsl\p2p-local-pusher\start_local.cmd`
+  - Verified `runtime\pusher.state.json` reported `captureWidth=640`, `captureHeight=480`, `captureFps=30`, `outputWidth=640`, `outputHeight=480`, `fps=30`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 11:39 - Video Link Agent - Guangzhou P2P dlcourse.online Entry
+
+- Scope:
+  - Added `p2p-gz.dlcourse.online` as the working Guangzhou P2P HTTPS entry.
+  - Issued Let's Encrypt certificate and added Nginx host config for the new domain.
+  - Switched Guangzhou P2P ICE/TURN config to `p2p-gz.dlcourse.online`.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+  - Remote `111.230.62.106:/etc/nginx/conf.d/webrtc-p2p-video-gz-dlcourse.conf`
+  - Remote `111.230.62.106:/etc/letsencrypt/live/p2p-gz.dlcourse.online/fullchain.pem`
+  - Remote `111.230.62.106:/etc/letsencrypt/live/p2p-gz.dlcourse.online/privkey.pem`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Guangzhou P2P public entry is now `https://p2p-gz.dlcourse.online/`.
+  - Guangzhou watch URL is `https://p2p-gz.dlcourse.online/watch.html?room=robot`.
+  - Guangzhou P2P clients opened after this change receive STUN + TURN under `p2p-gz.dlcourse.online`.
+- Cloud impact:
+  - Changed Guangzhou P2P Nginx host config and P2P signaling config.
+  - Reloaded Nginx.
+  - Restarted only `webrtc-p2p-video-gz.service`.
+  - Reused existing coturn service/credentials/port `3478`; coturn config was not changed and coturn was not restarted.
+- Chain impact:
+  - Video link: Guangzhou P2P public entry and ICE config changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `Resolve-DnsName p2p-gz.dlcourse.online -Type A` returned `111.230.62.106`.
+  - `Test-NetConnection p2p-gz.dlcourse.online -Port 80`, `443`, and `3478` succeeded.
+  - Remote `nginx -t` passed.
+  - Public `curl.exe -fsS https://p2p-gz.dlcourse.online/api/config` returned STUN + TURN.
+  - Public `curl.exe -I https://p2p-gz.dlcourse.online/watch.html?room=robot` returned `200 OK`.
+  - Public HTTP watch URL returned `301` to HTTPS.
+  - Remote service check showed `webrtc-p2p-video-gz`, `coturn`, `nginx`, `cloud-service-console-tank-trouble`, `go2rtc-control-signaling`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`, and `cloud-service-console-web` active.
+- Follow-ups:
+  - If using Guangzhou from local scripts or console UI, point the P2P signal base to `https://p2p-gz.dlcourse.online`.
+- Cross-agent notes:
+  - None required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 10:50 - Video Link Agent - Guangzhou P2P TURN Fallback Sync
+
+- Scope:
+  - Synced Guangzhou standalone P2P signaling config with TURN fallback.
+  - Added `stun:p2p-gz.cityulive.com:3478` plus `turn:p2p-gz.cityulive.com:3478?transport=udp/tcp`.
+  - Restarted only `webrtc-p2p-video-gz.service`.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+  - Remote `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json`
+  - Remote backup `111.230.62.106:/opt/webrtc-p2p-video-gz/config.json.bak-before-turn-*`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Guangzhou P2P push/view clients opened against this endpoint receive STUN + TURN.
+  - Existing Guangzhou P2P pages/pushers must refresh/restart to use the updated ICE config.
+- Cloud impact:
+  - Changed Guangzhou P2P signaling config only.
+  - Restarted only `webrtc-p2p-video-gz.service`.
+  - Reused existing coturn service/credentials/port `3478`; coturn config was not changed and coturn was not restarted.
+- Chain impact:
+  - Video link: Guangzhou P2P signaling ICE config changed.
+  - Control signal: no code/config change, but both control WebRTC and P2P can depend on existing coturn availability.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m json.tool E:\Desktop\123\webrtc-p2p-video\config.guangzhou.json`
+  - Remote `python3 -m json.tool /opt/webrtc-p2p-video-gz/config.json`
+  - Remote `curl -fsS http://127.0.0.1:8099/api/config` returned STUN + TURN.
+  - Server-local HTTPS Host-header check returned STUN + TURN through Nginx.
+  - `Test-NetConnection p2p-gz.cityulive.com -Port 3478` succeeded for TCP.
+  - Remote service check showed `webrtc-p2p-video-gz`, `coturn`, `nginx`, `cloud-service-console-tank-trouble`, `go2rtc-control-signaling`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`, and `cloud-service-console-web` active.
+- Follow-ups:
+  - External public HTTP returned Tencent DNSPod `webblock.html`, and external HTTPS handshakes were reset. Resolve domain/ICP/access blocking before relying on `p2p-gz.cityulive.com` for public browser viewing.
+  - If public access is fixed but media still fails, verify cloud security group/firewall allows coturn relay range `20000-20199/udp,tcp`.
+- Cross-agent notes:
+  - None required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 10:28 - Video Link Agent - Hong Kong P2P TURN Fallback
+
+- Scope:
+  - Added TURN fallback to Hong Kong standalone P2P signaling config for cross-city / cross-NAT viewing.
+  - `/api/config` now returns STUN plus existing coturn relay URLs.
+  - Restarted only `webrtc-p2p-video.service`.
+  - Restarted the local standalone P2P pusher once so it loaded the updated ICE config.
+- Changed files:
+  - External `E:\Desktop\123\webrtc-p2p-video\config.json`
+  - Remote `150.109.100.30:/opt/webrtc-p2p-video/config.json`
+  - Remote backup `150.109.100.30:/opt/webrtc-p2p-video/config.json.bak-before-turn-*`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - P2P push/view clients opened after this change receive 2 ICE server entries: STUN and TURN.
+  - Existing P2P pages/pushers need refresh/restart to use the new ICE config.
+  - Local standalone pusher in room `robot` was restarted.
+- Cloud impact:
+  - Changed Hong Kong P2P signaling config only.
+  - Restarted only `webrtc-p2p-video.service`.
+  - Reused existing coturn service/credentials/port `3478`; coturn config was not changed and coturn was not restarted.
+- Chain impact:
+  - Video link: P2P signaling ICE config changed.
+  - Control signal: no code/config change, but both control WebRTC and P2P now depend on existing coturn availability.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m json.tool E:\Desktop\123\webrtc-p2p-video\config.json`
+  - Remote `python3 -m json.tool /opt/webrtc-p2p-video/config.json`
+  - Public `curl.exe -fsS https://p2p.cityulive.com/api/config` returned STUN + TURN.
+  - `Test-NetConnection p2p.cityulive.com -Port 3478` succeeded for TCP.
+  - Remote service check showed `webrtc-p2p-video`, `coturn`, `nginx`, `go2rtc-control-signaling`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`, and `cloud-service-console-web` all active.
+  - Local pusher log showed `Loaded signal config: 2 ICE server(s)`.
+- Follow-ups:
+  - If remote-city viewing still fails, verify Tencent Cloud security group/firewall allows coturn relay range `20000-20199/udp,tcp`.
+- Cross-agent notes:
+  - Control Signal Agent should note that existing coturn remains shared infrastructure; this change did not alter control signaling logic.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 10:05 - Video Link Agent - P2P Local Pusher H.264 Crash Fix
+
+- Scope:
+  - Fixed standalone P2P local pusher repeated camera on/off cycling.
+  - Added a process-wide H.264 encode lock after Windows child exits showed `3221225477` / access violation in PyAV/libx264 while two viewers were connected.
+  - Increased supervisor stable-runtime threshold from `20s` to `60s`.
+  - Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher\scripts\pusher.py`
+  - External `E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+  - External archive `E:\Desktop\123\p2p-local-pusher.zip`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local standalone P2P pusher behavior changed and was restarted for validation.
+  - Test pusher was left running in room `robot` for user verification.
+- Cloud impact:
+  - None. No cloud service, public port, DNS, or Nginx config changed.
+- Chain impact:
+  - Video link: standalone local P2P script stability changed only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`
+  - Observed over one minute with two connected viewers; `supervisor.log` showed no child exit, `pusher.err.log` was empty, and sender stats continued increasing.
+- Follow-ups:
+  - If many simultaneous viewers are needed, consider a true single-encode fanout path rather than per-viewer H.264 encoders.
+- Cross-agent notes:
+  - None required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 09:47 - Video Link Agent - P2P Local Pusher Setup Defaults
+
+- Scope:
+  - Changed standalone P2P local pusher `setup_local` defaults to software `h264`, `1920x1080`, and `30fps`.
+  - Updated the current config to match the new default profile.
+  - Refreshed the shareable `E:\Desktop\123\p2p-local-pusher.zip` package.
+- Changed files:
+  - External `E:\wsl\p2p-local-pusher\scripts\common.py`
+  - External `E:\wsl\p2p-local-pusher\config\pusher.config.json`
+  - External archive `E:\Desktop\123\p2p-local-pusher.zip`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - New or refreshed local P2P script setups now prefer the conservative H.264 1080p30 profile.
+  - No running local pusher was started or stopped in this change.
+- Cloud impact:
+  - None. No cloud service, public port, DNS, or Nginx config changed.
+- Chain impact:
+  - Video link: standalone local P2P script defaults changed only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\setup_local.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py`
+  - `python E:\wsl\p2p-local-pusher\scripts\setup_local.py --skip-pip`
+  - Confirmed config values: `preferredEncoder=h264`, `width=1920`, `height=1080`, `fps=30`.
+- Follow-ups:
+  - If testing Guangzhou latency, set `user.signalBaseUrl` to `https://p2p-gz.cityulive.com` manually.
+- Cross-agent notes:
+  - None required.
+- Build / release:
+  - EXE packaged: no.
+  - Hosted web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 09:20 - Video Link Agent - Guangzhou P2P Signaling Test Service
+
+- Scope:
+  - Deployed an isolated P2P WebRTC video signaling service to Guangzhou server `111.230.62.106`.
+  - Added remote app path `/opt/webrtc-p2p-video-gz`.
+  - Added systemd service `webrtc-p2p-video-gz.service`.
+  - Added Nginx host config for `p2p-gz.cityulive.com` on port `80`.
+  - Service listens internally on `127.0.0.1:8099`.
+- Changed files:
+  - Remote 111.230.62.106:/opt/webrtc-p2p-video-gz
+  - Remote 111.230.62.106:/etc/systemd/system/webrtc-p2p-video-gz.service
+  - Remote 111.230.62.106:/etc/nginx/conf.d/webrtc-p2p-video-gz.conf
+  - Local E:\Desktop\123\webrtc-p2p-video-gz-deploy.tar.gz
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+  - docs\AGENT_HANDOFF_MASTER_INDEX.md
+- Runtime impact:
+  - Guangzhou server now has a separate P2P signaling service for latency testing.
+  - Current public HTTP test works with Host header `p2p-gz.cityulive.com`.
+- Cloud impact:
+  - Cloud changed only on Guangzhou server `111.230.62.106`.
+  - New service: `webrtc-p2p-video-gz.service`.
+  - New Nginx config: `/etc/nginx/conf.d/webrtc-p2p-video-gz.conf`.
+  - No old Hong Kong server change.
+- Chain impact:
+  - Video link: added isolated P2P signaling test endpoint.
+  - Control signal: no change; `go2rtc-control-signaling` remained active.
+  - Tank Trouble: no change; `cloud-service-console-tank-trouble` remained active and health returned OK.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change; existing go2rtc services remained active.
+  - UI: no Cloud Service Console app UI change.
+- Validation:
+  - `systemctl is-active webrtc-p2p-video-gz.service` returned `active`.
+  - Remote `curl -fsS http://127.0.0.1:8099/api/config` returned `ok: true`.
+  - Public `curl.exe -fsS -H "Host: p2p-gz.cityulive.com" http://111.230.62.106/api/config` returned `ok: true`.
+  - Public `curl.exe -I -H "Host: p2p-gz.cityulive.com" http://111.230.62.106/watch.html?room=robot` returned `200 OK`.
+  - `http://111.230.62.106:18086/health` returned Tank Trouble health JSON.
+  - `http://111.230.62.106:18081/` returned `200 OK`.
+  - Existing services checked `active`: `nginx`, `cloud-service-console-tank-trouble`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`.
+- Follow-ups:
+  - Completed at 2026-05-29 09:38: DNS resolved, TCP `443` opened, Let's Encrypt certificate issued, and HTTPS enabled for `p2p-gz.cityulive.com`.
+  - Point standalone pusher/config or console test build at `https://p2p-gz.cityulive.com` for Guangzhou latency tests.
+- Cross-agent notes:
+  - Other agents should not remove `/etc/nginx/conf.d/webrtc-p2p-video-gz.conf` if regenerating Guangzhou Nginx config.
+- Build / release:
+  - EXE packaged: no.
+  - Web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+HTTPS follow-up:
+
+- Scope:
+  - Installed certbot on Guangzhou server.
+  - Issued Let's Encrypt certificate for `p2p-gz.cityulive.com`.
+  - Updated only `/etc/nginx/conf.d/webrtc-p2p-video-gz.conf` to redirect HTTP to HTTPS and proxy HTTPS to `127.0.0.1:8099`.
+- Runtime impact:
+  - `https://p2p-gz.cityulive.com/` is now the preferred Guangzhou P2P signaling entry.
+  - Certificate expires on `2026-08-27`; certbot renewal timer is installed.
+- Cloud impact:
+  - Guangzhou server now listens on `443/tcp` via Nginx for `p2p-gz.cityulive.com`.
+  - No Hong Kong server change.
+- Chain impact:
+  - Video link: Guangzhou P2P HTTPS endpoint enabled.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - Tencent Cloud Live: no change.
+  - Legacy go2rtc video: no change.
+- Validation:
+  - `Test-NetConnection p2p-gz.cityulive.com -Port 443` returned `TcpTestSucceeded: True`.
+  - Public `https://p2p-gz.cityulive.com/api/config` returned `ok: true`.
+  - Public `http://p2p-gz.cityulive.com/watch.html?room=robot` returned `301` to HTTPS.
+  - Public `https://p2p-gz.cityulive.com/watch.html?room=robot` returned `200 OK`.
+  - Existing services checked `active`: `webrtc-p2p-video-gz`, `nginx`, `cloud-service-console-tank-trouble`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-srt-bridge`, `go2rtc-telemetry-relay`.
+
+### 2026-05-29 02:50 - Video Link Agent - P2P Local Pusher Supervisor Stability Fix
+
+- Scope:
+  - Updated standalone P2P local pusher at `E:\wsl\p2p-local-pusher`.
+  - Added background `supervisor.py` so `start_local` starts a supervised pusher and returns while the push stays alive.
+  - Supervisor records child exits, manages separate supervisor/child PID files, and tries safer encoder/profile fallbacks if the pusher dies soon after startup.
+  - Added stronger pusher diagnostics: process-start/normal-exit/error logs, traceback output, and `faulthandler`.
+  - `stop_local` now cleans stale supervisor/pusher children from this script project.
+  - Aligned config mirror fields with the editable user section.
+  - Refreshed clean package `E:\Desktop\123\p2p-local-pusher.zip` without runtime logs, venv, or cache files.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\supervisor.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\scripts\stop_local.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - External package E:\Desktop\123\p2p-local-pusher.zip
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Standalone P2P script push is now supervised in background and can auto-retry safer local profiles after early child exits.
+  - Active local test pusher was stopped after validation.
+- Cloud impact:
+  - No cloud files/services changed.
+- Chain impact:
+  - Video link: standalone P2P pusher changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no Cloud Service Console app UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\supervisor.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\stop_local.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`.
+  - Observed supervised pusher for 35 seconds with a connected viewer; sender stats kept increasing around `1.5 Mbps`.
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`.
+  - Confirmed no `p2p-local-pusher` supervisor/pusher process remained after stop.
+  - `tar -tf E:\Desktop\123\p2p-local-pusher.zip`.
+- Follow-ups:
+  - If a target machine still drops immediately, inspect `logs\supervisor.log`, `logs\pusher.out.log`, and `logs\pusher.err.log`; the supervisor should show which fallback profile it selected.
+- Cross-agent notes:
+  - No control/Tank Trouble coordination needed.
+- Build / release:
+  - EXE packaged: no.
+  - Web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 02:00 - Video Link Agent - P2P Repeated Viewer Ready Black-Screen Fix
+
+- Scope:
+  - Fixed standalone P2P pusher black-screen behavior in `E:\wsl\p2p-local-pusher`.
+  - Root cause: public watch pages repeatedly sent `viewer-ready`; the pusher repeatedly created offers for the same viewer, causing the watch page to recreate PeerConnection before RTP arrived.
+  - Added duplicate `viewer-ready` suppression for 12 seconds after a recent offer to the same viewer.
+  - Kept local P2P watch-page debug/guard edits for next server deployment.
+  - Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\Desktop\123\webrtc-p2p-video\public\shared.js
+  - External E:\Desktop\123\webrtc-p2p-video\public\watch.html
+  - External E:\Desktop\123\webrtc-p2p-video\public\style.css
+  - External package E:\Desktop\123\p2p-local-pusher.zip
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Standalone P2P pusher now lets the current public watch page connect without being interrupted by repeated offers.
+  - Active local test pusher was restarted and left running in room `robot` for continued viewing/debugging.
+- Cloud impact:
+  - No cloud files/services changed. Attempted P2P static-page sync to `150.109.100.30` was blocked by SSH password authentication failure.
+- Chain impact:
+  - Video link: standalone P2P pusher changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no Cloud Service Console app UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` and `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`.
+  - Minimal Chrome WebRTC receiver decoded room `robot` at `1920x1080` with `framesDecoded=960`.
+  - Current public watch page reached `readyState=4`, `1920x1080`, `muted=false`, peer state `connected`, and about `5.08 Mbps`.
+- Follow-ups:
+  - Deploy local `E:\Desktop\123\webrtc-p2p-video\public\shared.js`, `watch.html`, and `style.css` to `/opt/webrtc-p2p-video/public` when valid SSH credentials are available.
+- Cross-agent notes:
+  - No control/Tank Trouble coordination needed.
+- Build / release:
+  - EXE packaged: no.
+  - Web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 01:26 - Video Link Agent - P2P H264 And ICE Black-Screen Fix
+
+- Scope:
+  - Fixed standalone P2P pusher black-screen causes in `E:\wsl\p2p-local-pusher`.
+  - Browser ICE candidates are now buffered until the viewer answer is applied.
+  - H.264 encoder level and SDP `profile-level-id` now match configured output size/FPS.
+  - Added sender-side stats logging for connected viewers.
+  - Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External package E:\Desktop\123\p2p-local-pusher.zip
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Standalone P2P pusher can now diagnose and avoid ICE/H.264 mismatch black-screen cases.
+  - Active local test pusher was left running in room `robot` for continued viewing/debugging.
+  - Current local config has `screenCaptureEnabled: true`, so it pushes desktop screen content rather than the camera.
+- Cloud impact:
+  - No cloud files or services changed in this step.
+- Chain impact:
+  - Video link: standalone P2P pusher changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no Cloud Service Console app UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` and `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`.
+  - Clean room `robot-fix-1779988751` connected and logged increasing packets/bytes.
+  - Restored room to `robot`; one viewer reached `connected` and logged sender bitrate around `0.8-1.7 Mbps`.
+- Follow-ups:
+  - If the viewer still appears black while sender stats increase, confirm whether screen capture is enabled and avoid watching the black viewer page on the same screen being captured.
+- Cross-agent notes:
+  - No control/Tank Trouble coordination needed.
+- Build / release:
+  - EXE packaged: no.
+  - Web console deployed: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-29 00:50 - Video Link Agent - P2P Pusher Restart And Viewer Reconnect Fix
+
+- Scope:
+  - Fixed standalone P2P pusher restart/reconnect behavior in `E:\wsl\p2p-local-pusher`.
+  - `start_local` now deletes stale runtime state before launch.
+  - `pusher.py` writes runtime state only after `pusher-online` succeeds.
+  - Added retry while the cloud room is still releasing the previous pusher.
+  - Added offer rebuild/retry when a viewer keeps sending `viewer-ready` but never answers.
+  - Updated P2P watch page offer error handling so failed offers are retried.
+  - `read_config()` now tolerates UTF-8 with BOM.
+  - Refreshed `E:\Desktop\123\p2p-local-pusher.zip`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - External E:\Desktop\123\webrtc-p2p-video\public\shared.js
+  - Remote /opt/webrtc-p2p-video/public/shared.js
+  - External package E:\Desktop\123\p2p-local-pusher.zip
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - P2P pusher restarts should no longer show false success from stale state.
+  - Existing/old watch pages have better retry behavior, but pages opened during a crashed pusher may still need refresh after service restart.
+- Cloud impact:
+  - Updated `/opt/webrtc-p2p-video/public/shared.js` and restarted only `webrtc-p2p-video.service`.
+  - Public P2P entry, port, Nginx config, and certificate did not change.
+- Chain impact:
+  - Video link: standalone P2P pusher and P2P watch-page behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no Cloud Service Console app UI change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\stop_local.py E:\wsl\p2p-local-pusher\scripts\common.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` and `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1`.
+  - New public watch page opened with cache-busting query; pusher log showed `Viewer answered` and `connection state: connected`.
+- Follow-ups:
+  - If a watch page was opened while the pusher process had already exited, refresh/reopen the page to rejoin the room.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or go2rtc legacy services.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-29 00:20 - Video Link Agent - P2P Viewer First-Frame Signaling Cleanup
+
+- Scope:
+  - Updated the standalone P2P signaling service at `E:\Desktop\123\webrtc-p2p-video`.
+  - Fixed slow first picture on P2P watch pages by filtering stale `viewer-ready` messages before they reach the pusher.
+  - Reduced P2P long-poll timeout from 25 seconds to 5 seconds.
+  - Added transient signaling pruning: normal messages keep about 20 seconds; `viewer-ready` to pusher keeps about 8 seconds.
+  - Updated the standalone P2P local pusher at `E:\wsl\p2p-local-pusher` so it also ignores stale `viewer-ready` messages and uses the shorter poll timeout.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\server.py
+  - External E:\Desktop\123\webrtc-p2p-video\server.js
+  - External E:\Desktop\123\webrtc-p2p-video\config.json
+  - External E:\Desktop\123\webrtc-p2p-video\public\shared.js
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - Remote /opt/webrtc-p2p-video
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - P2P viewers should receive first video faster after opening `https://p2p.cityulive.com/watch.html?room=...`, especially after many old watch pages have been opened.
+  - Test smoke rooms were temporary; room `robot` status returned no active pusher after validation.
+- Cloud impact:
+  - Deployed `/opt/webrtc-p2p-video` and restarted only `webrtc-p2p-video.service`.
+  - Public P2P entry, port, Nginx config, and certificate did not change.
+- Chain impact:
+  - Video link: P2P signaling startup/first-frame behavior changed.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no Cloud Service Console UI change.
+- Validation:
+  - `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\common.py`
+  - Local Node smoke test confirmed stale `viewer-ready` filtering.
+  - Remote `python3 -m py_compile /opt/webrtc-p2p-video/server.py` passed.
+  - Remote `systemctl is-active webrtc-p2p-video.service` returned `active`.
+  - Public remote smoke test confirmed stale `viewer-ready` filtering.
+  - `curl.exe -fsS https://p2p.cityulive.com/api/rooms/robot/status` returned `ok: true`.
+- Follow-ups:
+  - If first frame is still slow after this, next likely bottleneck is WebRTC ICE/NAT path selection or encoder keyframe timing, not stale signal history.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or go2rtc legacy services.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 23:54 - Video Link Agent - Windows P2P Full-Screen Capture Scaling
+
+- Scope:
+  - Updated the standalone P2P local pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Config `width` / `height` now mean final output resolution, not the top-left screen capture rectangle.
+  - Windows screen mode captures the full virtual desktop using Windows system metrics, then scales/stretches frames to the configured output size before H.264 encoding.
+  - No aspect-ratio preservation or letterboxing is applied.
+  - Startup status now reports both actual capture size and output size.
+  - Fixed `profile_payload()` so runtime state no longer writes `profile: null`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Windows standalone P2P screen push now streams the full desktop scaled to config output size.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P Windows screen capture behavior only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+  - `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+  - Startup output reported `Capture: 2560x1440` and `Output: 1920x1080 @ 60 fps`.
+  - Encoder selected `h264_amf`; err log was empty.
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+- Follow-ups:
+  - If a user wants preserve-aspect-ratio output later, add a separate boolean option; current behavior intentionally stretches to the configured output size.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 23:33 - Video Link Agent - Windows P2P Hidden Background Process
+
+- Scope:
+  - Updated the standalone P2P local pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Fixed Windows `start_local.cmd` opening a second empty terminal window for the background pusher process.
+  - `start_local.py` now creates the background pusher process with no-window process creation and hidden startup info.
+  - Foreground `start_local.cmd` output window remains visible for success/failure output.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Windows standalone P2P push should now show only the result window, not a second empty background terminal.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P pusher process behavior only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1`
+  - `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+- Follow-ups:
+  - None for other agents.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 23:26 - Video Link Agent - Windows P2P CMD Visibility And Screen Format Guard
+
+- Scope:
+  - Updated the standalone P2P local pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Windows `.cmd` entry scripts now pause when launched by double-click so success/failure output remains visible.
+  - Added cross-OS screen input/format guards so Windows does not reuse Linux `x11grab`, and Linux does not reuse Windows `desktop`.
+  - Refreshed Windows config via setup; screen capture now uses `desktop + gdigrab`.
+  - Verified Windows screen push starts successfully with `screenCaptureEnabled = true`, `1920x1080 @ 60 fps`, and `h264_amf`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\setup_local.cmd
+  - External E:\wsl\p2p-local-pusher\start_local.cmd
+  - External E:\wsl\p2p-local-pusher\stop_local.cmd
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Double-clicked Windows scripts now leave the console visible until a keypress.
+  - Windows screen mode now resolves to the correct capture format.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P pusher config/script only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `cmd /c E:\wsl\p2p-local-pusher\setup_local.cmd --skip-pip`
+  - `cmd /c E:\wsl\p2p-local-pusher\start_local.cmd` with `P2P_NO_PAUSE=1` started Windows screen push successfully.
+  - `cmd /c E:\wsl\p2p-local-pusher\stop_local.cmd` with `P2P_NO_PAUSE=1` stopped the test pusher.
+- Follow-ups:
+  - None for other agents.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 23:18 - Video Link Agent - Standalone P2P User-Friendly Screen Toggle
+
+- Scope:
+  - Updated the WSL-side standalone P2P pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Replaced user-facing `user.sourceMode` with `user.screenCaptureEnabled`.
+  - `screenCaptureEnabled: false` means camera push; `true` means screen capture push.
+  - Kept `sourceMode` internally/backward-compatible so older configs still work.
+  - Updated start output to show `Screen capture: enabled/disabled`.
+  - Preserved the user's current `1920x1080 @ 60 fps` and bitrate/encoder settings.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - External E:\wsl\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local standalone P2P config is easier for non-engineering users.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P pusher config/script only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/start_local.py scripts/pusher.py scripts/setup_local.py && python3 - <<'PY' ..."`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started screen push successfully.
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+- Follow-ups:
+  - If desired, move internal/generated config sections out of `pusher.config.json` so users only see the `user` section.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 23:02 - Video Link Agent - WSL P2P Screen Input Auto Detection
+
+- Scope:
+  - Updated the WSL-side standalone P2P pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Screen mode now works with only `user.sourceMode = screen`; `user.screenInput` can stay empty.
+  - Linux/WSL screen input detection now tries `$DISPLAY`, `/tmp/.X11-unix/X*`, and `/mnt/wslg/.X11-unix/X*`.
+  - Local WSL test config now leaves `user.screenInput` and internal `screen.input` empty to validate auto detection.
+  - Standalone pusher README was rewritten in readable Chinese with the simpler screen-mode usage.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - External E:\wsl\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local WSL can start standalone P2P screen push without manually setting `screenInput`.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P pusher config/script only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/start_local.py scripts/pusher.py scripts/setup_local.py && python3 - <<'PY' ..."`
+  - Auto detection returned `:0` with empty `user.screenInput`.
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started screen push successfully.
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+- Follow-ups:
+  - If auto detection fails on another Linux desktop, set `user.screenInput` manually, for example `:0`.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 22:54 - Video Link Agent - WSL P2P Screen Capture Dependency Install
+
+- Scope:
+  - Installed WSL packages `ffmpeg` and `v4l-utils`.
+  - Verified WSLg/X11 screen capture from `:0` works with FFmpeg `x11grab`.
+  - Updated the WSL-side standalone P2P pusher at `E:\wsl\p2p-local-pusher` so screen mode injects `DISPLAY` from `user.screenInput` when needed.
+  - Switched the local WSL test config to `user.sourceMode = screen` and `user.screenInput = :0`.
+  - Started a real P2P screen push once, then stopped it.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local WSL can now run the standalone P2P pusher in screen mode without `/dev/video0`.
+  - Test pusher was stopped after validation, so room `robot` is not intentionally left occupied by this test.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: local standalone P2P pusher test environment only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `wsl -e bash -lc "command -v ffmpeg; ffmpeg -version | head -n 1; command -v v4l2-ctl; v4l2-ctl --version | head -n 1"`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"`
+  - `wsl -e bash -lc "DISPLAY=:0 ffmpeg -hide_banner -f x11grab -video_size 640x480 -framerate 15 -i :0 -t 2 -f null -"`
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/start_local.py && DISPLAY=:0 ffmpeg -hide_banner -loglevel error -f x11grab -video_size 640x480 -framerate 15 -i :0 -t 1 -f null - && echo screen-capture-ok"`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` started screen push successfully.
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash stop_local.sh"` stopped the test pusher.
+- Follow-ups:
+  - If another WSL distribution is used, repeat the package install and verify `screenInput`.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 22:35 - Video Link Agent - Standalone P2P Screen Source Mode
+
+- Scope:
+  - Updated the WSL-side standalone P2P pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Added `user.sourceMode`: `camera` remains default, `screen` pushes display content.
+  - Added `user.screenInput` and internal `screen` defaults for Windows `gdigrab desktop` and Linux/WSL `x11grab`.
+  - Pusher profile selection, media opening, runtime state, and start output now distinguish camera vs screen source.
+  - `start_local` no longer requires `/dev/video*` when `sourceMode` is `screen`.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - External E:\wsl\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local standalone P2P pusher can be switched from camera capture to display capture by editing config.
+  - Useful for WSL/Linux link testing when no `/dev/video*` camera is exposed.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: standalone P2P local pusher only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/pusher.py scripts/start_local.py scripts/setup_local.py"`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` produced the intended default camera-mode no-Linux-camera message.
+  - Verified screen-mode config parsing maps Linux/WSL to `x11grab`.
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"` regenerated config with `user.sourceMode` and `screen` fields.
+- Follow-ups:
+  - Current WSL has no `ffmpeg` in PATH and no `DISPLAY`, so a real WSL screen-push run requires `sudo apt-get install -y ffmpeg` and a usable WSLg/X11 display.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 21:58 - Video Link Agent - WSL P2P Windows Camera Guard
+
+- Scope:
+  - Updated the WSL-side standalone P2P pusher copy at `E:\wsl\p2p-local-pusher`.
+  - Linux/WSL no longer reuses Windows DirectShow camera inputs such as `video=UGREEN Camera 4K`.
+  - `setup_local` clears cross-OS camera input when no Linux camera device is detected.
+  - `pusher` ignores cross-OS camera inputs and uses only real `/dev/video*` devices on Linux.
+  - `start_local` truncates logs on each run and stops early with a clear WSL/no-camera message when no Linux camera input is configured.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\common.py
+  - External E:\wsl\p2p-local-pusher\scripts\pusher.py
+  - External E:\wsl\p2p-local-pusher\scripts\start_local.py
+  - External E:\wsl\p2p-local-pusher\config\pusher.config.json
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - WSL users now get an actionable message instead of `No such file or directory: 'video=...'`.
+  - Current local WSL has no `/dev/video*`, so it cannot use the Windows camera directly.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: WSL standalone P2P setup/start only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\common.py E:\wsl\p2p-local-pusher\scripts\pusher.py E:\wsl\p2p-local-pusher\scripts\start_local.py`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && python3 -m py_compile scripts/common.py scripts/pusher.py scripts/start_local.py"`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash setup_local.sh --skip-pip"`
+  - `wsl -e bash -lc "cd /mnt/e/wsl/p2p-local-pusher && bash start_local.sh"` produced the intended no-Linux-camera message.
+- Follow-ups:
+  - For this Windows laptop camera, use Windows `start_local.cmd`; use WSL only after exposing a real Linux `/dev/video*` device.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 21:39 - Video Link Agent - WSL P2P Setup Venv Guard
+
+- Scope:
+  - Updated the WSL-side standalone P2P pusher copy at `E:\wsl\p2p-local-pusher`.
+  - `setup_local.py` now handles Ubuntu/WSL missing `python3-venv` / `ensurepip is not available`.
+  - Setup attempts `apt-get update` and `apt-get install -y python3-venv python3-pip` through `sudo` when needed.
+  - Setup detects incomplete `.venv` folders where Python exists but pip is missing and rebuilds them.
+  - WSL copy README was rewritten in readable Chinese with the manual fix command.
+- Changed files:
+  - External E:\wsl\p2p-local-pusher\scripts\setup_local.py
+  - External E:\wsl\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local WSL setup becomes self-healing for the common missing-venv package case.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: WSL standalone P2P setup only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no change.
+- Validation:
+  - `python -m py_compile E:\wsl\p2p-local-pusher\scripts\setup_local.py`
+  - `wsl -e bash -lc "python3 -m py_compile /mnt/e/wsl/p2p-local-pusher/scripts/setup_local.py"`
+- Follow-ups:
+  - User should rerun `bash setup_local.sh` inside WSL; it may ask for the WSL sudo password if `python3-venv` is not installed yet.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, hosted console, or cloud code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 17:58 - Video Link Agent - Standalone P2P Config User Section
+
+- Scope:
+  - Simplified standalone P2P local pusher config at `E:\Desktop\123\p2p-local-pusher`.
+  - Added a compact top-level `user` section for normal edits: signal server, room, camera input, camera input format, width, height, FPS, bitrate, and preferred encoder.
+  - Script readers now prefer `user` fields over legacy root / `camera` / `video` fields.
+  - Program-maintained camera detection, fallback profiles, encoder probes, and `runtime.lastSelected` remain below the user section.
+  - Desktop mini app P2P local-script sync now writes the same `user` section before starting the standalone pusher.
+  - Standalone README now documents the "only edit user section" rule.
+- Changed files:
+  - External E:\Desktop\123\p2p-local-pusher\config\pusher.config.json
+  - External E:\Desktop\123\p2p-local-pusher\scripts\common.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\start_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\pusher.py
+  - External E:\Desktop\123\p2p-local-pusher\docs\README.md
+  - backend\p2p_local_pusher.py
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Standalone P2P pusher config is easier to hand-edit and less likely to be overwritten by fallback results.
+  - Desktop P2P script mode now writes compatible simplified config before launching.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, P2P signaling service, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: standalone P2P pusher and desktop local P2P script config only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no visual UI change.
+- Validation:
+  - `cmd /c setup_local.cmd --skip-pip`
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py E:\Desktop\123\p2p-local-pusher\scripts\pusher.py E:\Desktop\123\cloud-service-console\backend\p2p_local_pusher.py`
+  - Effective config smoke test confirmed `user` values override legacy fields.
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - `git diff --check -- backend\p2p_local_pusher.py`
+  - `cmd /c npm.cmd run installer:build`
+- Follow-ups:
+  - Sync this updated `E:\Desktop\123\p2p-local-pusher` project to Linux/macOS test machines before asking users to rely on the compact `user` section there.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, or hosted web console code.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied EXEs: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+  - Copied installers: `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 08:24 - Video Link Agent - Desktop P2P Push Uses Local Script Mode
+
+- Scope:
+  - Changed desktop mini app P2P push to call the standalone local pusher at `E:\Desktop\123\p2p-local-pusher`.
+  - Kept hosted web console P2P push on browser `getUserMedia`; web mode cannot start local scripts.
+  - Added desktop-only backend APIs for local P2P pusher status/start/stop.
+  - Desktop P2P panel now shows local script process/profile/watch URL instead of browser preview.
+  - Desktop P2P start syncs camera, room, resolution, frame rate, bitrate, and encoder into the local pusher config.
+- Changed files:
+  - backend\p2p_local_pusher.py
+  - backend\models.py
+  - backend\main.py
+  - frontend\src\api\cloudApi.ts
+  - frontend\src\types\cloud.ts
+  - frontend\src\pages\DashboardPage.tsx
+  - frontend\src\styles\globals.css
+  - frontend\src\styles\theme.css
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Desktop mini app P2P push now uses the richer standalone local pusher script and can use local encoder/profile fallback.
+  - Hosted web console behavior remains browser P2P for P2P push.
+- Cloud impact:
+  - None. No cloud service, Nginx rule, public port, go2rtc service, Tencent status API, control signal service, or Tank Trouble service changed or restarted.
+- Chain impact:
+  - Video link: changed desktop local P2P push only.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: changed only the video local-stream/P2P module.
+- Validation:
+  - `python -m py_compile backend\p2p_local_pusher.py backend\models.py backend\main.py`
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - Local manager smoke test detected `E:\Desktop\123\p2p-local-pusher` and returned `https://p2p.cityulive.com/watch.html?room=robot`.
+  - `git diff --check -- backend\main.py backend\models.py backend\p2p_local_pusher.py frontend\src\api\cloudApi.ts frontend\src\types\cloud.ts frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css frontend\src\styles\theme.css`
+  - `cmd /c npm.cmd run installer:build`
+- Follow-ups:
+  - Real desktop UI push/stop can be tested from the mini app with an attached camera.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, or hosted console code.
+  - Web console P2P remains browser based; do not expect hosted web to invoke local OS scripts.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied EXEs: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+  - Copied installers: `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 07:54 - Video Link Agent - Standalone P2P Start Output and Config Guidance
+
+- Scope:
+  - Improved standalone P2P local pusher startup output.
+  - `start_local` now prints requested config before launching and actual selected config after online state.
+  - Rewrote standalone pusher README in readable Chinese and documented manual-edit config fields.
+- Changed files:
+  - External E:\Desktop\123\p2p-local-pusher\scripts\start_local.py
+  - External E:\Desktop\123\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Standalone P2P pusher users can see room, watch URL, camera, resolution, FPS, bitrate, encoder chain, and actual encoder fallback result in terminal output.
+  - No Cloud Service Console app runtime behavior changed.
+- Cloud impact:
+  - None. No cloud service, public port, Nginx rule, go2rtc service, Tencent Cloud status API, control signal service, or Tank Trouble service changed.
+- Chain impact:
+  - Video link: standalone P2P pusher usability improved.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no console UI change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\start_local.py`
+  - `E:\Desktop\123\p2p-local-pusher\start_local.cmd`
+  - `E:\Desktop\123\p2p-local-pusher\stop_local.cmd`
+  - Verified output includes `https://p2p.cityulive.com/watch.html?room=robot` and actual encoder `h264_amf`.
+  - Confirmed no leftover `p2p-local-pusher` Python process after validation.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, or hosted console code.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 01:03 - Video Link Agent - Standalone Cross-Platform P2P Local Pusher
+
+- Scope:
+  - Added a standalone local P2P WebRTC camera pusher project at `E:\Desktop\123\p2p-local-pusher`.
+  - Exposed only `setup_local`, `start_local`, and `stop_local` scripts at the top level for Windows and Linux/macOS.
+  - `setup_local` creates a project-local Python venv, installs `aiortc`/`av`, enumerates cameras, probes FFmpeg encoder runtime availability, and writes `config\pusher.config.json`.
+  - `start_local` runs the pusher in the background; `stop_local` stops it and sends `pusher-offline` when possible.
+  - Config defaults to `https://p2p.cityulive.com` room `robot`.
+- Changed files:
+  - External E:\Desktop\123\p2p-local-pusher\setup_local.cmd
+  - External E:\Desktop\123\p2p-local-pusher\start_local.cmd
+  - External E:\Desktop\123\p2p-local-pusher\stop_local.cmd
+  - External E:\Desktop\123\p2p-local-pusher\setup_local.sh
+  - External E:\Desktop\123\p2p-local-pusher\start_local.sh
+  - External E:\Desktop\123\p2p-local-pusher\stop_local.sh
+  - External E:\Desktop\123\p2p-local-pusher\scripts\common.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\start_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py
+  - External E:\Desktop\123\p2p-local-pusher\scripts\pusher.py
+  - External E:\Desktop\123\p2p-local-pusher\docs\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Adds an optional standalone local P2P pusher that uses the existing P2P signaling service.
+  - No Cloud Service Console app runtime behavior changed.
+- Cloud impact:
+  - No cloud service, public port, Nginx rule, go2rtc service, Tencent Cloud status API, control signal service, or Tank Trouble service changed.
+  - Uses existing `https://p2p.cityulive.com` signaling and room semantics.
+- Chain impact:
+  - Video link: adds standalone P2P local pusher tooling.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no console UI change.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\p2p-local-pusher\scripts\common.py E:\Desktop\123\p2p-local-pusher\scripts\setup_local.py E:\Desktop\123\p2p-local-pusher\scripts\start_local.py E:\Desktop\123\p2p-local-pusher\scripts\stop_local.py E:\Desktop\123\p2p-local-pusher\scripts\pusher.py`
+  - `E:\Desktop\123\p2p-local-pusher\setup_local.cmd --skip-pip`
+  - `E:\Desktop\123\p2p-local-pusher\setup_local.cmd`
+  - `E:\Desktop\123\p2p-local-pusher\start_local.cmd`
+  - `E:\Desktop\123\p2p-local-pusher\stop_local.cmd`
+  - Windows test detected `UGREEN Camera 4K` and `OBS Virtual Camera`.
+  - Encoder runtime probe skipped unavailable NVENC and selected working `h264_amf` on this machine.
+  - Confirmed no leftover `p2p-local-pusher` Python process after validation.
+- Follow-ups:
+  - Run first real Linux/macOS camera tests on target machines; Linux NVIDIA hard-encode path should be validated on a machine with working NVIDIA driver.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal, Tank Trouble, or hosted console code for this standalone pusher.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-28 00:03 - Video Link Agent - Viewer Address Confirmation Dialogs
+
+- Scope:
+  - Changed Tencent Cloud `网页端观看` to open the play-address dialog first instead of directly opening the player page.
+  - Tencent Cloud play dialog defaults to the current status play URL, saved play URL, or derived `webrtc://.../live/robot_control` fallback.
+  - Added a P2P viewer room dialog before opening `网页端观看`.
+  - P2P viewer dialog defaults to the current P2P push room and can enter another room to watch another P2P stream.
+  - P2P viewer-room selection does not overwrite the push-room field.
+- Changed files:
+  - frontend\src\pages\DashboardPage.tsx
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+  - Remote /opt/cloud-service-console-web/frontend/dist
+  - E:\Cloud-Service-Console\Cloud Service Console.exe
+  - E:\Cloud-Service-Console\cloud-console-backend.exe
+  - E:\Cloud-Service-Console\Cloud Service Console Setup.exe
+  - E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe
+- Runtime impact:
+  - Viewer buttons now confirm target address/room before opening external viewer pages.
+  - Desktop mini app was rebuilt and copied to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Replaced hosted web console static frontend under `/opt/cloud-service-console-web/frontend/dist`; `cloud-service-console-web.service` stayed active.
+  - No P2P signaling service code, legacy go2rtc video, Tencent status API, control signal service, or Tank Trouble service change.
+- Chain impact:
+  - Video link: local-stream viewer-entry UI changed.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: module-scoped dialogs only.
+- Validation:
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - Hosted console static sync confirmed `cloud-service-console-web.service`, `webrtc-p2p-video.service`, and `nginx` were `active`.
+  - Public console asset check confirmed `P2P 观看房间`, `腾讯云播放地址`, and `进入房间` are present.
+  - `python scripts\build_installer.py`
+  - Copied EXE timestamps verified at about `2026-05-28 00:03`.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal or Tank Trouble code.
+- Build / release:
+  - EXE installer built: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-27 23:44 - Video Link Agent - P2P Room Lock and Video-Only Viewer
+
+- Scope:
+  - Added P2P room ownership to the signaling service: one room can have only one active pusher.
+  - A second same-room pusher now receives `HTTP 409`; different room names remain independent and can host separate streams.
+  - P2P pushers now send heartbeat messages and `pusher-offline` on stop; abnormal close releases after `pusherTtlSeconds` (`15` seconds by default).
+  - Console P2P panel now has an editable/saved room field used by both push and web viewer.
+  - P2P watch page is now video-only and auto-starts viewer mode.
+- Changed files:
+  - frontend\src\pages\DashboardPage.tsx
+  - frontend\src\styles\globals.css
+  - External E:\Desktop\123\webrtc-p2p-video\server.py
+  - External E:\Desktop\123\webrtc-p2p-video\server.js
+  - External E:\Desktop\123\webrtc-p2p-video\config.json
+  - External E:\Desktop\123\webrtc-p2p-video\public\watch.html
+  - External E:\Desktop\123\webrtc-p2p-video\public\style.css
+  - External E:\Desktop\123\webrtc-p2p-video\public\shared.js
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+  - docs\AGENT_HANDOFF_MASTER_INDEX.md
+  - Remote /opt/webrtc-p2p-video
+  - Remote /opt/cloud-service-console-web/frontend/dist
+  - E:\Cloud-Service-Console\Cloud Service Console.exe
+  - E:\Cloud-Service-Console\cloud-console-backend.exe
+  - E:\Cloud-Service-Console\Cloud Service Console Setup.exe
+  - E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe
+- Runtime impact:
+  - Same-room P2P double-push is blocked at signaling level.
+  - Console users can choose a P2P room; viewer opens the matching room.
+  - `https://p2p.cityulive.com/watch.html?room=...` now shows only the video surface.
+  - Desktop mini app was rebuilt and copied to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Deployed `/opt/webrtc-p2p-video` and restarted only `webrtc-p2p-video.service`.
+  - Replaced hosted web console static frontend under `/opt/cloud-service-console-web/frontend/dist`; `cloud-service-console-web.service` stayed active.
+  - No legacy go2rtc video, Tencent Cloud status API, control signal service, or Tank Trouble service change.
+- Chain impact:
+  - Video link: P2P signaling behavior and local-stream P2P UI changed.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: module-scoped P2P room input and video-only external viewer only.
+- Validation:
+  - `python -m py_compile E:\Desktop\123\webrtc-p2p-video\server.py`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\server.js`
+  - `node --check E:\Desktop\123\webrtc-p2p-video\public\shared.js`
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - Public room-lock smoke: first pusher returned `200`, second same-room pusher returned `409`, `pusher-offline` released the room, and the next pusher returned `200`.
+  - Public watch page check confirmed `video-only-page` and `remote-video` are present and old viewer UI text is absent.
+  - Remote `webrtc-p2p-video.service`, `cloud-service-console-web.service`, and `nginx` returned `active`.
+  - `python scripts\build_installer.py`
+  - Copied EXE timestamps verified at about `2026-05-27 23:44`.
+- Follow-ups:
+  - Real multi-device P2P push/watch test should still be run from separate networks; add TURN if STUN-only ICE fails.
+  - If users need a selected browser camera instead of default camera for P2P, map browser `deviceId` into the P2P camera selector later.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal or Tank Trouble code.
+  - Treat `webrtc-p2p-video.service`, `p2p.cityulive.com`, and P2P room-lock semantics as Video Link Agent owned.
+- Build / release:
+  - EXE installer built: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-27 23:10 - Video Link Agent - Inline Console P2P Push
+
+- Scope:
+  - Replaced the previous external-page P2P pusher handoff with an inline P2P push panel inside the local-stream UI.
+  - P2P push now captures the camera directly in the console and uses the public signaling API at `https://p2p.cityulive.com`, room `robot`.
+  - Added the same basic flow as Tencent Cloud push: local preview, signal/viewer status, `Start P2P Push` / `Stop P2P Push`, room signal reset, and web viewer button.
+  - P2P applies applicable local-stream parameters: camera/default browser device, capture resolution, output resolution, capture FPS, target FPS, and video bitrate.
+  - Legacy-only fields such as input format, FFmpeg encoder, SRT options, ingest ports, and public host/port are greyed while P2P/Tencent panels are active.
+  - Tencent Cloud push and P2P push are mutually exclusive because both use the local camera.
+- Changed files:
+  - frontend\src\pages\DashboardPage.tsx
+  - frontend\src\styles\globals.css
+  - frontend\src\styles\theme.css
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+  - docs\AGENT_HANDOFF_MASTER_INDEX.md
+  - Remote /opt/cloud-service-console-web/frontend/dist
+  - E:\Cloud-Service-Console\Cloud Service Console.exe
+  - E:\Cloud-Service-Console\cloud-console-backend.exe
+  - E:\Cloud-Service-Console\Cloud Service Console Setup.exe
+  - E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe
+- Runtime impact:
+  - Web console and desktop mini app now expose inline P2P push after Tencent Cloud push.
+  - P2P viewing still opens `https://p2p.cityulive.com/watch.html?room=robot`.
+  - Desktop mini app was rebuilt and copied to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Replaced hosted web console static frontend under `/opt/cloud-service-console-web/frontend/dist`.
+  - Did not restart, regenerate, or change go2rtc legacy video services, Tencent status API, control signal services, Tank Trouble services, or `webrtc-p2p-video.service`.
+- Chain impact:
+  - Video link: changed local-stream UI and browser-side P2P push behavior only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: module-scoped local-stream UI and small status grid styling only; no global restyle.
+- Validation:
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - `curl.exe -fsS https://p2p.cityulive.com/api/config`
+  - Hosted web console static sync to `150.109.100.30`.
+  - Public console asset check confirmed inline P2P push strings, `https://p2p.cityulive.com`, and removal of `腾讯云推流 (BETA)`.
+  - Remote `cloud-service-console-web.service` remained `active`.
+  - Remote `webrtc-p2p-video.service` remained `active`.
+  - `python scripts\build_installer.py`
+  - Copied EXE timestamps verified at about `2026-05-27 23:07`.
+- Follow-ups:
+  - Real multi-device P2P push/watch test should still be run from separate networks; add TURN if STUN-only ICE fails.
+  - If users need a specific browser camera on machines with multiple devices, map browser `deviceId` into the P2P camera selector later.
+- Cross-agent notes:
+  - Other Agents do not need to change control signal or Tank Trouble code.
+  - Preserve `p2p.cityulive.com`, `webrtc-p2p-video.service`, and the P2P REST signaling API as Video Link Agent owned resources.
+- Build / release:
+  - EXE installer built: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-27 22:02 - Video Link Agent - Console P2P Push Entry
+
+- Scope:
+  - Integrated the public P2P WebRTC pusher into the local-stream UI.
+  - Added `P2P推流 (BETA)` immediately after `腾讯云推流`, opening `https://p2p.cityulive.com/push.html?room=robot`.
+  - Removed `(BETA)` from Tencent Cloud push button/panel naming.
+  - Updated web-mode copy to show Tencent Cloud and P2P as supported web push paths.
+  - Synced hosted web console static frontend and rebuilt/copied the desktop mini app package.
+- Changed files:
+  - frontend\src\pages\DashboardPage.tsx
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+  - docs\AGENT_HANDOFF_MASTER_INDEX.md
+  - Remote /opt/cloud-service-console-web/frontend/dist
+  - E:\Cloud-Service-Console\Cloud Service Console.exe
+  - E:\Cloud-Service-Console\cloud-console-backend.exe
+  - E:\Cloud-Service-Console\Cloud Service Console Setup.exe
+  - E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe
+- Runtime impact:
+  - Local-stream UI now has Tencent Cloud push and P2P push entry points.
+  - Desktop mini app was rebuilt and copied to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Replaced hosted web console static frontend under `/opt/cloud-service-console-web/frontend/dist`.
+  - Did not regenerate backend env/tokens and did not restart or change go2rtc, Tencent status API, control signal, Tank Trouble, or P2P signaling services.
+- Chain impact:
+  - Video link: UI entry added for experimental P2P pusher; Tencent Cloud label stabilized.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: local-stream module only; no global style rewrite.
+- Validation:
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - `python scripts\build_installer.py`
+  - `curl.exe -fsS https://p2p.cityulive.com/api/config`
+  - Public console asset check confirmed `P2P推流 (BETA)` and `p2p.cityulive.com/push.html?room=robot` are present, and `腾讯云推流 (BETA)` is absent.
+  - `cloud-service-console-web.service` stayed `active`.
+- Follow-ups:
+  - Real multi-device P2P push/watch test should still be run from separate networks; add TURN if STUN-only ICE fails.
+- Cross-agent notes:
+  - Other Agents do not need to change control or Tank Trouble code for this UI entry.
+  - Preserve `p2p.cityulive.com` and `webrtc-p2p-video.service` as Video Link Agent owned resources.
+- Build / release:
+  - EXE installer built: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.68`.
+
+### 2026-05-27 17:45 - Video Link Agent - Public P2P HTTPS Deployment
+
+- Scope:
+  - Deployed the standalone P2P WebRTC video prototype to server `150.109.100.30`.
+  - Added a dependency-free Python signaling server (`server.py`) because Node.js is not installed on the server.
+  - Created systemd service `webrtc-p2p-video.service`.
+  - Added Nginx virtual host for `p2p.cityulive.com`, with HTTP redirected to HTTPS.
+  - Issued Let's Encrypt certificate for `p2p.cityulive.com`.
+  - Bound the internal signaling service to `127.0.0.1:8099`; public access goes through Nginx `443`.
+- Changed files:
+  - External local E:\Desktop\123\webrtc-p2p-video\server.py
+  - Remote /opt/webrtc-p2p-video
+  - Remote /etc/systemd/system/webrtc-p2p-video.service
+  - Remote /etc/nginx/conf.d/webrtc-p2p-video.conf
+  - Remote /etc/letsencrypt/live/p2p.cityulive.com/fullchain.pem
+  - Remote /etc/letsencrypt/live/p2p.cityulive.com/privkey.pem
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - New cloud service: `webrtc-p2p-video.service`.
+  - New public HTTPS entry: `https://p2p.cityulive.com`.
+  - New Nginx config: `/etc/nginx/conf.d/webrtc-p2p-video.conf`.
+- Cloud impact:
+  - Added P2P signaling service and HTTPS virtual host only.
+  - No existing public service names, legacy go2rtc services, Tencent path, control services, Tank Trouble services, or `console.cityulive.com` behavior changed.
+- Chain impact:
+  - Video link: added experimental P2P signaling path.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - `python -m py_compile server.py`
+  - Local Python signaling smoke test returned `ok: true` for `/api/config` and `/api/rooms/robot/status`.
+  - Remote `systemctl is-active webrtc-p2p-video.service` returned `active`.
+  - Remote `curl http://127.0.0.1:8099/api/config` returned `ok: true`.
+  - Public `http://p2p.cityulive.com/` returned `301` to HTTPS.
+  - Public `https://p2p.cityulive.com/` returned `200 OK`.
+  - Public `https://p2p.cityulive.com/api/config` returned `ok: true`.
+  - Browser smoke loaded `https://p2p.cityulive.com/watch.html?room=robot`.
+  - Existing services remained active: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-srt-bridge`, `go2rtc-control-signaling`, and `go2rtc-telemetry-relay`.
+- Follow-ups:
+  - Real cross-network push/view test; if ICE does not find a direct host/srflx path, add TURN credentials to `config.json`.
+- Cross-agent notes:
+  - Other Agents should treat `p2p.cityulive.com` and `webrtc-p2p-video.service` as experimental video-link ownership.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 16:57 - Video Link Agent - P2P Background Signaling Launcher
+
+- Scope:
+  - Updated the standalone P2P WebRTC prototype `start-signaling.cmd` to launch `server.js` in the background.
+  - The start script now checks whether the configured port is already listening, starts Node hidden, verifies readiness, and writes logs to `logs\signaling.out.log` / `logs\signaling.err.log`.
+  - Updated the prototype README to explain that the startup window can be closed after the success message and `stop-signaling.cmd` should be used to stop the background server.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\start-signaling.cmd
+  - External E:\Desktop\123\webrtc-p2p-video\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local-only P2P prototype launcher behavior.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P helper launcher only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - Ran `cmd /c start-signaling.cmd`; command returned while `0.0.0.0:8099` remained listening.
+  - `GET http://127.0.0.1:8099/api/config` returned `ok: true`.
+  - Ran corrected stop logic; port `8099` stopped listening.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 16:50 - Video Link Agent - P2P Signaling Startup Message
+
+- Scope:
+  - Improved the standalone P2P WebRTC prototype signaling server startup output.
+  - The console now clearly says the server started successfully in Chinese and shows the next scripts to run.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\server.js
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local-only P2P prototype console-message change.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P helper message only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - `node --check server.js`
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 16:47 - Video Link Agent - P2P Stop Script PID Variable Fix
+
+- Scope:
+  - Fixed `stop-signaling.cmd` in the standalone P2P WebRTC prototype.
+  - Renamed the PowerShell loop variable from `$pid` to `$processId` because `$PID` is a built-in read-only PowerShell variable.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\stop-signaling.cmd
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local-only P2P helper script fix.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P helper script only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - Ran the corrected stop logic against port `8099`; it stopped the existing signaling server process.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 16:40 - Video Link Agent - P2P Prototype Stop Script
+
+- Scope:
+  - Added a Windows stop script for the standalone P2P WebRTC prototype.
+  - The script reads the configured signaling port from `config.json`, finds the listening process, and stops it.
+  - Updated the prototype README usage instructions.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\stop-signaling.cmd
+  - External E:\Desktop\123\webrtc-p2p-video\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local-only helper script for stopping the standalone P2P signaling server.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P prototype helper only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - Manual script review.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 15:18 - Video Link Agent - Standalone P2P WebRTC Video Prototype
+
+- Scope:
+  - Added an independent true P2P WebRTC video prototype under `E:\Desktop\123\webrtc-p2p-video`.
+  - The prototype has a Node.js signaling server that exchanges only offer / answer / ICE messages.
+  - The video media path is intended to flow directly between the pusher browser and viewer browser through WebRTC; the signaling server does not ingest or relay media frames.
+  - Added separate pusher and viewer pages, room selection, camera/fps/resolution/bitrate controls, optional timestamp overlay, viewer stats, and Windows `.cmd` launchers.
+- Changed files:
+  - External E:\Desktop\123\webrtc-p2p-video\config.json
+  - External E:\Desktop\123\webrtc-p2p-video\server.js
+  - External E:\Desktop\123\webrtc-p2p-video\public\index.html
+  - External E:\Desktop\123\webrtc-p2p-video\public\push.html
+  - External E:\Desktop\123\webrtc-p2p-video\public\watch.html
+  - External E:\Desktop\123\webrtc-p2p-video\public\style.css
+  - External E:\Desktop\123\webrtc-p2p-video\public\shared.js
+  - External E:\Desktop\123\webrtc-p2p-video\start-signaling.cmd
+  - External E:\Desktop\123\webrtc-p2p-video\open-pusher.cmd
+  - External E:\Desktop\123\webrtc-p2p-video\open-viewer.cmd
+  - External E:\Desktop\123\webrtc-p2p-video\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Local-only external prototype service on port `8099` while `start-signaling.cmd` is running.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: standalone P2P prototype only; no existing legacy/go2rtc/Tencent behavior changed.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no existing console UI/style change.
+- Validation:
+  - `node --check server.js`
+  - `node --check public\shared.js`
+  - Started the signaling server locally on `0.0.0.0:8099`.
+  - `GET http://127.0.0.1:8099/api/config` returned `ok: true`.
+  - `GET http://127.0.0.1:8099/api/rooms/robot/status` returned `ok: true`.
+  - Verified `push.html` and `watch.html` are served with distinct pusher/viewer HTML content.
+  - Browser smoke loaded the local P2P index page.
+- Follow-ups:
+  - Test with real camera permission in a normal browser and verify whether selected ICE candidate is direct host/srflx or relay.
+  - Add HTTPS/TURN only if cross-network testing requires it.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is outside the existing console app and does not touch control/Tank Trouble.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-27 11:05 - Video Link Agent - Correct 0522 Portable SRT Bridge Refresh
+
+- Scope:
+  - Investigated Windows `start-local` failure where FFmpeg opened `UGREEN Camera 4K` successfully but failed to connect to `srt://150.109.100.30:19091` with `I/O error`.
+  - Confirmed cloud `go2rtc-srt-bridge` could be `active` and listening on UDP `19091` while SRT handshakes failed, including from `127.0.0.1` on the server.
+  - Restarted only `go2rtc-srt-bridge` to recover the SRT ingest listener.
+  - Updated the correct external 0522 portable package so Windows/Linux/macOS `start-local` refreshes an idle SRT bridge before starting local legacy push, while refusing to restart it if `main-camera` already has an active producer.
+- Changed files:
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\windows\start-local.ps1
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\linux\start-local.sh
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\macos\start-local.sh
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External portable legacy sender now refreshes an idle SRT bridge before local start.
+- Cloud impact:
+  - Temporarily restarted only video SRT bridge service `go2rtc-srt-bridge`.
+  - No cloud service name, public port, Nginx config, control signal service, telemetry service, Tank Trouble service, or hosted web console changed.
+- Chain impact:
+  - Video link: SRT ingest recovery and external portable start behavior only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no code/style change.
+- Validation:
+  - Verified cloud UDP packets reached `150.109.100.30:19091`.
+  - Verified local and server-side SRT caller attempts failed before restarting `go2rtc-srt-bridge`.
+  - Restarted `go2rtc-srt-bridge` only; then FFmpeg test source successfully pushed to public SRT ingest.
+  - Ran correct Windows `start-local.cmd`; it succeeded and created one cloud `main-camera` producer.
+  - Ran `stop-local.cmd`; cloud `main-camera` producer count returned to `0`.
+  - Verified remote services active after cleanup: `go2rtc-srt-bridge`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `nginx`, `coturn`.
+  - `bash -n` passed for correct 0522 Linux/macOS `start-local.sh`.
+  - PowerShell parser validation passed for correct 0522 Windows `start-local.ps1`.
+- Follow-ups:
+  - If this recurs frequently, consider replacing the SRT-to-RTSP bridge with a direct ingest bridge that exits cleanly per session.
+- Cross-agent notes:
+  - Other Agents do not need to react; this change is video-link only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-25 18:19 - Video Link Agent - Hosted Console Tencent Status Text Sync
+
+- Scope:
+  - Synced the Tencent Cloud push status text fix to the hosted web console at `https://console.cityulive.com/`.
+  - Updated only the hosted frontend static bundle under `/opt/cloud-service-console-web/frontend/dist`; did not run a full backend redeploy.
+- Changed files:
+  - Remote `/opt/cloud-service-console-web/frontend/dist/index.html`
+  - Remote `/opt/cloud-service-console-web/frontend/dist/assets/index-WRBRTEao.js`
+  - Local `build\cloud-console-frontend-dist-fix.tar.gz`
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Hosted web console frontend static files updated.
+- Cloud impact:
+  - Cloud impact limited to hosted web console static frontend files.
+  - No cloud service name, public port, Nginx config, go2rtc video service, SRT bridge, control signal service, telemetry service, or Tank Trouble service changed.
+- Chain impact:
+  - Video link: hosted Tencent Cloud status text fix only.
+  - Control signal: no code/API/runtime change.
+  - Tank Trouble: no code/API/runtime change.
+  - UI: no global style/layout change.
+- Validation:
+  - `https://console.cityulive.com/?access_token=xhfang` references `/assets/index-WRBRTEao.js`.
+  - `https://console.cityulive.com/assets/index-WRBRTEao.js` returned `200`, contains the new Tencent status text, and no longer contains the affected `????` placeholders.
+  - Remote services remained active: `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - Browser users may need a hard refresh if an old JS asset is cached.
+- Cross-agent notes:
+  - Other Agents do not need to react; this only updates hosted video-link UI text.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-25 17:34 - Video Link Agent - Tencent Cloud Push Status Text Fix
+
+- Scope:
+  - Fixed the Tencent Cloud push signal card in the local streaming page so web-local Tencent status no longer displays literal `???` placeholder text.
+  - Replaced the affected values and notes with clear Chinese states for pushing, restorable, occupied by another user, and waiting for Tencent Cloud push start.
+- Changed files:
+  - frontend\src\pages\DashboardPage.tsx
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Frontend video-link UI text only.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: Tencent Cloud local-stream status text only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no global style/layout change.
+- Validation:
+  - `npm.cmd run build` in `frontend`.
+  - Text search confirmed the affected `???` placeholders are gone from `frontend\src\pages\DashboardPage.tsx`.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is a video-link UI text fix.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-22 17:07 - Video Link Agent - Correct 0522 Portable Config Fix
+
+- Scope:
+  - Corrected the active external pusher target to `go2rtc-portable-0522\go2rtc-portable`.
+  - Fixed Linux/macOS config loading so Python validation failures stop with the real config error instead of falling through to `CFG_CONFIG_PATH: unbound variable`.
+  - Made `sender.webrtcPreferredCodec` strict only for `transport.ingestMode = webrtc`; SRT/HTTP ingest now ignore invalid/non-applicable codec values and use `h264` internally.
+  - Added `_comment_*` option notes to Windows, Linux, and macOS config files in the correct 0522 portable package.
+  - Synchronized Windows, Linux, and macOS default config generators plus README guidance.
+- Changed files:
+  - External go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.windows.config.json
+  - External go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.linux.config.json
+  - External go2rtc-portable-0522\go2rtc-portable\config\sender-cloud.macos.config.json
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\linux\common.sh
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\macos\common.sh
+  - External go2rtc-portable-0522\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+  - External go2rtc-portable-0522\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External portable pusher Linux start config handling is less brittle.
+  - No Cloud Service Console app runtime changed.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: external pusher config handling/documentation only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - `bash -n` on all correct 0522 portable root `.sh` scripts plus `scripts\linux\*.sh` and `scripts\macos\*.sh`, 21 files total.
+  - JSON parse validation on correct 0522 Windows/Linux/macOS config files.
+  - PowerShell parser validation on correct 0522 `scripts\common\ConfigHelpers.ps1`.
+  - Python logic check confirmed SRT mode ignores invalid `sender.webrtcPreferredCodec`, while WebRTC mode still errors clearly.
+  - Python compile validation on correct 0522 Linux/macOS camera helpers.
+- Follow-ups:
+  - On the Linux sender machine, retry `bash start-local.sh` from `~/teleoperation/0522/go2rtc-portable`.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is external video pusher packaging/config handling only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-22 15:48 - Video Link Agent - External Legacy Portable Config Option Comments
+
+- Scope:
+  - Added `_comment_*` option notes to the latest WeChat external `telebot-main-0522\telebot-main\go2rtc-portable` shared config.
+  - Documented allowed/common values for capture format, resolution, frame rate, bitrate, viewer auto-open, delay marker, WebRTC codec, encoder override, ingest mode, and SRT timing options.
+  - Synchronized Windows, Linux, and macOS default config generators so newly generated configs keep the same option notes.
+  - Preserved the simplified same-server switching rule: edit only `cloud.serverHost` and plaintext `cloud.sshPassword`.
+- Changed files:
+  - External telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json
+  - External telebot-main-0522\telebot-main\go2rtc-portable\common\ConfigHelpers.ps1
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\common.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External portable pusher configs are easier to edit safely.
+  - No Cloud Service Console app runtime changed.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: external pusher config documentation only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - JSON parse validation on external `config\sender-cloud.config.json`.
+  - `bash -n` on all external root `.sh` scripts plus external `linux\*.sh` and `macos\*.sh` scripts.
+  - PowerShell parser validation on external `common\ConfigHelpers.ps1`.
+  - Config loader validation confirmed comment fields do not affect derived stream/server settings.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is external video pusher packaging/config documentation only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-22 15:35 - Video Link Agent - External Legacy Portable Linux NVIDIA NVENC Support
+
+- Scope:
+  - Added Linux NVIDIA NVENC support to the latest WeChat external `telebot-main-0522\telebot-main\go2rtc-portable` legacy sender package.
+  - Linux `sender.videoEncoder` now supports blank auto mode, `h264_nvenc`, and `libx264`.
+  - Blank auto mode probes `h264_nvenc` with FFmpeg first, then falls back to CPU `libx264`.
+  - Forced `h264_nvenc` now fails clearly if the Linux host lacks a usable NVIDIA driver/GPU/FFmpeg NVENC build.
+- Changed files:
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\start-sender.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External Linux legacy pusher can now use NVIDIA NVENC when available.
+  - No Cloud Service Console app runtime changed.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: external legacy Linux sender encoder selection changed.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - `bash -n` on all external root `.sh` scripts and all external `linux\*.sh` scripts, 21 files total.
+  - JSON parse validation on external `config\sender-cloud.config.json`.
+  - Search validation for Linux encoder references.
+- Follow-ups:
+  - On a real Linux NVIDIA machine, run `bash setup-local.sh` and `bash start-local.sh`; check the startup log shows `Video encoder : h264_nvenc`.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is external video pusher packaging only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-22 13:09 - Video Link Agent - External Legacy Portable macOS Support
+
+- Scope:
+  - Added macOS support to the latest WeChat external `telebot-main-0522\telebot-main\go2rtc-portable` legacy sender package.
+  - Added a `macos\` script set using AVFoundation camera detection, Homebrew dependency setup, and optional Apple VideoToolbox encoders.
+  - Updated root `.sh` entry points to dispatch automatically to Linux or macOS.
+  - Preserved the simplified config rule: on identical servers, edit only `cloud.serverHost` and plaintext `cloud.sshPassword`.
+- Changed files:
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\common.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\camera_helper.py
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\setup-local.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\start-local.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\start-sender.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\stop-local.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\stop-sender.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\list-cameras.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\deploy-cloud.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\full-setup.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\start-all.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\macos\stop-all.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\*.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json
+  - External telebot-main-0522\telebot-main\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External legacy pusher can now be prepared and started from macOS with `bash setup-local.sh` and `bash start-local.sh`.
+  - No Cloud Service Console app runtime changed.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: external legacy pusher packaging now covers macOS.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - `bash -n` on all external root `.sh` scripts and all external `macos\*.sh` scripts.
+  - `python -m py_compile` on external `macos\camera_helper.py`.
+  - JSON parse validation on external `config\sender-cloud.config.json`.
+  - Searched macOS scripts for stale Linux/old-layout references.
+- Follow-ups:
+  - On a real Mac, run `bash setup-local.sh`, grant Terminal camera permission if prompted, then run `bash start-local.sh`.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is external video pusher packaging only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-22 10:52 - Video Link Agent - Legacy Portable ServerHost-Only Switching Config
+
+- Scope:
+  - Simplified the latest WeChat external go2rtc portable pusher config so switching identical cloud servers only requires editing `cloud.serverHost` and `cloud.sshPassword`.
+  - Windows and Linux script loaders now derive `publicHost`, `sshHost`, SRT ingest URL, WHIP URL, viewer URL, STUN URL, and TURN URLs from `cloud.serverHost`.
+  - Added plaintext `cloud.sshPassword` lookup before falling back to the old `config/local-secrets.config.json`.
+- Changed files:
+  - External telebot-main-0522\telebot-main\go2rtc-portable\config\sender-cloud.config.json
+  - External telebot-main-0522\telebot-main\go2rtc-portable\common\ConfigHelpers.ps1
+  - External telebot-main-0522\telebot-main\go2rtc-portable\setup-local.ps1
+  - External telebot-main-0522\telebot-main\go2rtc-portable\full-setup.ps1
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\common.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\setup-local.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\linux\full-setup.sh
+  - External telebot-main-0522\telebot-main\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External legacy portable pusher config is cleaner for internal sharing.
+  - No Cloud Service Console app runtime changed.
+- Cloud impact:
+  - No cloud runtime changed, restarted, renamed, or redeployed.
+  - No public port or cloud service name changed.
+- Chain impact:
+  - Video link: external legacy pusher configuration only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - Windows `Get-SenderCloudConfig` derivation check verified generated SSH host, SRT ingest URL, viewer URL, and TURN/STUN URLs from `cloud.serverHost`.
+  - JSON parse validation for the portable config.
+  - `bash -n` validation for `linux\common.sh`, `linux\setup-local.sh`, `linux\full-setup.sh`, `linux\deploy-cloud.sh`, and `linux\start-local.sh`.
+- Follow-ups:
+  - On a real Linux host, run `bash setup-local.sh` once after filling `cloud.sshPassword` to authorize the new machine key.
+- Cross-agent notes:
+  - Other Agents do not need to react; this is external video pusher packaging only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 19:40 - Video Link Agent - Legacy Media-Aware Status Fix
+
+- Scope:
+  - Fixed cloud video status aggregation so legacy push state uses both sender heartbeat and go2rtc media activity.
+  - Fresh legacy sender heartbeat marks the old link active.
+  - If the sender heartbeat is stale but go2rtc producer bytes/packets are still increasing, the old link is also active with `liveReason: media`.
+  - If both heartbeat and media activity are stale for more than 60 seconds, the old link becomes stopped.
+- Changed files:
+  - backend\cloud_setup_bundle\telemetry_relay.py
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - Video status API now reports legacy live state from fresh sender heartbeat or fresh media counter activity.
+  - `producerVisible`, `producerBytes`, `producerPackets`, and media activity age are exposed for diagnostics.
+  - No EXE rebuild was needed.
+- Cloud impact:
+  - Updated `/opt/go2rtc-cloud/telemetry_relay.py` on `150.109.100.30`.
+  - Restarted only `go2rtc-telemetry-relay`.
+  - No public port, service name, Nginx route, go2rtc relay, SRT bridge, control broker, or Tank Trouble service changed.
+- Chain impact:
+  - Video link: changed status aggregation only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no local UI code changed.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\telemetry_relay.py`
+  - Cloud `systemctl is-active go2rtc-telemetry-relay` returned `active`.
+  - Cloud repeated `GET http://127.0.0.1:18081/api/video/status` samples returned `activeMode: legacy`, `legacy.live: true`, `legacy.liveReason: media`, and increasing `producerBytes` / `producerPackets`.
+  - Public web console API `GET https://console.cityulive.com/api/video/status?access_token=xhfang` returned `activeMode: legacy` and `legacy.liveReason: media`.
+  - Cloud `systemctl is-active go2rtc-cloud go2rtc-srt-bridge go2rtc-telemetry-relay go2rtc-control-signaling` returned all `active`.
+- Follow-ups:
+  - The live legacy media path currently reports stale heartbeat from `sourceHost: spark-6020` but active go2rtc media counters; investigate why that sender is not continuing heartbeat updates.
+- Cross-agent notes:
+  - Other Agents should treat `/api/video/status` legacy `live` as the authoritative UI occupancy field. `liveReason` explains whether it came from sender heartbeat or media activity.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 18:10 - Video Link Agent - Legacy Portable Windows AMF Startup Fix
+
+- Scope:
+  - Fixed the latest WeChat external go2rtc portable Windows sender so AMD AMF hardware encoding can be selected.
+  - Relaxed AMF selection when the runtime encode test passes but the periodic keyframe probe is inconclusive.
+  - Fixed AMD AMF FFmpeg profile from unsupported `baseline` to `constrained_baseline`.
+  - Fixed generated FFmpeg supervisor script corruption caused by embedding the heartbeat function in an expandable heredoc.
+  - Restored heartbeat startup as an outer function and added parser validation for generated launch scripts.
+  - Improved startup failure reporting to surface fatal FFmpeg stderr directly.
+- Changed files:
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-camera-push-to-cloud.ps1
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External Windows local sender behavior changed.
+  - No Cloud Service Console EXE rebuild was needed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+  - Cloud `go2rtc-srt-bridge.service` was checked and found active/listening on UDP `0.0.0.0:19091`.
+- Chain impact:
+  - Video link: changed external legacy local Windows push startup/encoder behavior only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app UI change.
+- Validation:
+  - PowerShell parser validation on `scripts\windows\start-camera-push-to-cloud.ps1`.
+  - Verified local FFmpeg exposes `h264_amf`.
+  - Direct AMF profile probe showed `constrained_baseline`, `main`, and `high` work while `baseline` fails.
+  - Ran `scripts\windows\start-local.ps1`; AMF selection reached `h264_amf (hardware)` before the remaining SRT network failure.
+  - Confirmed cloud SRT bridge service and UDP listener.
+- Follow-ups:
+  - Remaining observed issue is local FFmpeg `I/O error` connecting to `srt://150.109.100.30:19091`; check UDP 19091 network path/security group/firewall/NAT from the sender machine.
+- Cross-agent notes:
+  - No other Agent action required unless they package or diagnose this external Windows sender.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 17:50 - Video Link Agent - Legacy Portable Alternate Server Config Clarity
+
+- Scope:
+  - Clarified that plaintext `cloud.sshPassword` remains visible and editable in each OS config.
+  - Moved `cloud.sshPassword` next to `cloud.sshHost` / `cloud.sshUser` in Windows, Linux, and macOS configs.
+  - Added config comments and README guidance for another cloud server: edit `cloud.publicHost`, `cloud.sshHost`, `cloud.sshUser`, and `cloud.sshPassword` before running `setup-local`.
+- Changed files:
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.windows.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.linux.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.macos.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External local sender package config comments/docs changed only.
+  - No Cloud Service Console EXE rebuild was needed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: changed external legacy local push package config clarity only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app UI change.
+- Validation:
+  - JSON parse validation on Windows, Linux, and macOS configs.
+  - Confirmed all three configs expose `publicHost`, `sshHost`, `sshUser`, and `sshPassword`.
+  - Confirmed README documents the four fields for another cloud server.
+- Cross-agent notes:
+  - If another Agent packages this sender for a different server, update the four visible cloud fields in the OS-specific config.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 17:41 - Video Link Agent - Legacy Portable Password-Only Visible SSH Config
+
+- Scope:
+  - Cleaned the latest WeChat external go2rtc portable pusher configs so normal users only see plaintext `cloud.sshPassword`.
+  - Removed visible `cloud.sshKeyPath` from Windows, Linux, and macOS system configs.
+  - Kept internal default SSH key path fallback in scripts for compatibility and automatic later connections.
+  - Updated README wording and default config generators.
+  - Aligned generated default capture/output resolution to `1280x720`.
+- Changed files:
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.windows.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.linux.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\config\sender-cloud.macos.config.json
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\macos\common.sh
+  - External go2rtc-portable-0520\go2rtc-portable\README.md
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External local sender package config shape changed only.
+  - No Cloud Service Console EXE rebuild was needed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: changed external legacy local push package config visibility only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app UI change.
+- Validation:
+  - Confirmed `sshKeyPath` no longer appears in `config` or `README.md`.
+  - JSON parse validation on all config files.
+  - Confirmed Windows/Linux/macOS configs still contain `cloud.sshPassword`.
+  - PowerShell parser validation on touched scripts.
+  - `bash -n` on touched Linux/macOS shell scripts.
+- Cross-agent notes:
+  - Other agents should not expect `cloud.sshKeyPath` to be user-visible in the external sender configs.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 16:39 - Video Link Agent - Legacy Portable Root Cleanup
+
+- Scope:
+  - Cleaned the latest WeChat external go2rtc portable pusher root at E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0520\go2rtc-portable.
+  - Root now exposes only daily-use entries plus `README.md`, `config`, `logs`, `scripts`, and `internal`.
+  - Moved bundled runtime files and legacy YAML templates into `internal\runtime`.
+  - Moved viewer web assets into `internal\www`.
+  - Moved historical handoff/boundary docs into `internal\docs`.
+  - Updated helper/deploy paths to use the new internal web/runtime locations.
+- Changed files:
+  - External go2rtc-portable-0520\go2rtc-portable\README.md
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\windows\deploy-go2rtc-cloud.ps1
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-local.ps1
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-tencent.cmd
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\windows\start-sender-template.cmd
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\linux\deploy-cloud.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\macos\common.sh
+  - External go2rtc-portable-0520\go2rtc-portable\internal\*
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External local sender package layout changed only.
+  - No Cloud Service Console EXE rebuild was needed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: changed external legacy local push package layout only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app UI change.
+- Validation:
+  - PowerShell parser validation on touched Windows scripts.
+  - JSON parse validation on sender config files.
+  - `bash -n` on root, Linux, and macOS shell scripts.
+  - Path check confirmed internal runtime, web, and docs assets exist.
+- Cross-agent notes:
+  - Other agents should look under `internal\www`, `internal\runtime`, or `internal\docs` if they inspect this external sender package.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-21 16:10 - Video Link Agent - Legacy Portable macOS and Per-OS Configs
+
+- Scope:
+  - Updated external latest WeChat go2rtc portable pusher at E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0520\go2rtc-portable.
+  - Added macOS daily-use local push support through the existing root setup-local.sh, start-local.sh, and stop-local.sh wrappers.
+  - Added scripts\macos with Homebrew dependency setup, AVFoundation camera selection, and VideoToolbox/libx264 encoder selection.
+  - Split sender config into per-OS files and kept old sender-cloud.config.json as a pointer only.
+  - System configs now default to Hong Kong 150.109.100.30 and plaintext cloud.sshPassword for internal SSH key bootstrap.
+- Changed files:
+  - External go2rtc-portable-0520\go2rtc-portable\setup-local.sh
+  - External go2rtc-portable-0520\go2rtc-portable\start-local.sh
+  - External go2rtc-portable-0520\go2rtc-portable\stop-local.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\macos\*
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\linux\common.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\linux\setup-local.sh
+  - External go2rtc-portable-0520\go2rtc-portable\scripts\common\ConfigHelpers.ps1
+  - External Windows local sender scripts and config JSON files
+  - docs\VIDEO_LINK_AGENT.md
+  - frontend\IMPLEMENTATION_LOG.md
+  - docs\SHARED_AGENT_STATUS.md
+- Runtime impact:
+  - External local sender script package behavior changed.
+  - No Cloud Service Console EXE rebuild was needed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: changed external legacy local push scripts only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app UI change.
+- Validation:
+  - bash -n on touched shell scripts.
+  - python -m py_compile on camera helpers and heartbeat helper.
+  - PowerShell parser validation on touched Windows scripts.
+  - JSON parse validation on config files.
+  - Windows config helper smoke test for per-OS default config path.
+- Cross-agent notes:
+  - Other agents should use the OS-specific config files if they inspect or package the external sender.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-20 21:02 - Video Link Agent - Local Stream Auto Downgrade Startup
+
+- Scope:
+  - Updated desktop mini app local legacy push startup behavior.
+  - Bad camera capture attempts are now rejected when FFmpeg logs decode/capture errors such as `No JPEG data found in image`.
+  - The backend retries safer/lower capture modes and saves the final working config.
+  - Frontend local-stream fields refresh from the backend result so users see the downgraded working values.
+- Changed files:
+  - `backend\local_stream.py`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Desktop mini app local legacy push behavior changed.
+  - Rebuilt and copied local runtime EXEs to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: changed local legacy push startup fallback behavior.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: local-stream config fields now reflect the final successful downgraded config after start.
+- Validation:
+  - `python -m py_compile backend\local_stream.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- backend\local_stream.py frontend\src\pages\DashboardPage.tsx`
+  - `cmd /c npm run installer:build`
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+### 2026-05-19 17:13 - Video Link Agent - Legacy Portable Linux NVIDIA Encoder Support
+
+- Scope:
+  - Updated the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable`.
+  - Linux now reads `sender.videoEncoder` from config.
+  - Added Linux support for `h264_nvenc`, `hevc_nvenc`, and `libx264`.
+  - Linux auto selection now tries `h264_nvenc` first, then falls back to `libx264`.
+- Changed files:
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\scripts\linux\common.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\scripts\linux\start-sender.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0519\go2rtc-portable\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - External legacy Linux local pusher can use NVIDIA H.264/HEVC encoders when FFmpeg exposes them.
+  - Cloud Service Console EXE/web runtime was not rebuilt or redeployed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: Linux sender encoder options expanded.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - `bash -n setup-local.sh start-local.sh stop-local.sh scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+  - Fake FFmpeg encoder-list smoke test confirmed auto `h264_nvenc`, explicit `hevc_nvenc`, fallback `libx264`, and clear failure when explicit `hevc_nvenc` is unavailable.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-19 15:30 - Video Link Agent - Legacy Portable Linux Root Entries Restored
+
+- Scope:
+  - Added `setup-local.sh`, `start-local.sh`, and `stop-local.sh` back to the external legacy go2rtc portable pusher root.
+  - Root now exposes Windows and Linux daily-use entries only: setup/start/stop for each platform.
+  - Other maintenance/helper scripts remain under `scripts\`.
+- Changed files:
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\setup-local.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\start-local.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\stop-local.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - External legacy local pusher package layout changed.
+  - Cloud Service Console EXE/web runtime was not rebuilt or redeployed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: Linux daily-use entry scripts are easier to access.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - Root script-entry check confirmed only six daily-use scripts are exposed.
+  - `bash -n setup-local.sh start-local.sh stop-local.sh scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+  - PowerShell scriptblock parse check for all `scripts\windows\*.ps1`.
+  - Target check confirmed the Linux wrappers point to existing scripts under `scripts\linux`.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-19 15:25 - Video Link Agent - Legacy Portable Root Entry Cleanup
+
+- Scope:
+  - Reorganized the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable`.
+  - Kept only `setup-local.cmd`, `start-local.cmd`, and `stop-local.cmd` as root user-facing command entries.
+  - Moved other Windows/Linux/helper/maintenance scripts under `scripts\`.
+- Changed files:
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\setup-local.cmd`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\start-local.cmd`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\stop-local.cmd`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\scripts\...`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - External legacy local pusher package layout changed.
+  - Cloud Service Console EXE/web runtime was not rebuilt or redeployed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+- Chain impact:
+  - Video link: package entry layout is cleaner; local start/stop/setup behavior preserved.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - PowerShell scriptblock parse check for all `scripts\windows\*.ps1`.
+  - `bash -n scripts/linux/*.sh scripts/legacy-entrypoints/linux/*.sh`
+  - Root script-entry check confirmed only `setup-local.cmd`, `start-local.cmd`, and `stop-local.cmd` remain in the package root.
+  - Target check confirmed those three command files point to existing scripts under `scripts\windows`.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+### 2026-05-19 14:57 - Video Link Agent - Legacy Portable Stop-All Local Push Only
+
+- Scope:
+  - Updated the external legacy go2rtc portable pusher at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable`.
+  - Changed `stop-all` so it only stops local video push/sender processes.
+  - Removed the previous remote cloud service stop behavior from the Windows/Linux `stop-all` entry scripts.
+- Changed files:
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\stop-all.ps1`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\linux\stop-all.sh`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - External legacy local pusher behavior changed.
+  - Cloud Service Console EXE/web runtime was not rebuilt or redeployed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No cloud service was stopped, restarted, renamed, or redeployed.
+  - The change prevents this pusher package from stopping shared cloud services through `stop-all`.
+- Chain impact:
+  - Video link: stop action is safer and local-only.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no code/style change.
+- Validation:
+  - PowerShell scriptblock parse check for `stop-all.ps1`.
+  - `bash -n E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0515\go2rtc-portable\linux\stop-all.sh`
+  - `rg` keyword check confirmed no remote stop calls remain in `stop-all.ps1` or `linux\stop-all.sh`.
+- Cross-agent notes:
+  - No other Agent action required.
+  - Other Agents can assume the legacy pusher `stop-all` no longer shuts down shared cloud services.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-19 13:45 - Video Link Agent - Teammate Frontend Tencent Playback Fixes
+
+- Scope:
+  - Updated the external teammate frontend at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518`.
+  - Fixed Tencent preview aspect ratio so it stays normal instead of becoming flat.
+  - Fixed `legacy -> tencent` video mode switching so it should not require a browser refresh.
+- Changed files:
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\app.py`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\app.js`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\styles.css`
+  - `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\VIDEO_LINK_INTEGRATION_NOTE.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - External teammate frontend changed.
+  - Cloud Service Console EXE/web runtime was not rebuilt or redeployed.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No public ports, Nginx routes, service names, go2rtc services, control signal services, or Tank Trouble services changed.
+- Chain impact:
+  - Video link: Tencent playback integration in teammate frontend is more stable.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: only external teammate frontend video preview CSS changed.
+- Validation:
+  - `python -m py_compile E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\app.py`
+  - `node --check E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\frontend-0518\frontend\static\app.js`
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-19 13:30 - Video Link Agent - Console Domain Updated To cityulive.com
+
+- Scope:
+  - Recorded the new hosted web console domain.
+  - New current entries are `https://console.cityulive.com/?access_token=xhfang` and `https://console.cityulive.com/?access_token=cmc5006`.
+  - Marked the old `console.cityulive.xyz` console entry as deprecated/broken for current use.
+- Changed files:
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+- Runtime impact:
+  - Documentation-only update.
+  - No EXE rebuild, installer build, or hosted web-console redeploy was performed.
+- Cloud impact:
+  - No cloud runtime was changed by this agent.
+  - User reported the new domain is already active.
+- Chain impact:
+  - Video link: browser Tencent push should use the new HTTPS console entry for secure camera/microphone access.
+  - Control signal: no code/API change.
+  - Tank Trouble: no code/API change.
+  - UI: no app code/style change.
+- Validation:
+  - `https://console.cityulive.com/?access_token=xhfang` returned `200`.
+  - `https://console.cityulive.com/?access_token=cmc5006` returned `200`.
+  - `https://console.cityulive.com/api/access?access_token=xhfang` returned admin role.
+  - `https://console.cityulive.com/api/access?access_token=cmc5006` returned user role.
+- Cross-agent notes:
+  - Other agents should share `https://console.cityulive.com/?access_token=...` as the current web console entry.
+  - Keep `http://150.109.100.30:18080/?access_token=...` only as fallback/admin recovery.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-18 16:30 - Video Link Agent - Standalone Tencent Linux Pusher Codec Selection
+
+- Scope:
+  - Updated the standalone Tencent Cloud WebRTC Linux pusher utility at `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux`.
+  - Added configurable codec selection for `h264`, `vp8`, `vp9`, and `hevc`.
+  - The browser pusher page now remembers the chosen codec and rewrites the Tencent push URL with codec flags before push starts.
+- Changed files:
+  - `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\run-tencent-webrtc-push.sh`
+  - `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\config.env`
+  - `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\config.example.env`
+  - `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\tencent-webrtc-pusher.html`
+  - `E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\README.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Standalone local Tencent pusher behavior changed.
+  - No Cloud Service Console EXE, installer, or hosted web-console bundle changed in this task.
+- Cloud impact:
+  - No cloud runtime changed.
+  - No go2rtc service, telemetry relay, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: standalone Tencent local push tool can now switch codec families from config/UI.
+  - Control signal: no change.
+  - Tank Trouble: no change.
+  - UI: no in-app console UI change.
+- Validation:
+  - `bash -n E:\Desktop\123\tencent-linux\tencent-webrtc-pusher-linux\run-tencent-webrtc-push.sh`
+  - Inline JavaScript syntax check for `tencent-webrtc-pusher.html` via `node`
+  - URL rewrite smoke check via `node` confirmed `h264`, `vp9`, and `hevc` rewrite behavior
+- Follow-ups:
+  - Real device/browser push should still be tested on the target Linux machine because codec availability depends on browser and hardware support.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 23:22 - Video Link Agent - HTTPS Console Entry Documentation Sync
+
+- Scope:
+  - Documented that the hosted web console has migrated to HTTPS.
+  - The preferred browser entry is now `https://console.cityulive.xyz/?access_token=...`.
+  - Browser-side camera, microphone, screen capture, and Tencent Cloud web push should use the HTTPS domain entry instead of the direct IP/port HTTP fallback.
+- Changed files:
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+- Runtime impact:
+  - Documentation-only update in this entry.
+  - No local EXE rebuild and no hosted web-console redeploy were performed for this documentation sync.
+- Cloud impact:
+  - No cloud runtime changed in this entry.
+  - Current deployed HTTPS entry remains `https://console.cityulive.xyz/?access_token=...`.
+  - Direct fallback remains `http://150.109.100.30:18080/?access_token=...`, but browser media capture should not use it.
+- Chain impact:
+  - Video link: clarifies the required secure browser entry for web Tencent push.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: no app code/style change.
+- Validation:
+  - Previously verified `https://console.cityulive.xyz/` returned `200` with title `Cloud Service Console v3`.
+  - Previously verified `https://console.cityulive.xyz/api/access` returned admin/user roles for valid access tokens.
+  - Previously verified certificate subject `CN=console.cityulive.xyz`, issuer Let's Encrypt, expiry `2026-08-13`.
+- Follow-ups:
+  - Share HTTPS links for browser testing. Avoid using the direct HTTP `18080` entry for camera/microphone/screen capture tests.
+- Cross-agent notes:
+  - Other agents should treat `https://console.cityulive.xyz/?access_token=...` as the primary web-console entry.
+  - Do not restore `/console/` unless explicitly requested.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 18:13 - Video Link Agent - Web Tencent Push Status Proxy And Occupancy
+
+- Scope:
+  - Added same-origin console backend proxy for Tencent video status updates at `/api/video/tencent/{start|heartbeat|stop}`.
+  - Web Tencent push status heartbeats now go through the console backend proxy instead of direct browser-to-`18081` HTTP calls from an HTTPS page.
+  - The local-stream page now polls video push status while open.
+  - When another web client is actively pushing Tencent Cloud video, the web Tencent push start button is disabled until that stream stops or times out.
+  - Tencent push preview is rebound when the page becomes visible or focused again, reducing black preview after switching tabs/windows.
+- Changed files:
+  - `backend\main.py`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+  - Hosted web console was redeployed and `cloud-service-console-web.service` was restarted.
+- Cloud impact:
+  - Hosted web console backend and assets on old server `150.109.100.30` changed.
+  - The web console backend now proxies Tencent video status updates to the existing telemetry relay endpoint.
+  - No go2rtc video service, SRT bridge, telemetry relay service, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: web Tencent push status now updates the server; web clients can see Tencent push occupancy.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: local-stream Tencent push button disabled state and preview recovery changed.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `python -m py_compile backend\main.py`
+  - `git diff --check -- backend\main.py frontend\src\api\cloudApi.ts frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.xyz/` references `/assets/index-3fT14QW5.js` and `/assets/index-D38m5dXn.css`.
+  - Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+  - Public `https://console.cityulive.xyz/api/video/status` returned video status JSON.
+  - Existing services stayed `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - Users should hard refresh hosted web pages and restart EXE clients to pick up the new frontend/backend bundle.
+- Cross-agent notes:
+  - No other Agent needs to adjust control signal or Tank Trouble code.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 17:38 - Video Link Agent - Browser Camera Display And Per-Window Online Count
+
+- Scope:
+  - Updated web local-stream camera status so browser-enumerated `videoinput` counts are not shown as exact physical camera counts.
+  - Browser camera detection dedupes devices by `groupId`, normalized label, or `deviceId`; the web signal now shows camera availability.
+  - Online presence now uses a per-page/window in-memory client id instead of a shared browser storage id.
+  - Online heartbeat now runs at the App level, so open admin web pages, user web pages, and desktop EXE windows are counted while open.
+- Changed files:
+  - `frontend\src\App.tsx`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+  - Hosted web console was redeployed and `cloud-service-console-web.service` was restarted.
+- Cloud impact:
+  - Hosted web console assets on old server `150.109.100.30` changed.
+  - No go2rtc video service, SRT bridge, telemetry relay, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: web Tencent/local-stream camera status now avoids misleading duplicate camera counts.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: shared online count behavior changed so each open console window/tab/client counts separately.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.xyz/` references `/assets/index-gpzQKaw3.js` and `/assets/index-B2hd1Wbt.css`.
+  - Public `https://console.cityulive.xyz/api/access` returned admin role for token `xhfang`.
+  - Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+  - Public online heartbeat smoke test with three temporary client ids changed count from `1` to `2 -> 3 -> 4`, then returned to `1` after leave calls.
+  - Existing services stayed `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - Users should hard refresh hosted web pages and restart EXE clients to pick up the new frontend bundle.
+- Cross-agent notes:
+  - Other agents should treat `/api/online/*` as shared console presence; each open window/tab/client is now an individual presence client.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 17:21 - Video Link Agent - Tencent Push Parameter Locking
+
+- Scope:
+  - Updated local-stream form behavior for Tencent Cloud push mode.
+  - When the Tencent Cloud push panel is open or Tencent Cloud push is running, legacy-only options become dimmed and disabled.
+  - Still editable in Tencent mode: `鏉堟挸鍤崚鍡氶哺閻滃樃, `閻╊喗鐖ｇ敮褏宸糮, and `鐟欏棝顣堕惍浣哄芳`.
+  - Disabled in Tencent mode: local camera name, input format, encoder, capture resolution, capture FPS, legacy ingest protocol, SRT latency/packet controls, timeout, drop-late-packets, current-server toggle, public host/port, HTTP ingest, and SRT ingest.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+  - Hosted web console was redeployed and `cloud-service-console-web.service` was restarted.
+- Cloud impact:
+  - Hosted web console assets on old server `150.109.100.30` changed.
+  - No go2rtc video service, SRT bridge, telemetry relay, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: Tencent Cloud push UI now clearly locks unsupported legacy options.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: scoped local-stream form styling and disabled states changed.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx frontend\src\styles\globals.css frontend\src\styles\theme.css`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `https://console.cityulive.xyz/` references `/assets/index-De224WQ0.js` and `/assets/index-B2hd1Wbt.css`.
+  - Public `https://console.cityulive.xyz/api/access` returned admin role for token `xhfang`.
+  - Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+  - Existing services stayed `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - No other Agent needs to adjust control signal or Tank Trouble code.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 17:01 - Video Link Agent - HTTPS Console Entry Enabled
+
+- Scope:
+  - Enabled HTTPS for hosted web console domain `console.cityulive.xyz`.
+  - Nginx now redirects `http://console.cityulive.xyz/...` to HTTPS.
+  - Nginx terminates TLS on `443` and proxies `https://console.cityulive.xyz/...` to `http://127.0.0.1:18080`.
+  - Unknown port-80 hostnames still return `404`; old `/console/` was not restored.
+- Changed files:
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - Remote old server:
+    - `/etc/nginx/conf.d/cloud-service-console-https.conf`
+    - Backup `/etc/nginx/conf.d/cloud-service-console-https.conf.bak-before-ssl-20260515170023`
+    - Certificate `/etc/letsencrypt/live/console.cityulive.xyz/fullchain.pem`
+    - Private key `/etc/letsencrypt/live/console.cityulive.xyz/privkey.pem`
+- Runtime impact:
+  - Reloaded only Nginx.
+  - No EXE rebuild was needed because no app code changed.
+  - `cloud-service-console-web.service` was not restarted.
+- Cloud impact:
+  - Public `443/tcp` is now active for `console.cityulive.xyz`.
+  - Preferred web console entries are `https://console.cityulive.xyz/?access_token=xhfang` and `https://console.cityulive.xyz/?access_token=cmc5006`.
+  - Direct fallback entry remains `http://150.109.100.30:18080/?access_token=...`.
+  - No go2rtc video service, SRT bridge, telemetry relay, control signaling broker, Tank Trouble service, coturn, or hosted web console process was restarted.
+- Chain impact:
+  - Video link: web Tencent Cloud push can now run in a browser secure context and request camera/screen permission.
+  - Control signal: no broker/API/service change.
+  - Tank Trouble: no game/service change.
+  - UI: no app code/style change in this step.
+- Validation:
+  - `Resolve-DnsName console.cityulive.xyz -Type A` returned `150.109.100.30`.
+  - `nslookup console.cityulive.xyz` via `8.8.8.8`, `1.1.1.1`, and `119.29.29.29` returned `150.109.100.30`.
+  - Remote certbot issuance succeeded; certificate expires on `2026-08-13`.
+  - Remote `sudo nginx -t` passed.
+  - Remote `systemctl reload nginx` succeeded.
+  - Remote `ss -ltnp` showed `80`, `443`, and `18080` listening.
+  - Public `https://console.cityulive.xyz/?access_token=xhfang` returned `200` and the app shell.
+  - Public `http://console.cityulive.xyz/?access_token=xhfang` returned `301` to HTTPS.
+  - Public `https://console.cityulive.xyz/api/access` returned admin role for `xhfang` and user role for `cmc5006`.
+  - Public `https://console.cityulive.xyz/api/health` returned `backend-ready`.
+  - Existing services stayed `active`: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `coturn`.
+- Follow-ups:
+  - Use HTTPS entry for browser camera/screen Tencent Cloud push testing.
+- Cross-agent notes:
+  - Do not restore the old `/console/` path unless explicitly requested.
+  - Preserve the `console.cityulive.xyz` Nginx server blocks when editing Nginx configs.
+- Build / release:
+  - EXE installer built: no, no app code changed.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 16:41 - Video Link Agent - Web Local Push Blocked-Camera Visibility
+
+- Scope:
+  - Fixed hosted web local-stream visibility when public HTTP blocks browser camera enumeration.
+  - Web admins now still see `閺堫剙婀撮幒銊︾ウ` while the browser camera probe is checking or blocked.
+  - The page shows `PERMISSION BLOCKED` / `鐞氼偅绁荤憴鍫濇珤闂冪粯顒沗 for non-HTTPS camera blocking.
+  - `瀵偓婵鍚樼拋顖欑隘閹恒劍绁 is disabled with a tooltip when browser camera/screen capture is blocked by non-HTTPS.
+  - Old local go2rtc/FFmpeg `瀵偓婵甯瑰ù涔?remains disabled in web mode.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+  - Hosted web console was redeployed and `cloud-service-console-web.service` was restarted.
+- Cloud impact:
+  - Hosted web console assets on old server `150.109.100.30` changed.
+  - No go2rtc video service, SRT bridge, telemetry relay, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: web-side local-stream entry now exposes the camera-permission blocking reason instead of disappearing.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: scoped local-stream page and sidebar behavior changed; global style was not refactored.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public web index references `/assets/index-DTHba6P5.js`.
+  - Public `http://150.109.100.30:18080/api/access` returned admin role for token `xhfang`.
+  - Public `http://150.109.100.30:18080/api/health` returned `backend-ready`.
+  - Existing services stayed `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - Actual browser camera/screen capture on the public web entry still requires HTTPS or localhost.
+- Cross-agent notes:
+  - Frontend teammates should expect `閺堫剙婀撮幒銊︾ウ` to appear for web admins even when public HTTP blocks camera enumeration, so the page can show the reason.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 16:16 - Video Link Agent - Web Local Tencent Push Entry
+
+- Scope:
+  - Added the local-stream entry behavior for hosted web mode.
+  - Web mode probes browser camera availability and gates `閺堫剙婀撮幒銊︾ウ` by browser camera/security state.
+  - Old local go2rtc/FFmpeg `瀵偓婵甯瑰ù涔?is disabled in web mode.
+  - Tencent Cloud Live WebRTC push remains the only enabled push path in web mode.
+  - Web mode no longer polls desktop-only local-stream backend status/config APIs.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+  - Hosted web console was redeployed and `cloud-service-console-web.service` was restarted.
+- Cloud impact:
+  - Hosted web console assets on old server `150.109.100.30` changed.
+  - No go2rtc video service, SRT bridge, telemetry relay, control signaling broker, Tank Trouble service, Nginx route, public port, or cloud service name changed.
+- Chain impact:
+  - Video link: web-side Tencent Cloud push entry is now available when browser camera/security allows it.
+  - Control signal: no service/API change.
+  - Tank Trouble: no game/service change.
+  - UI: scoped local-stream page behavior changed; global style was not refactored.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `git diff --check -- frontend\src\pages\DashboardPage.tsx`
+  - `cmd /c npm run installer:build`
+  - `python scripts\deploy_web_console.py`
+  - Public `http://150.109.100.30:18080/api/access` returned admin role for token `xhfang`.
+  - Public `http://150.109.100.30:18080/api/access` returned user role for token `cmc5006`.
+  - Public web index references `/assets/index-DTHba6P5.js`.
+  - Public `http://150.109.100.30:18080/api/health` returned `backend-ready`.
+  - Existing services stayed `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+- Follow-ups:
+  - Public IP HTTP cannot expose camera permissions in browsers. A later visibility fix keeps the admin entry visible when the browser reports the camera probe as blocked.
+- Cross-agent notes:
+  - Frontend teammates should expect the web `閺堫剙婀撮幒銊︾ウ` nav item to be capability-gated by browser camera/security.
+  - No other Agent needs to change control signal or Tank Trouble code for this step.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 15:40 - Video Link Agent - Prepare HTTPS Console Domain
+
+- Scope:
+  - Prepared old server `150.109.100.30` for future HTTPS web-console access through `console.cityulive.xyz`.
+  - Purpose is to support browser camera/microphone permission for future web Tencent push.
+- Changed files:
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - Remote old server:
+    - Added `/etc/nginx/conf.d/cloud-service-console-https.conf`.
+    - Created backup `/etc/nginx/conf.d/cloud-service-console-https.conf.bak-20260515153927`.
+    - Installed certbot at `/usr/bin/certbot`.
+- Runtime impact:
+  - Reloaded only `nginx`.
+  - No EXE rebuild was needed because no app code changed in this step.
+- Cloud impact:
+  - Nginx host-only HTTP reverse proxy for `console.cityulive.xyz` now points to `http://127.0.0.1:18080`.
+  - HTTPS is not active yet because DNS for `console.cityulive.xyz` is missing and port `443` is not listening.
+  - No video streaming service, control signaling broker, telemetry relay, SRT bridge, coturn, hosted web console service, or Tank Trouble service restart was performed.
+- Chain impact:
+  - Video link: future web Tencent push can use this HTTPS domain once DNS/cert are finished.
+  - Control signal: no broker/service change.
+  - Tank Trouble: no game service change.
+  - UI: future public web entry is intended to be `https://console.cityulive.xyz/?access_token=...`, but it is not ready until DNS and certbot are completed.
+- Validation:
+  - `Resolve-DnsName console.cityulive.xyz` currently returns no record.
+  - `Resolve-DnsName cityulive.xyz` still resolves to Tencent Cloud Live CDN.
+  - Host-header check `Host: console.cityulive.xyz` on `http://150.109.100.30/` returned the web console app shell.
+  - Old `/console/` path remains `404`.
+  - `http://150.109.100.30:18080/api/access` with admin token still returns `200`.
+  - `Test-NetConnection 150.109.100.30 -Port 443` failed as expected because no certificate/443 listener is active yet.
+  - Existing services remained `active`: `nginx`, `cloud-service-console-web`, `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `coturn`.
+- Follow-ups:
+  - Add DNS record `console.cityulive.xyz A 150.109.100.30`.
+  - Allow TCP `443` in the cloud security group.
+  - Then run certbot for `console.cityulive.xyz`.
+- Cross-agent notes:
+  - Do not repoint root domain `cityulive.xyz`; it is still Tencent Cloud Live/CDN pull domain.
+  - Do not restore the old `/console/` Nginx path.
+- Build / release:
+  - EXE installer built: no, no app code changed.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 15:05 - Video Link Agent - Heartbeat Timeout Stops Video Mode
+
+- Scope:
+  - Updated old server video status behavior for both `legacy` and `tencent` push modes.
+  - More than 60 seconds without a heartbeat now returns `state: "stopped"` and `live: false` instead of keeping the mode as stale/yellow.
+- Changed files:
+  - `backend\cloud_setup_bundle\telemetry_relay.py`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - Remote old server:
+    - Updated `/opt/go2rtc-cloud/telemetry_relay.py`.
+    - Created backup `/opt/go2rtc-cloud/telemetry_relay.py.bak-heartbeat-timeout-20260515150414`.
+- Runtime impact:
+  - Restarted only `go2rtc-telemetry-relay`.
+  - Desktop EXE runtime was rebuilt and copied to `E:\Cloud-Service-Console`.
+- Cloud impact:
+  - Old server video status API behavior changed.
+  - No public port, Nginx rule, or cloud service name changed.
+  - No go2rtc video ingest/playback service, control signaling broker, Tank Trouble service, coturn, Nginx, or hosted web console restart was performed.
+- Chain impact:
+  - Video link: stale heartbeat handling changed for `legacy` and `tencent`.
+  - Control signal: no service or API change.
+  - Tank Trouble: no service or game change.
+  - UI: existing status card now receives `stopped` after the 60-second timeout and will show the stopped/gray state.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\telemetry_relay.py`
+  - Local snapshot smoke check confirmed 59-second heartbeat is `active` and 61-second heartbeat is `stopped` for both modes.
+  - Remote `python3 -m py_compile /tmp/telemetry_relay.py.codex.*`
+  - Remote constants check confirmed both timeout constants are `60`.
+  - Remote `systemctl is-active go2rtc-telemetry-relay` returned `active`.
+  - Existing services before and after remained `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`, `cloud-service-console-web`.
+  - Public `http://150.109.100.30:18081/api/video/status` returned `legacy.state: "stopped"`, `legacy.staleAfterSec: 60`, and `tencent.staleAfterSec: 60`.
+  - `cmd /c npm run installer:build`
+- Follow-ups:
+  - None for other agents.
+- Cross-agent notes:
+  - Frontend teammates polling `/api/video/status` should treat `stopped` after `staleAfterSec: 60` as the normal timeout result.
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Copied local runtime: `E:\Cloud-Service-Console\Cloud Service Console.exe`, `E:\Cloud-Service-Console\cloud-console-backend.exe`, `E:\Cloud-Service-Console\Cloud Service Console Setup.exe`, `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 14:37 - Video Link Agent - Remove Nginx Console Entry
+
+- Scope:
+  - Removed the Nginx-based `/console/` web console entry on old server `150.109.100.30`.
+  - Future web console access should use only `http://150.109.100.30:18080/?access_token=...`.
+- Changed files:
+  - Remote old server:
+    - Disabled `/etc/nginx/conf.d/cloud-service-console-web.conf`.
+    - Created backup `/etc/nginx/conf.d/cloud-service-console-web.conf.bak-disable-console-20260515143642`.
+    - Kept disabled copy `/etc/nginx/conf.d/cloud-service-console-web.conf.disabled-20260515143642`.
+- Runtime impact:
+  - Reloaded only `nginx`.
+  - `cloud-service-console-web.service` remains active on port `18080`.
+  - `http://150.109.100.30/console/` is intentionally unavailable.
+  - `http://150.109.100.30/api/`, `/assets/`, `/flags/`, and `/tank-trouble/` no longer proxy to the standalone web console through Nginx port 80.
+- Cloud impact:
+  - Old server Nginx config changed.
+  - No public ports or service names changed.
+  - No go2rtc, control signaling, telemetry, SRT bridge, coturn, cloud web service, or Tank Trouble service restart was performed.
+- Chain impact:
+  - Video link: no streaming service change.
+  - Control signal: no broker/service change.
+  - Tank Trouble: no game service change.
+  - UI: web console must be opened through `:18080`.
+- Validation:
+  - Remote `nginx -t`.
+  - Remote `systemctl reload nginx`.
+  - Existing services before and after remained `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`, `cloud-service-console-web`.
+  - Public `http://150.109.100.30/console/?access_token=xhfang` returned `404`.
+  - Public `http://150.109.100.30/api/access` returned `404`.
+  - Public `http://150.109.100.30:18080/api/access` with admin token returned `200`.
+- Follow-ups:
+  - Share only the `:18080` links going forward.
+- Cross-agent notes:
+  - Do not recreate `/etc/nginx/conf.d/cloud-service-console-web.conf` unless the user explicitly asks to restore the Nginx `/console/` entry.
+- Build / release:
+  - EXE installer built before this Nginx change: yes, `0.3.68`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 14:11 - Video Link Agent - Web Console Deployment Sync
+
+- Scope:
+  - Synced the hosted standalone web console on old server `150.109.100.30`.
+  - Deployed the current web-console build under `/opt/cloud-service-console-web`.
+  - Preserved existing admin/user access tokens.
+- Changed files:
+  - Remote old server:
+    - `/opt/cloud-service-console-web/backend`
+    - `/opt/cloud-service-console-web/frontend/dist`
+    - `/opt/cloud-service-console-web/storage`
+    - `/opt/cloud-service-console-web/cloud-console-web.env`
+    - `/etc/systemd/system/cloud-service-console-web.service`
+  - Local generated package:
+    - `build\cloud-service-console-web`
+    - `build\cloud-service-console-web.tar.gz`
+- Runtime impact:
+  - Restarted only `cloud-service-console-web.service`.
+  - Hosted web console now includes the latest overview layout with `閸忣剛缍夐崗銉ュ經`, `鐟欏棝顣堕幒銊︾ウ閻樿埖鈧梗, and `閹貉冨煑娣団€冲娇閻樿埖鈧梗.
+  - Existing `:18080` entry point remains available. The later 14:37 update intentionally disabled the Nginx `/console/` entry.
+- Cloud impact:
+  - Old server changed only for standalone web-console service files.
+  - No public ports or cloud service names changed.
+  - No go2rtc, control signaling, telemetry, SRT bridge, Nginx, coturn, or Tank Trouble service restart was performed.
+- Chain impact:
+  - Video link: no streaming service change; web UI can read existing video status endpoint.
+  - Control signal: no broker/service change; web UI reads existing broker status.
+  - Tank Trouble: no impact.
+  - UI: hosted web console updated.
+- Validation:
+  - `cmd /c npm.cmd run build`
+  - Remote `systemctl is-active cloud-service-console-web.service` returned `active`.
+  - Remote `/api/health` on `127.0.0.1:18080` passed with preserved admin token.
+  - Existing chain services before and after deployment were all `active`: `go2rtc-cloud`, `go2rtc-control-signaling`, `go2rtc-telemetry-relay`, `go2rtc-srt-bridge`, `nginx`, `coturn`.
+  - Public `http://150.109.100.30:18080/api/access` returned `200`.
+  - Public `http://150.109.100.30:18080/api/health` returned `200`.
+  - Public `http://150.109.100.30/console/` returned the app shell.
+  - Public main JS contains `閹貉冨煑娣団€冲娇閻樿埖鈧梗 and no longer contains `娴滄垹顏惄顔界垼` or `瑜版挸澧犲Ο鈥崇础`.
+- Follow-ups:
+  - None for other agents.
+- Cross-agent notes:
+  - Other agents should avoid redeploying `cloud-service-console-web.service` without preserving current admin/user tokens.
+- Build / release:
+  - EXE installer built before this deployment: yes, `0.3.68`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 13:52 - Video Link Agent - Overview Video Push Status
+
+- Scope:
+  - Desktop/web console video-status UI update.
+  - Replaced the overview "瀵板懎顦╅悶鍡樺付閸? card with a "鐟欏棝顣堕幒銊︾ウ閻樿埖鈧? module.
+  - Added a local read-only proxy for the existing cloud video status API.
+- Changed files:
+  - `backend\main.py`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `frontend\src\types\cloud.ts`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Overview now polls `GET /api/video/status` every 5 seconds while visible and connected.
+  - The card displays `legacy`, `tencent`, conflict, offline, and per-mode heartbeat/status details.
+  - Per-mode notes show heartbeat age and producer visibility in Chinese.
+  - Fixed the overview layout regression by preventing summary cards from stretching to the tallest card.
+  - The video-link rows now use a compact two-column layout on desktop/tablet widths and fall back to one column on narrow screens.
+  - Backend same-origin proxy lets desktop, `/console/`, and `:18080` web console views use the same frontend API path.
+- Cloud impact:
+  - No cloud deployment was performed.
+  - No public ports, cloud service names, Nginx rules, go2rtc services, control signal services, or Tank Trouble services changed.
+  - The UI depends on the already deployed `http://150.109.100.30:18081/api/video/status` endpoint.
+- Chain impact:
+  - Video link: changed as described.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: changed only the overview summary card and module-scoped status styles.
+- Validation:
+  - `python -m py_compile backend\main.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - Verified copied runtime files in `E:\Cloud-Service-Console`.
+  - In-app browser automation timed out and `http://127.0.0.1:8080/` was not reachable, so visual browser verification was not completed.
+- Follow-ups:
+  - Deploy/restart only `cloud-service-console-web.service` if the hosted web console should receive this UI immediately; preserve the current admin/user access tokens when doing so.
+- Cross-agent notes:
+  - No other Agent action required.
+  - Frontend teammates can continue using the cloud `/api/video/status` contract (`activeMode`, `conflict`, `availableModes`, `legacy`, `tencent`).
+- Build / release:
+  - EXE installer built: yes, `0.3.68`.
+  - Existing `E:\Cloud-Service-Console` EXEs replaced: yes.
+  - Versioned installer copied: `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-15 07:59 - Video Link Agent - Desktop Tencent Parameter Sync
+
+- Scope:
+  - Desktop video-link update for Local Stream logs and Tencent Cloud push parameter reuse.
+  - Kept changes within video-related backend/frontend files.
+- Changed files:
+  - `backend\local_stream.py`
+  - `backend\main.py`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Backend shutdown now clears `camera-push.out.log` and `camera-push.err.log` after quiet Local Stream stop.
+  - Tencent Cloud push now saves the current Local Stream draft config before starting.
+  - Tencent Cloud push applies output resolution, target FPS, and video bitrate to TXLivePusher via SDK property calls.
+  - Tencent heartbeat payload includes optional video metadata (`videoWidth`, `videoHeight`, `fps`, `bitrateKbps`, `quality`).
+- Cloud impact:
+  - No remote cloud deployment.
+  - No public ports, cloud service names, go2rtc service config, Nginx config, control signal services, or Tank Trouble services changed.
+  - Existing cloud endpoints remain compatible; unknown Tencent metadata fields can be ignored by older cloud code.
+- Chain impact:
+  - Video link: changed as described.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: only the video module's Tencent push behavior/status text changed; no global style refactor.
+- Validation:
+  - `python -m py_compile backend\local_stream.py backend\main.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - Verified copied files in `E:\Cloud-Service-Console`.
+  - Browser automation against `http://127.0.0.1:8080/` timed out; visual browser verification was not completed.
+- Follow-ups:
+  - Test Tencent Cloud push with a real push URL to confirm TXLivePusher accepts the saved resolution/FPS/bitrate on the user's machine.
+- Cross-agent notes:
+  - No other Agent action required.
+  - Other agents should preserve the video-only Tencent metadata fields if they touch shared video status payload handling.
+- Build / release:
+  - EXE installer built: yes, `0.3.67`.
+  - Existing `E:\Cloud-Service-Console` EXEs replaced: yes.
+  - Versioned installer copied: `E:\Cloud-Service-Console\Cloud Service Console_0.3.67_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-14 23:29 - Video Link Agent - Tencent Linux Pusher Status Reporting
+
+- Scope:
+  - Updated the standalone Tencent Linux WebRTC pusher package so it can report `tencent` push state to the deployed video status API.
+- Changed files:
+  - External package at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\tencent-webrtc-pusher-linux-0514\tencent-webrtc-pusher-linux`:
+    - `config.env`
+    - `config.example.env`
+    - `run-tencent-webrtc-push.sh`
+    - `tencent-webrtc-pusher.html`
+    - `README.md`
+  - Main repo documentation/logs:
+    - `docs\VIDEO_LINK_AGENT.md`
+    - `frontend\IMPLEMENTATION_LOG.md`
+    - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The Linux Tencent pusher now optionally posts `/api/video/tencent/start` after `TXLivePusher.startPush()` succeeds.
+  - It posts `/api/video/tencent/heartbeat` every configured interval while pushing.
+  - It posts `/api/video/tencent/stop` on stop button/page unload.
+  - Full push URL and `txSecret` are not uploaded.
+- Cloud impact:
+  - No remote cloud deployment was performed for this package change.
+  - It uses existing deployed endpoints at `http://150.109.100.30:18081/api/video/tencent/*`.
+  - No new ports, service names, Nginx rules, control signal behavior, Tank Trouble services, or game assets changed.
+- Chain impact:
+  - Video link: Tencent status visibility improved for the standalone Linux pusher.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: no desktop app UI change.
+- Validation:
+  - `bash -n run-tencent-webrtc-push.sh`
+  - `bash -n stop-tencent-webrtc-push.sh`
+  - HTML parser smoke check for `tencent-webrtc-pusher.html`.
+  - `bash run-tencent-webrtc-push.sh --help`
+- Follow-ups:
+  - Test on an actual Linux desktop/browser session with a fresh Tencent push URL.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no, external standalone package only.
+  - Existing `E:\Cloud-Service-Console` EXEs replaced: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-14 17:56 - Video Link Agent - Legacy/Tencent Video Status API
+
+- Scope:
+  - Synced the desktop Local Stream one-click push with the `legacy` runtime heartbeat protocol.
+  - Added cloud-side video status aggregation for `legacy` and `tencent`.
+  - Added frontend Tencent push start/heartbeat/stop reporting.
+- Changed files:
+  - `backend\local_stream.py`
+  - `backend\cloud_setup.py`
+  - `backend\cloud_setup_bundle\telemetry_relay.py`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+  - External teammate handoff: `E:\Desktop\123\VIDEO_LINK_STATUS_API_FOR_FRONTEND.md`
+- Runtime impact:
+  - Desktop Local Stream now writes `<remoteBase>/www/<stream>-runtime.json` as `videoMode: "legacy"`, refreshes it every 5 seconds while FFmpeg is alive, writes `stopped` on manual stop, and writes `stale` if FFmpeg exits while the app remains alive.
+  - Cloud telemetry relay now serves `GET /api/video/status` with `activeMode`, `conflict`, `availableModes`, `legacy`, and `tencent`.
+  - Tencent push in the Local Stream panel now posts `/api/video/tencent/start`, `/heartbeat`, and `/stop`; push secrets are not sent.
+- Cloud impact:
+  - Deployed to old server `150.109.100.30`.
+  - Updated `/opt/go2rtc-cloud/telemetry_relay.py`.
+  - Updated `/etc/systemd/system/go2rtc-telemetry-relay.service` with video status environment variables.
+  - Inserted `/api/video/` proxy into existing `/etc/nginx/conf.d/go2rtc-cloud.conf` without overwriting Tank Trouble or control blocks.
+  - Updated `/opt/go2rtc-cloud/www/video-endpoints.json`.
+  - Restarted only `go2rtc-telemetry-relay`; reloaded Nginx.
+  - Public paths added under existing port `18081`: `/api/video/status` and `/api/video/tencent/*`.
+  - Nginx template now proxies `/api/video/` to `go2rtc-telemetry-relay` on internal `18083`.
+  - `video-endpoints.json` now includes `runtimeStatusUrl` and `videoStatusUrl`.
+  - No new public ports or cloud service names.
+- Chain impact:
+  - Video link: changed.
+  - Control signal: no intended behavior change; existing `/control/webrtc/` and `/control/monitor/` routes preserved.
+  - Tank Trouble: no impact.
+  - UI: changed only Tencent push status reporting logic in Local Stream; no global UI style change.
+- Validation:
+  - `python -m py_compile backend\local_stream.py backend\cloud_setup.py backend\cloud_setup_bundle\telemetry_relay.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - Local route registration check for `/api/video/status` and `/api/video/tencent/*`.
+  - `cmd /c npm run installer:build`
+  - Remote `python3 -m py_compile /opt/go2rtc-cloud/telemetry_relay.py`
+  - Remote `sudo nginx -t`
+  - Remote `systemctl status go2rtc-telemetry-relay` reported active.
+  - Remote `http://127.0.0.1:18083/api/video/status` returned `200`.
+  - Remote `http://127.0.0.1:18081/api/video/status` returned `200`.
+  - Public `http://150.109.100.30:18081/api/video/status` returned `200`.
+  - Public `http://150.109.100.30:18081/video-endpoints.json` includes `runtimeStatusUrl` and `videoStatusUrl`.
+  - Public `/control/webrtc/health` and `/control/monitor/key-state?session=robot-control` returned `200`.
+- Follow-ups:
+  - Frontend teammate can poll `GET /api/video/status` and choose display priority if `conflict: true`.
+- Cross-agent notes:
+  - Other agents should preserve `/api/video/` Nginx proxy routes when regenerating cloud config.
+  - Control Signal and Tank Trouble agents do not need to change their logic for this step.
+- Build / release:
+  - EXE installer built: yes, `0.3.62`.
+  - Existing `E:\Cloud-Service-Console` EXEs replaced: yes.
+  - Copied runtime files:
+    - `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026-05-14 18:02:59`.
+    - `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026-05-14 18:02:50`.
+    - `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026-05-14 18:03:16`.
+    - `E:\Cloud-Service-Console\Cloud Service Console_0.3.62_x64-setup.exe` at `2026-05-14 18:03:16`.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-14 17:19 - Video Link Agent - Legacy go2rtc Sender Heartbeat
+
+- Scope:
+  - Updated the standalone old go2rtc sender package so the `legacy` video link continuously publishes runtime status.
+- Changed files:
+  - External portable sender package at `E:\wechat\xwechat_files\wxid_o5apxkf7kjxr11_8e6a\msg\file\2026-05\go2rtc-portable-0514\go2rtc-portable`:
+    - `legacy_sender_heartbeat.py`
+    - `common\ConfigHelpers.ps1`
+    - `start-camera-push-to-cloud.ps1`
+    - `stop-camera-push-to-cloud.ps1`
+    - `linux\common.sh`
+    - `linux\start-sender.sh`
+    - `linux\stop-sender.sh`
+    - `README.md`
+  - Main repo documentation/logs:
+    - `docs\VIDEO_LINK_AGENT.md`
+    - `frontend\IMPLEMENTATION_LOG.md`
+    - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - After old go2rtc sender startup is confirmed, Windows and Linux sender entrypoints launch a 5-second heartbeat publisher.
+  - The existing runtime status JSON now includes `videoMode: "legacy"`, `lastHeartbeatAt`, `heartbeatIntervalSec`, and `statusReason`.
+  - `stop-local` / `stop-sender` stops the heartbeat and writes `state: "stopped"` with `statusReason: "manual_stop"`.
+  - If the sender crashes, loses network, or powers off without stop, `lastHeartbeatAt` becomes stale for server/frontend mode detection.
+- Cloud impact:
+  - No remote cloud deployment was performed.
+  - No public ports, cloud service names, go2rtc service config, Nginx config, control signal chain, Tank Trouble services, or game assets changed.
+  - The portable sender will update the existing runtime JSON on the cloud only when it is run with working SSH access.
+- Chain impact:
+  - Video link: old `legacy` sender status heartbeat added.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: no desktop UI change.
+- Validation:
+  - PowerShell parser check for `common\ConfigHelpers.ps1`, `start-camera-push-to-cloud.ps1`, and `stop-camera-push-to-cloud.ps1`.
+  - `bash -n linux\common.sh`
+  - `bash -n linux\start-sender.sh`
+  - `bash -n linux\stop-sender.sh`
+  - `python -m py_compile legacy_sender_heartbeat.py`
+- Follow-ups:
+  - Next step is to implement server-side `/api/video/status` aggregation for `legacy` and `tencent`.
+  - Server/frontend should treat `legacy` as active only when `lastHeartbeatAt` is recent or go2rtc producers are visible.
+- Cross-agent notes:
+  - Other agents do not need to change anything for this step.
+  - Future server status aggregation should preserve `legacy` / `tencent` naming.
+- Build / release:
+  - EXE installer built: no.
+  - Existing `E:\Cloud-Service-Console` EXEs replaced: no.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-13 13:38 - Video Link Agent - Tencent Cloud TCPlayer v4 Playback Integration
+
+- Scope:
+  - Fixed embedded Tencent Cloud Live WebRTC playback in the Local Stream Tencent Cloud push panel.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The embedded `缂冩垿銆夌粩顖濐潎閻獖 flow now loads Tencent Cloud `TCPlayer` v4.9.1 CSS/JS instead of old TCPlayerLite.
+  - The player is mounted on a real `<video>` element and started with `TCPlayer(videoId, options)` plus `player.src(playUrl)`, matching the official TCPlayer demo path for `webrtc://` playback.
+  - Repeated web playback attempts remount the player container before a new TCPlayer instance is created.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live embedded WebRTC playback integration changed.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module playback panel only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+  - Browser automation setup timed out while trying to inspect the in-app browser; live playback needs a manual click-through with a running Tencent Cloud stream.
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 13:37:57`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 13:37:48`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 13:38:14`.
+- Follow-ups:
+  - Manually test `webrtc://cityulive.xyz/live/robot_control` in the embedded player while the stream is live.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 13:19 - Video Link Agent - Tencent Cloud Push Preview Reset
+
+- Scope:
+  - UI/runtime fix for the Tencent Cloud Live push preview in the Local Stream module.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The Tencent Cloud push preview container is cleared and remounted before each new push starts.
+  - The preview container is also cleared after stopping push.
+  - Repeated push start/stop cycles should no longer accumulate nested SDK render nodes that show up as growing black preview borders.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live local preview lifecycle fixed.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI/runtime only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 13:19:08`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 13:19:00`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 13:19:25`.
+- Follow-ups:
+  - Manually repeat Tencent Cloud start/stop cycles and confirm the preview border no longer grows.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 12:37 - Video Link Agent - Tencent Cloud Web Playback Button
+
+- Scope:
+  - Added Tencent Cloud Live web playback to the Tencent Cloud push beta panel.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - After Tencent Cloud push is running, the panel shows a `缂冩垿銆夌粩顖濐潎閻獖 button.
+  - Clicking it opens a playback-address dialog for a URL such as `webrtc://cityulive.xyz/live/robot_control`.
+  - The app dynamically loads Tencent Cloud TCPlayerLite and embeds WebRTC playback in the panel.
+  - After playback activity is reported, the playback URL is saved in local browser storage and prefilled next time.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live playback UI added.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 12:37:19`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 12:37:11`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 12:37:36`.
+- Follow-ups:
+  - Manually test playback with a live Tencent Cloud playback URL because TCPlayer playback depends on a valid play domain and live stream.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 12:26 - Video Link Agent - Tencent Cloud Push Status Strip
+
+- Scope:
+  - UI fix for the Tencent Cloud push panel status display in the Local Stream module.
+- Changed files:
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The Tencent Cloud push status area no longer stretches to the full preview height.
+  - The large green status panel is now a compact status strip with the existing small green lamp and message.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live push panel UI only.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - First `cmd /c npm run installer:build` built successfully but copy failed because the installed app EXE was running.
+  - Stopped `Cloud Service Console.exe` and two `cloud-console-backend.exe` processes.
+  - Reran `cmd /c npm run installer:build`.
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 12:26:16`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 12:26:07`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 12:26:32`.
+- Follow-ups:
+  - Manually reopen the Tencent Cloud push panel and confirm the right-side status is compact.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 12:16 - Video Link Agent - Tencent Cloud Push Dialog Clipping Fix
+
+- Scope:
+  - UI fix for the Tencent Cloud push-code dialog in the Local Stream module.
+- Changed files:
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The shared setup/push modal overlay is now raised above the app shell/sidebar.
+  - The fixed overlay is offset to the viewport so the Tencent Cloud push-code textarea is no longer clipped by the left navigation panel.
+  - Modal cards can scroll within the viewport on shorter windows.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live push-code dialog layout fixed.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: modal overlay styling changed for existing shared modal class.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 12:16:34`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 12:16:25`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 12:16:50`.
+- Follow-ups:
+  - Manually reopen the Tencent Cloud push-code dialog in the desktop app to visually confirm it is no longer clipped.
+- Cross-agent notes:
+  - The same overlay class is used by the local setup password dialog; the change is intended to fix modal clipping generally.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 12:08 - Video Link Agent - Tencent Cloud Push Code Dialog Memory
+
+- Scope:
+  - Updated the Tencent Cloud Live WebRTC push beta flow on the Local Stream page.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Clicking `閼垫崘顔嗘禍鎴炲腹濞?(BETA)` now opens a modal to enter the Tencent Cloud `webrtc://...txSecret=...&txTime=...` push code before the push panel appears.
+  - The modal validates the push code before opening the panel.
+  - After one successful Tencent Cloud push, the push code is saved in local browser storage and shown automatically next time.
+  - The push panel displays the current push code and provides a `娣囶喗鏁糮 action while not pushing.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: Tencent Cloud Live browser-push UI flow changed only.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 12:07:33`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 12:07:23`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 12:07:49`.
+- Follow-ups:
+  - Manually test with a fresh Tencent Cloud push URL in the desktop WebView because camera/microphone permission and `startPush` success are runtime/user mediated.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 11:34 - Video Link Agent - Local Stream Occupancy Guard
+
+- Scope:
+  - Guarded the default Local Stream push action when another device/user is already publishing.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The Local Stream UI treats `push_visible && !running` as another publisher already occupying the default stream.
+  - `娑撯偓闁款喗甯瑰ù涔?is disabled in that state.
+  - Hovering the disabled action area shows `閸忔湹绮禍鐑橆劀閸︺劍甯瑰ù涔?
+  - The local signal card shows `閸楃姷鏁ゆ稉鐠?with note `閸忔湹绮禍鐑橆劀閸︺劍甯瑰ù涔?
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: default local-stream UI now blocks a conflicting local start while another publisher is visible.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run installer:build`
+- Packaging / local install:
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 11:32:56`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 11:32:47`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 11:33:14`.
+- Follow-ups:
+  - Manually verify the hover tooltip in the desktop WebView with a second publisher active.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 11:21 - Video Link Agent - Tencent Cloud WebRTC Push Beta
+
+- Scope:
+  - Added a Tencent Cloud Live WebRTC push beta control to the Local Stream page.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The Local Stream action row now has `閼垫崘顔嗘禍鎴炲腹濞?(BETA)` next to `娑撯偓闁款喗甯瑰ù涔?
+  - The beta panel accepts a Tencent Cloud Live `webrtc://...txSecret=...&txTime=...` push URL, dynamically loads `TXLivePusher`, and can publish camera or screen with optional microphone directly from the desktop WebView/browser.
+  - The push URL is pasted at runtime and is not stored in backend settings or source defaults.
+- Cloud impact:
+  - None. No remote deployment, cloud service, public port, go2rtc config, FFmpeg ingest, systemd unit, or deployment bundle changed.
+- Chain impact:
+  - Video link: added an optional Tencent Cloud Live browser push path.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: local-stream module UI only.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+- Packaging / local install:
+  - `cmd /c npm run installer:build`
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026/5/13 11:25:30`.
+  - Replaced `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026/5/13 11:25:21`.
+  - Replaced `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026/5/13 11:25:47`.
+- Follow-ups:
+  - Manually test with a fresh Tencent Cloud push URL in the desktop WebView because camera/microphone permission is runtime/user mediated.
+- Cross-agent notes:
+  - New user workflow: after code changes, build a fresh EXE package and replace the existing runtime EXEs in `E:\Cloud-Service-Console`.
+- Build / release:
+  - EXE installer built: yes, local runtime EXEs replaced.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 10:54 - UI Design Agent - Activity logs and local stream UI polish
+
+- Scope:
+  - Activity log UX, local debug log flow visibility, local stream panel styling, local stream dropdown styling, cloud setup drift wording, and local stream error display.
+- Changed files:
+  - `frontend\src\components\ActivityLog.tsx`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `backend\main.py`
+  - `backend\service_manager.py`
+  - `backend\cloud_setup.py`
+  - `backend\local_stream.py`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Activity page now shows `閺堫剙婀寸拫鍐槸閺冦儱绻擿 above `閺堫剙婀撮崥搴ｎ伂閺冦儱绻擿.
+  - One-click config closes the password dialog, jumps to Activity, and records local debug setup steps.
+  - Dashboard refresh, sidebar refresh, start-all, and stop-all jump to Activity and write readable local debug steps.
+  - Backend/service success logs render green; errors render red.
+  - Local stream dropdowns and status panels now use themed UI instead of gray/default controls.
+  - Local stream five-light all-live effect is clipped within the local stream panel.
+  - Local stream startup error banners show a concise summary; detailed FFmpeg stderr stays in the selectable push log.
+  - Internal `www` drift is displayed as `娴滄垹顏純鎴︺€夌挧鍕爱`.
+- Cloud impact:
+  - No remote cloud deployment performed.
+  - One-click setup/check wording changed locally; future one-click setup may sync cloud webpage resources if drift is detected.
+- Chain impact:
+  - Video link: no protocol or cloud video service behavior changed by this UI log update.
+  - Control signal: no WebRTC broker protocol change in this UI log update.
+  - Tank Trouble: no game logic change.
+  - UI: activity logs, local debug logs, local stream panel/dropdowns, and log text selection changed.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `python -m py_compile backend\cloud_setup.py`
+  - `python -m py_compile backend\local_stream.py`
+  - `cmd /c "frontend\node_modules\.bin\tauri.cmd build --config src-tauri/tauri.conf.json --bundles none"`
+- Follow-ups:
+  - Manually verify Activity and Local Stream views in both light and dark mode after the next UI run.
+- Cross-agent notes:
+  - Other agents should keep detailed stderr/log output inside log panels and show concise summaries in visible error banners.
+  - Other agents should not expose internal drift keys such as `www` directly in user-facing UI.
+- Build / release:
+  - Built EXEs only, no installer in this step.
+  - Copied `E:\Cloud-Service-Console\Cloud Service Console.exe` and `E:\Cloud-Service-Console\cloud-console-backend.exe`.
+  - Verified copied timestamps: frontend EXE `2026/5/13 10:27:10`, backend EXE `2026/5/13 10:26:56`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-13 10:42 - Control Signal Agent - Faster keyboard polling and user-only dialing filter
+
+- Scope:
+  - Control monitor keyboard responsiveness and link-state classification.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `backend\health_checker.py`
+  - `backend\models.py`
+  - `frontend\src\types\cloud.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+- Runtime impact:
+  - Side-channel keyboard polling floor lowered to 50ms.
+  - Mini-app dialing state now ignores internal compute/arm command offers and prefers user frontend pending-offer counts.
+  - Local backend no longer makes an extra `/control/webrtc/status` fallback call when `key-state` already includes `linkStatus`.
+- Cloud impact:
+  - Cloud broker schema now exposes `userPendingOffers`, `internalPendingOffers`, and `pendingOfferClients`.
+- Validation:
+  - `python -m py_compile backend\main.py backend\health_checker.py backend\models.py backend\cloud_setup_bundle\control_signaling.py`
+  - `cmd /c npm.cmd run build --prefix frontend`
+  - `cmd /c npm.cmd run installer:build`
+- Follow-ups:
+  - Recheck any remaining duplicate connected-client display if the internal command link shows up alongside the user frontend.
+- Cross-agent notes:
+  - Video and Tank Trouble agents do not need to change for this update.
+- Build / release:
+  - EXE installer rebuilt and copied locally.
+  - GitHub pushed: no.
+  - Git tag updated: no.
+
+### 2026-05-12 18:32 - Video Link Agent - Local TRTC Publisher Helper
+
+- Scope: added a local browser-based Tencent TRTC publisher helper so video can be pushed without OBS.
+- Changed files:
+  - `scripts\trtc-local-publisher.html`
+  - `scripts\start-trtc-local-publisher.ps1`
+  - `docs\VIDEO_LINK_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Local-only helper can open `http://127.0.0.1:8091/trtc-local-publisher.html` and publish camera, microphone, or screen to a TRTC string room after the user pastes a valid per-user `UserSig`.
+- Cloud impact:
+  - None. No cloud services, ports, Nginx rules, go2rtc config, or deployment bundle behavior changed.
+- Chain impact:
+  - Video link: added local TRTC publishing utility only.
+  - Control signal: no impact.
+  - Tank Trouble: no impact.
+  - UI: no app UI impact; helper page uses standalone local test styling.
+- Validation:
+  - Parsed `scripts\start-trtc-local-publisher.ps1` with the PowerShell parser.
+  - Confirmed Tencent TRTC Web SDK URL returned HTTP `200`.
+  - Ran `scripts\start-trtc-local-publisher.ps1 -Port 8091`.
+  - Confirmed `http://127.0.0.1:8091/trtc-local-publisher.html` returned HTTP `200`.
+- Follow-ups:
+  - For production use, generate `UserSig` server-side instead of pasting it into a local page.
+- Cross-agent notes:
+  - No other Agent action required.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest known tag remains `v0.3.50`.
+
+### 2026-05-07 11:02 - UI Design Agent - Saved Login Account Dropdown
+
+- Scope: login page UI and local login settings persistence.
+- Changed files:
+  - `backend\config.py`
+  - `backend\models.py`
+  - `backend\settings_store.py`
+  - `backend\main.py`
+  - `frontend\src\types\cloud.ts`
+  - `frontend\src\pages\LoginPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Successful logins are now remembered in a local `saved_accounts` history.
+  - Clicking the login `Host` field can show a saved-account dropdown filtered by the current host text.
+  - Selecting a saved account fills host, username, password, remember-password, and auto-login back into the form.
+  - Existing single-account settings files remain readable and are upgraded in place when next saved.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change.
+  - Tank Trouble: no behavior change.
+  - UI: login page now supports saved-account selection and auto-fill.
+- Validation:
+  - `python -m py_compile backend/main.py backend/models.py backend/settings_store.py backend/config.py`
+  - `cmd /c npm --prefix frontend run build`
+- Follow-ups:
+  - No installer build was requested in this step.
+- Cross-agent notes:
+  - Keep `saved_accounts` backward-compatible in `/api/settings` responses if other agents touch login settings.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-06 00:24 - Tank Trouble Agent - v0.3.62 Installer Build
+
+- Scope: release packaging for the current Tank Trouble land mine build.
+- Changed files:
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\TANK_TROUBLE_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - App package metadata bumped from `0.3.61` to `0.3.62`.
+  - Built Windows NSIS installer `Cloud Service Console_0.3.62_x64-setup.exe`.
+- Cloud impact:
+  - No remote cloud deployment performed.
+  - The installer contains the current Tank Trouble bundle; one-click setup remains responsible for syncing Tank Trouble room script/assets to servers.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change.
+  - Tank Trouble: packaged current land mine implementation into the installer.
+  - UI: no behavior or style change.
+- Validation:
+  - `cmd /c npm run tauri:build`
+  - Verified copied installer exists at `E:\Cloud-Service-Console\Cloud Service Console_0.3.62_x64-setup.exe` with size `22605776` bytes.
+- Follow-ups:
+  - Run the installer manually or silently if this build should become the locally installed app version.
+- Cross-agent notes:
+  - Other agents do not need to adapt; preserve the `0.3.62` version fields if building on this release.
+- Build / release:
+  - EXE installer built: yes, `E:\Cloud-Service-Console\Cloud Service Console_0.3.62_x64-setup.exe`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-06 00:18 - Tank Trouble Agent - Land Mine Powerup
+
+- Scope: Tank Trouble gameplay, desktop Canvas rendering, online match sync/prediction, local preview, cloud room authority, cloud spectator rendering, and Tank Trouble static assets.
+- Changed files:
+  - `frontend\src\components\TankTroublePanel.tsx`
+  - `frontend\src\types\cloud.ts`
+  - `backend\models.py`
+  - `backend\tank_trouble_preview_runtime.py`
+  - `backend\tank_trouble_preview_page.py`
+  - `backend\cloud_setup_bundle\tank_trouble_room.py`
+  - `frontend\public\tank-trouble\powerups\land-mine.png`
+  - `backend\cloud_setup_bundle\www\tank-trouble\powerups\land-mine.png`
+  - `docs\TANK_TROUBLE_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Added gray `land_mine` pickup with `AT MINE` pickup text and user-provided mine icon.
+  - Picking it up gives 3 mines, removes the tank barrel visually, shows a mine mounted on the tank, and lets fire plant mines in place.
+  - Mines arm after 1s, blink with owner color, trigger on any tank including the owner, detonate after 1s, fade after 3s over 2s, and quickly reveal when a tank enters trigger range.
+  - Mine explosions reuse the tank-destroy damage radius but render with a separate distortion-style shockwave.
+- Cloud impact:
+  - Local cloud bundle script and static asset changed for Tank Trouble only.
+  - No remote deployment performed.
+  - Existing one-click setup will sync `tank_trouble_room.py` plus `www\tank-trouble\**`, including `land-mine.png`, and restart only `cloud-service-console-tank-trouble`.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change.
+  - Tank Trouble: gameplay, rendering, cloud room, preview, and spectator changed.
+  - UI: only Tank Trouble canvas/game visuals changed; no global UI/style change.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\tank_trouble_room.py backend\tank_trouble_preview_runtime.py backend\tank_trouble_preview_page.py backend\main.py backend\models.py`
+  - `node --check build-logs\spectator-page-check.js`
+  - `node --check build-logs\preview-page-check.js`
+  - `cmd /c npm --prefix frontend run build`
+- Follow-ups:
+  - Manually play-test online mine planting/detonation on a real cloud room after one-click setup syncs a server.
+- Cross-agent notes:
+  - Other agents do not need to adapt unless they touch shared Tank Trouble protocol types or regenerate the cloud spectator page.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 19:14 - Control Signal Agent - Control Monitor Paired-State Lamps
+
+- Scope: control monitor link-state aggregation for already-connected browser-to-robot control sessions.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - The three control monitor link lamps now use completed offer/answer pairing as a fallback, so a connected main DataChannel no longer appears as frontend/backend yellow and direct-connect off just because no side-channel `callState` is present.
+  - Dashboard status notes show `paired` for inferred paired sessions.
+  - The virtual keyboard still requires frontend `/control/monitor/key-state` reports with `pressedKeys`; this change does not synthesize key input from the main DataChannel.
+- Cloud impact:
+  - Old server `150.109.100.30` was updated at `/opt/go2rtc-cloud/control_signaling.py`.
+  - Restarted only `go2rtc-control-signaling`.
+  - No Nginx, TURN/STUN, video, or Tank Trouble cloud changes.
+  - Restarting the broker cleared in-memory status counters; existing browser-to-robot DataChannels are not routed through the broker.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: monitor state inference and cloud broker status output changed; WebRTC signaling contract and DataChannel payloads unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: changed only control monitor status text/lamp interpretation.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - Remote `python3 -m py_compile /tmp/control_signaling.py`
+  - Public `http://150.109.100.30:18081/control/webrtc/health` returned `ok: true`.
+  - Synthetic public offer/answer on `codex-status-check` returned all three linkStatus lamps true.
+- Follow-ups:
+  - Frontend teammates still need to post side-channel key-state if the mini app should show live virtual keyboard input.
+- Cross-agent notes:
+  - Other agents should not interpret the paired fallback as a keyboard-input feed; key display remains side-channel-only.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 18:43 - Control Signal Agent - Control Monitor Lamp Latency
+
+- Scope: mini app side-channel control monitor latency display for frontend dialing and backend listening indicators.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `backend\models.py`
+  - `frontend\src\types\cloud.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor key-state snapshots now carry latency/freshness fields.
+  - The mini app shows compact latency capsules beside the frontend dialing and backend listening lamps when those paths are active.
+  - Browser-to-robot WebRTC signaling and DataChannel control message payloads are unchanged.
+- Cloud impact:
+  - No cloud deployment performed.
+  - Updated broker code is local; old server can still show fallback `seen` freshness through the local backend until the broker is deployed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: side-channel monitor observability improved; main control signaling contract unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: changed only inside the control monitor module.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+- Follow-ups:
+  - Deploy updated `backend\cloud_setup_bundle\control_signaling.py` to cloud servers when true broker-side `RTT` / `sent` labels are needed from `/control/monitor/key-state` directly.
+  - Frontend key-state reporters can send `latencyMs` / `rttMs` or `sentAtMs` / `clientSentAtMs` / `ts`.
+  - Robot receivers can optionally send `latency_ms` / `latencyMs` / `rtt_ms` / `rttMs` on poll/answer calls.
+- Cross-agent notes:
+  - Other agents do not need to adapt unless they regenerate control monitor UI or cloud broker deployment scripts.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 17:52 - Control Signal Agent - Service Management URL Examples
+
+- Scope: service-management control signaling compatibility check after enforcing frontend `client_id` and robot `robot_client_id`.
+- Changed files:
+  - `backend\cloud_setup.py`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Service management `Control Signaling` start/stop/health logic does not change; it does not dial or answer control WebRTC offers.
+  - Setup/result helper URLs now show the current control contract parameters.
+- Cloud impact:
+  - None; no remote service, Nginx, port, TURN/STUN, or broker deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: documentation/example URL alignment only.
+  - Tank Trouble: no behavior change.
+  - UI: no visual change.
+- Validation:
+  - `python -m py_compile backend\cloud_setup.py backend\main.py backend\models.py backend\cloud_setup_bundle\control_signaling.py`
+  - Searched current backend/docs/frontend contract URLs for old `browser-offer` / `robot-next-offer` examples.
+- Follow-ups:
+  - None.
+- Cross-agent notes:
+  - Future setup/result text should keep `client_id` and `robot_client_id` examples.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 17:31 - Control Signal Agent - Require Frontend client_id For Browser Offers
+
+- Scope: control signaling cloud contract; remove the old frontend `browser-offer` rule that only used `session`.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\models.py`
+  - `frontend\src\types\cloud.ts`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+  - `docs\CONTROL_SIGNAL_API_USAGE.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Frontend dialers must call `/control/webrtc/browser-offer?session=<robotId>&client_id=<frontendId>`.
+  - Old `browser-offer?session=<robotId>` calls return `HTTP 400`.
+  - Robot `robot-next-offer` responses include `clientId` / `frontendClientId` for diagnostics.
+  - Robot-side `robot_client_id` exclusivity is unchanged.
+- Cloud impact:
+  - Deployed updated broker to old server `150.109.100.30:/opt/go2rtc-cloud/control_signaling.py` and restarted `go2rtc-control-signaling`.
+  - No Nginx path, public port, TURN/STUN, or service name change.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: frontend dial API contract changed; mini app side-channel monitor unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: no visual change; TypeScript offer type gained frontend client id fields.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - Temporary local broker test: old frontend offer returned `400`, new frontend offer with `client_id` completed offer/answer.
+  - Old server public validation on `18081`: old browser-offer without `client_id` returned `400`; new browser-offer with `client_id` completed offer/answer; health `200`; monitor key-state `200`.
+- Follow-ups:
+  - Share the updated `docs\CONTROL_SIGNAL_API_USAGE.md` with frontend and robot receiver teammates.
+- Cross-agent notes:
+  - Frontend teammates must update browser-offer URL to include stable `client_id`.
+  - Robot teammates continue using stable `robot_client_id`.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 17:06 - Control Signal Agent - Exclusive Robot Receiver Lock
+
+- Scope: control signaling contract and broker enforcement for robot receiver exclusivity per `session` / robot id.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `backend\models.py`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\types\cloud.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+  - `docs\CONTROL_SIGNAL_API_USAGE.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Robot receivers must pass stable `robot_client_id` on `robot-next-offer` and `robot-answer`.
+  - The first active receiver claims that robot id; later different receivers get `HTTP 409 robot_listener_conflict` until the listener freshness window expires.
+  - Multiple frontends can still dial the same robot id, and the side-channel mini app monitor still does not consume robot offers.
+- Cloud impact:
+  - Deployed updated broker to old server `150.109.100.30:/opt/go2rtc-cloud/control_signaling.py` and restarted `go2rtc-control-signaling`.
+  - No Nginx path, public port, TURN/STUN, or service name change.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: robot receiver API contract changed; frontend offer path and monitor key-state path unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: no visual redesign; TypeScript control types/default status gained listener diagnostics.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - Temporary local broker test: same receiver repeated polls `204`, second receiver `409`, wrong receiver answer `409`, correct receiver answer `200`, browser offer returned answer.
+  - Old server public validation on `18081`: health `200`, same receiver repeated poll `204`, second receiver `409`, wrong receiver answer `409`, correct receiver answer `200`, browser offer returned answer, monitor key-state `200`.
+- Follow-ups:
+  - Share the updated `docs\CONTROL_SIGNAL_API_USAGE.md` with robot receiver teammates so they add stable `robot_client_id`.
+- Cross-agent notes:
+  - UI Agent should not remove the new `robot_client_id` argument from legacy control wrappers if touching `frontend\src\api\cloudApi.ts`.
+  - Video full setup must continue preserving `/control/webrtc/` and `/control/monitor/` proxies.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 16:18 - UI Design Agent - Centered Visible-Width Keyboard And v0.3.60
+
+- Scope: service-management control monitor keyboard responsive layout.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keyboard rows now sit inside one centered track, so normal row offsets no longer drift or look crooked.
+  - Column fitting uses the actually visible/clipped keyboard width, including horizontally clipping ancestors and the visual viewport.
+  - Shorter rows use only their visible key count, removing invisible trailing grid columns that could push the track beyond the right edge.
+  - Baseline `QWER / ASDF / ZXCV` remains visible; keycaps can shrink within their square shape before baseline keys clip.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard layout changed.
+  - Tank Trouble: no behavior change.
+  - UI: fixed keyboard centering/clipping behavior and packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.60_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.60_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.60` supersedes `0.3.59` for UI verification.
+  - Future keyboard UI changes should keep one centered track and measure the actually visible area before revealing extra key columns.
+- Build / release:
+  - EXE installer built: yes, `0.3.60`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 15:53 - UI Design Agent - Conservative Keyboard Fitting And v0.3.59
+
+- Scope: service-management control monitor keyboard responsive fitting.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Keyboard fitting keeps a stronger reserve before revealing extra columns.
+  - Narrow keycaps can shrink farther so baseline `QWER / ASDF / ZXCV` remains visible.
+  - Extra right-side keys should hide earlier instead of clipping at the right edge.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard fitting changed.
+  - Tank Trouble: no behavior change.
+  - UI: safer responsive keyboard fitting; packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.59_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.59_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.59` supersedes `0.3.58` for UI verification.
+- Build / release:
+  - EXE installer built: yes, `0.3.59`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 15:44 - UI Design Agent - Full-Column Keyboard Fitting And v0.3.58
+
+- Scope: service-management control monitor keyboard responsive fitting.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Extra right-side key columns are now shown only when the whole column fits.
+  - No partial key should be clipped at the keyboard's right edge during zoom or narrow-window resizing.
+  - Baseline `QWER / ASDF / ZXCV` remains visible at minimum width.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard fitting changed.
+  - Tank Trouble: no behavior change.
+  - UI: fixed responsive keyboard column fitting; packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.58_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.58_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.58` supersedes `0.3.57` for UI verification.
+  - Future keyboard changes should test full rendered row width, including offsets and gaps, before exposing extra columns.
+- Build / release:
+  - EXE installer built: yes, `0.3.58`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 15:27 - UI Design Agent - Responsive Expanding Keyboard And v0.3.57
+
+- Scope: service-management control monitor keyboard and link-lamp layout refinement.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keyboard starts with `QWER / ASDF / ZXCV`.
+  - Wider panels reveal additional right-side columns in order, including `T/G/B`, then `Y/H/N`, then farther-right keys.
+  - Keyboard rows remain centered and preserve square keycaps plus standard half-key offsets.
+  - The three control link lamps are horizontal again.
+  - Resize/zoom changes are handled by `ResizeObserver`.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard/lamp layout changed.
+  - Tank Trouble: no behavior change.
+  - UI: adaptive keyboard visibility, centered layout, and horizontal lamps; packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.57_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.57_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.57` supersedes `0.3.56` for UI verification.
+  - Frontends may post any supported key names, but the visual keyboard reveals only as many standard keyboard columns as fit.
+- Build / release:
+  - EXE installer built: yes, `0.3.57`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 15:11 - UI Design Agent - Standard Keyboard Offsets And v0.3.56
+
+- Scope: service-management control monitor keyboard and link-lamp layout refinement.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keyboard still displays only `Q W E R`, `A S D F`, and `Z X C V`.
+  - Rows now use standard keyboard-style fractional offsets rather than full-grid shifts.
+  - Control monitor keycaps remain square through `aspect-ratio: 1 / 1`.
+  - The three control link lamps now stack vertically.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard/lamp layout changed.
+  - Tank Trouble: no behavior change.
+  - UI: corrected keyboard layout, square keycaps, and vertical lamps; packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.56_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.56_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.56` supersedes `0.3.55` for UI verification.
+  - Keep control monitor keycaps square and avoid whole-column offsets for keyboard rows.
+- Build / release:
+  - EXE installer built: yes, `0.3.56`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 15:00 - UI Design Agent - Control Monitor QWER Keyboard Layout And v0.3.55
+
+- Scope: service-management control monitor keyboard visual layout and packaging.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keyboard now displays only `Q W E R`, `A S D F`, and `Z X C V`.
+  - Rows use normal keyboard-style offsets instead of showing the previous wider mixed-key set.
+  - Existing key-state polling, multi-client color highlighting, and link lamps remain unchanged.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no API or signaling behavior change; visible monitor keyboard key set changed.
+  - Tank Trouble: no behavior change.
+  - UI: changed visible control monitor keyboard layout and packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.55_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.55_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.55` supersedes `0.3.54` for UI verification.
+  - Frontends may still post other keys, but the mini app keyboard only visualizes the QWER/ASDF/ZXCV set.
+- Build / release:
+  - EXE installer built: yes, `0.3.55`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 14:51 - Control Signal Agent / UI Design Agent - Control Monitor Link Lamps And v0.3.54
+
+- Scope: service-management control monitor state plumbing and UI lamp display.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `backend\models.py`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `frontend\src\types\cloud.ts`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor key-state response now carries `linkStatus`.
+  - The mini app shows three status lamps: `閸撳秶顏幏銊ュ娇`, `閸氬海顏幒銉ユ儔`, and `閻╃绻涢幋鎰`.
+  - `閸撳秶顏幏銊ュ娇` is based on pending offers or frontend dialing/connecting side-channel reports.
+  - `閸氬海顏幒銉ユ儔` is based on recent robot `robot-next-offer` polling within a 5 second freshness window.
+  - `閻╃绻涢幋鎰` is based on frontend side-channel `callState` values such as `connected`, `open`, `live`, or `ready`.
+  - Desktop installer now bundles these changes as `0.3.54`.
+- Cloud impact:
+  - Cloud control signaling script changed locally but was not deployed to the server in this step.
+  - Existing servers can still provide partial lamp data through local backend fallback reads of `/control/webrtc/status`.
+  - Full direct-connect lamp accuracy requires frontends to post side-channel `callState` after DataChannel opens.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: response model/status aggregation changed; WebRTC offer/answer/DataChannel payload flow unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: control monitor status area now includes the three compact lamps with responsive and dark-mode styling.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\main.py backend\models.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.54_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.54_x64-setup.exe`.
+- Follow-ups:
+  - Deploy updated `backend\cloud_setup_bundle\control_signaling.py` to cloud servers when the server-side `linkStatus` field should be available directly from `/control/monitor/key-state`.
+  - Ensure external frontends post `callState=connected/open/live/ready` when their DataChannel is actually open.
+- Cross-agent notes:
+  - The broker cannot directly observe DataChannel connectivity after answer delivery; direct connection is intentionally inferred from frontend side-channel state.
+  - UI agents should keep the three lamp labels compact and avoid wrapping button text or clipping the keyboard area.
+- Build / release:
+  - EXE installer built: yes, `0.3.54`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 14:33 - UI Design Agent - Control Monitor Normal Keyboard Layout And v0.3.53
+
+- Scope: service-management control monitor keyboard visual refinement and packaging.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keyboard uses a fixed 8-column responsive grid.
+  - Short rows offset within the grid instead of stretching keys.
+  - Letter keys stay visually equal-width; active key state no longer scales keycaps larger.
+  - Desktop installer now bundles these changes as `0.3.53`.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no business logic/API change.
+  - Tank Trouble: no behavior change.
+  - UI: changed control monitor keyboard layout and packaged it.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - Playwright/Chrome keyboard layout check against local mock API at 1366x900 and 560x760.
+  - Verified row starts `1, 2, 1, 3`, no key overflow, no horizontal page overflow, and equal-width letter keys.
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.53_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.53_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.53` supersedes `0.3.52`; use this installer for UI verification.
+  - Keyboard-like controls should preserve equal-width letter keys and offset short rows rather than stretching keys.
+- Build / release:
+  - EXE installer built: yes, `0.3.53`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 14:22 - UI Design Agent - v0.3.52 Installer Build
+
+- Scope: packaging/version update for the control monitor keyboard UI fix.
+- Changed files:
+  - `package.json`
+  - `frontend\package.json`
+  - `frontend\package-lock.json`
+  - `src-tauri\tauri.conf.json`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\Cargo.lock`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Desktop installer now bundles the `0.3.52` app containing the Optima keycap font and responsive control monitor keyboard fix.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no business logic/API change.
+  - Tank Trouble: no behavior change.
+  - UI: packaged the latest UI fix.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Generated `E:\Desktop\123\cloud-service-console\src-tauri\target\release\bundle\nsis\Cloud Service Console_0.3.52_x64-setup.exe`.
+  - Copied installer to `E:\Cloud-Service-Console\Cloud Service Console_0.3.52_x64-setup.exe`.
+- Follow-ups:
+  - Silent install was not run in this step.
+- Cross-agent notes:
+  - `0.3.52` supersedes the previous local `0.3.51` installer for UI verification.
+- Build / release:
+  - EXE installer built: yes, `0.3.52`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 14:15 - UI Design Agent - Control Monitor Keyboard Responsive UI
+
+- Scope: service-management control monitor panel UI only.
+- Changed files:
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Control monitor keycaps use the Optima font stack with fallbacks.
+  - Control monitor keyboard rows resize within the panel so zoomed or narrow windows keep all keys/buttons visible.
+  - Outer app shell horizontal paint overflow is clipped to prevent stray horizontal scroll during zoom/narrow-window use.
+- Cloud impact:
+  - None; no cloud scripts, remote services, Nginx config, or deployment changed.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no business logic/API change; UI only around the existing monitor surface.
+  - Tank Trouble: no behavior change.
+  - UI: changed control monitor responsiveness and shared fixed-format control guidance.
+- Validation:
+  - `cmd /c npm --prefix frontend run build`
+  - Playwright/Chrome UI check against a local mock API at 1366x900, 980x900, 780x760, and 560x760.
+  - Verified all 25 monitor keys stay inside the keyboard container and the computed keycap font stack includes Optima.
+  - Verified document/body horizontal scroll width matches viewport after the shell overflow fix.
+- Follow-ups:
+  - None required.
+- Cross-agent notes:
+  - Other agents adding fixed-format controls should make them shrink within their panel instead of relying on horizontal overflow.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 14:00 - Control Signal Agent - Browser Offer Long Wait
+
+- Scope: control signal broker wait behavior and old-server control deployment.
+- Changed files:
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\cloud_setup.py`
+  - `docs\CONTROL_SIGNAL_API_USAGE.md`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - Browser-submitted `/control/webrtc/browser-offer` requests now wait indefinitely at the app level by default.
+  - A finite timeout can still be enabled by starting the broker with `--offer-timeout-sec <seconds>` where the value is greater than `0`.
+  - Cancelled browser requests clean up their pending offers.
+  - Full setup Nginx template keeps `/control/webrtc/` proxy read/send timeout at `86400s`.
+- Cloud impact:
+  - Old server `150.109.100.30` updated.
+  - Uploaded `/opt/go2rtc-cloud/control_signaling.py`.
+  - Updated `/etc/nginx/conf.d/go2rtc-cloud.conf` for `/control/webrtc/` long proxy timeouts.
+  - Restarted only `go2rtc-control-signaling` and reloaded `nginx`.
+  - New server not updated.
+- Chain impact:
+  - Video link: no behavior change intended.
+  - Control signal: changed and deployed on old server.
+  - Tank Trouble: no behavior change.
+  - UI: no behavior change.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\cloud_setup.py backend\main.py backend\models.py`
+  - Remote `python3 -m py_compile /opt/go2rtc-cloud/control_signaling.py`.
+  - Remote `nginx -t`.
+  - Public `/control/webrtc/health` returned `200`.
+  - Public `/control/webrtc/status` returned `offerTimeoutSec: null`.
+  - Public long-wait pairing test passed: browser offer stayed pending for more than 3 seconds, robot pulled it, robot answered, and the browser request returned the answer.
+- Follow-ups:
+  - Deploy the same control broker/Nginx timeout change to the new server if it should support long-wait browser offers.
+- Cross-agent notes:
+  - Video and Tank Trouble agents must preserve the `/control/webrtc/` `86400s` proxy timeouts if regenerating shared Nginx config.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 13:48 - Control Signal Agent - Teammate Guide WebRTC-Only Revision
+
+- Scope: documentation-only correction to the teammate-facing control signal API guide.
+- Changed files:
+  - `docs\CONTROL_SIGNAL_API_USAGE.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - None; no app or backend code changed.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: documentation clarified; public WebRTC signaling behavior unchanged.
+  - Tank Trouble: no behavior change.
+  - UI: no behavior change.
+- Validation:
+  - Documentation-only change; reviewed against current control signaling broker behavior.
+- Follow-ups:
+  - Share the revised `docs\CONTROL_SIGNAL_API_USAGE.md`; it no longer includes mini app side-channel monitor details.
+- Cross-agent notes:
+  - Side-channel monitor remains an internal mini app/control-monitor feature and should not be presented as a teammate integration requirement.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 13:41 - Control Signal Agent - API Usage Guide For Teammates
+
+- Scope: documentation-only handoff for control signal API consumers.
+- Changed files:
+  - `docs\CONTROL_SIGNAL_API_USAGE.md`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - None; no app or backend code changed.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: documentation only; describes existing WebRTC signaling and side-channel monitor APIs.
+  - Tank Trouble: no behavior change.
+  - UI: no behavior change.
+- Validation:
+  - Cross-checked endpoint names and payload fields against `backend\cloud_setup_bundle\control_signaling.py`, `backend\main.py`, `backend\models.py`, `frontend\src\types\cloud.ts`, and `frontend\src\api\cloudApi.ts`.
+  - Documentation-only change; no build or runtime command required.
+- Follow-ups:
+  - Share `docs\CONTROL_SIGNAL_API_USAGE.md` with frontend and robot receiver teammates.
+- Cross-agent notes:
+  - Video and Tank Trouble agents should preserve `/control/webrtc/` and `/control/monitor/` proxy blocks when regenerating shared Nginx config.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 13:37 - UI Design Agent - Shared Status Workflow Relaxed
+
+- Scope: documentation-only workflow update for the multi-agent handoff process.
+- Changed files:
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\UI_DESIGN_AGENT.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `docs\SHARED_AGENT_STATUS.md`
+- Runtime impact:
+  - None; no app code or behavior changed.
+- Cloud impact:
+  - None.
+- Chain impact:
+  - Video link: no behavior change.
+  - Control signal: no behavior change; existing side-channel monitor records preserved.
+  - Tank Trouble: no behavior change.
+  - UI: workflow documentation changed only.
+- Validation:
+  - Documentation-only change; no build or runtime command required.
+- Follow-ups:
+  - Future agents should write this shared status log after completing a functional version or staged change.
+  - Future agents only need to read this shared status log when the user asks, when fresh cross-agent context is necessary, or when investigating a conflict.
+- Cross-agent notes:
+  - The old "read shared status before every operation" rule is relaxed.
+  - The "write shared status after work" rule remains mandatory.
+- Build / release:
+  - EXE installer built: no.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 13:35 - Control Signal Agent - Old Server Control Chain Deployment
+
+- Scope: control signal cloud deployment on old server `150.109.100.30`.
+- Changed files:
+  - Local documentation/log updates:
+    - `docs\CONTROL_SIGNAL_AGENT.md`
+    - `frontend\IMPLEMENTATION_LOG.md`
+    - `docs\SHARED_AGENT_STATUS.md`
+  - Remote old server:
+    - `/opt/go2rtc-cloud/control_signaling.py`
+    - `/etc/nginx/conf.d/go2rtc-cloud.conf`
+- Runtime impact:
+  - Old server now serves both `/control/webrtc/` WebRTC signaling and `/control/monitor/` side-channel key-state monitor through public `18081`.
+  - `go2rtc-control-signaling` restarted; `nginx` reloaded.
+- Cloud impact:
+  - Old server changed.
+  - New server not changed.
+- Chain impact:
+  - Video link: no direct behavior change; `video-endpoints.json` remained `200`.
+  - Control signal: changed and deployed on old server.
+  - Tank Trouble: no direct behavior change.
+  - UI: no local UI code changed in this deployment step.
+- Validation:
+  - Remote `python3 -m py_compile /opt/go2rtc-cloud/control_signaling.py`.
+  - Remote `nginx -t`.
+  - Remote `systemctl restart go2rtc-control-signaling`.
+  - Remote `systemctl reload nginx`.
+  - Public `/control/webrtc/health` returned `200`.
+  - Public `/control/webrtc/status` returned `200` with monitor fields.
+  - Public `/control/monitor/key-state?session=robot-control` returned `200`.
+  - Public monitor POST/GET with two `client_id` values returned two clients and expected pressed keys.
+  - After TTL, monitor state returned `clientCount=0`.
+  - Public `/control/webrtc/robot-next-offer?session=robot-control` returned `204`.
+- Follow-ups:
+  - Deploy the same control chain to the new server if needed.
+- Cross-agent notes:
+  - Video and Tank Trouble agents must preserve both `/control/webrtc/` and `/control/monitor/` blocks if they regenerate `/etc/nginx/conf.d/go2rtc-cloud.conf`.
+- Build / release:
+  - EXE installer built before this deployment: yes, `0.3.51`.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+### 2026-05-05 13:28 - Control Signal Agent - Side-Channel Monitor And v0.3.51 Installer
+
+- Scope: control signal lane plus required version/build metadata.
+- Changed files:
+  - `backend\cloud_setup.py`
+  - `backend\cloud_setup_bundle\control_signaling.py`
+  - `backend\main.py`
+  - `backend\models.py`
+  - `backend\requirements.txt`
+  - `docs\AGENT_HANDOFF_MASTER_INDEX.md`
+  - `docs\CONTROL_SIGNAL_AGENT.md`
+  - `docs\CONTROL_SIGNAL_FULL_SETUP_GUARD.md`
+  - `frontend\IMPLEMENTATION_LOG.md`
+  - `frontend\package.json`
+  - `frontend\src\api\cloudApi.ts`
+  - `frontend\src\pages\DashboardPage.tsx`
+  - `frontend\src\styles\globals.css`
+  - `frontend\src\styles\theme.css`
+  - `frontend\src\types\cloud.ts`
+  - `package.json`
+  - `src-tauri\Cargo.lock`
+  - `src-tauri\Cargo.toml`
+  - `src-tauri\tauri.conf.json`
+- Runtime impact:
+  - Mini app control monitor now uses side-channel key-state instead of answering robot WebRTC offers.
+  - Control monitor keyboard supports multiple frontend clients, stable green/blue/red/yellow color slots, and mixed gradients when clients press the same key.
+  - App version bumped to `0.3.51`; installer built and installed locally.
+- Cloud impact:
+  - Cloud broker code changed.
+  - Full setup Nginx template now requires both `/control/webrtc/` and `/control/monitor/` proxy blocks.
+  - Current code has not been deployed to cloud servers in this status entry.
+- Chain impact:
+  - Video link: no direct behavior change intended.
+  - Control signal: changed.
+  - Tank Trouble: no direct behavior change intended.
+  - UI: changed only within the control monitor module.
+- Validation:
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\cloud_setup.py backend\main.py backend\models.py`
+  - `python -m py_compile backend\cloud_setup_bundle\control_signaling.py backend\models.py backend\main.py`
+  - `cmd /c npm --prefix frontend run build`
+  - `cmd /c npm run tauri:build`
+  - Installer silent install returned exit code `0`.
+  - Registry install entry reports `DisplayVersion=0.3.51`.
+- Follow-ups:
+  - Deploy updated `backend\cloud_setup_bundle\control_signaling.py` and Nginx `/control/monitor/` proxy to any cloud server that should support side-channel key-state.
+  - Frontend control sender must post `POST /control/monitor/key-state?session=<robotId>&client_id=<frontendId>` for the monitor keyboard to show input before robot answer.
+- Cross-agent notes:
+  - Video/Tank Trouble agents should preserve `/control/webrtc/` and `/control/monitor/` proxy paths when regenerating shared Nginx config.
+  - UI Agent should treat the current control monitor styling as module-scoped unless asked to globalize it.
+- Build / release:
+  - EXE installer built: yes.
+  - GitHub pushed: no.
+  - Git tag updated: no; latest tag remains `v0.3.50`.
+
+## Current Risks / Open Questions
+
+- `v0.3.68` is built and copied locally after the overview P2P room-status update, but not silently installed, tagged, or pushed in this turn.
+- Hosted standalone web console was redeployed on `2026-06-05 01:19`; preserve existing access tokens before any future web-console deployment.
+- This machine could not resolve `console.cityulive.com` during the `2026-06-04 22:57` verification, while direct `150.109.100.30:18080` health and server-side deploy health passed.
+- Nginx `/console/` entry was intentionally removed on `2026-05-15 14:37`; use `https://console.cityulive.com/?access_token=...` as the preferred web console access, with `http://150.109.100.30:18080/?access_token=...` as fallback.
+- In-app browser automation timed out while checking `http://127.0.0.1:8080/`; code/build validation passed.
+- Old server has the new side-channel monitor endpoint. New server may not yet have it.
+- Working tree contains multiple uncommitted changes; agents must avoid reverting unrelated files.
+
+## Cloud State Notes
+
+- Old server video status API deployed and verified: `http://150.109.100.30:18081/api/video/status`.
+- Hosted web console proxies Tencent status updates through `/api/video/tencent/{start|heartbeat|stop}` to the existing telemetry relay.
+- Old server `video-endpoints.json` now exposes `runtimeStatusUrl` and `videoStatusUrl`.
+- Old server standalone web console deployed and verified: `cloud-service-console-web.service` on internal/public port `18080`.
+- Preferred public web entry: `https://console.cityulive.com/?access_token=...`.
+- Admin public web entry: `https://console.cityulive.com/?access_token=xhfang`.
+- User public web entry: `https://console.cityulive.com/?access_token=cmc5006`.
+- Hosted console local-stream UI now uses inline P2P push against `https://p2p.cityulive.com`; room defaults to `robot` but can be edited and saved in the P2P panel. The external P2P pusher page remains available for standalone testing.
+- P2P room discovery API: `GET /api/rooms` lists only rooms with an active pusher on the current P2P domain. Console "网页端观看" uses this endpoint to show clickable room IDs.
+- P2P room rule: one active pusher per room. Different room names are independent. Same-room second pusher gets `HTTP 409` until the first pusher stops or times out after about 15 seconds.
+- P2P watch page is video-only and auto-starts viewer mode for `https://p2p.cityulive.com/watch.html?room=...`.
+- Previous `console.cityulive.xyz` console entry is deprecated/broken for current use.
+- Fallback public web entry: `http://150.109.100.30:18080/?access_token=...`.
+- Removed web entries: `http://150.109.100.30/console/` and port-80 web-console `/api/` proxy now return `404`.
+- Old server previously verified reachable at `150.109.100.30:18081` for `/control/webrtc/health`.
+- Old server side-channel path verified: `http://150.109.100.30:18081/control/monitor/key-state?session=robot-control`.
+- New side-channel path expected after deployment: `http://<host>:18081/control/monitor/key-state?session=robot-control`.
+- TURN/STUN remains `3478/udp,tcp` with username `telemetry` and credential `123456`.
+
+## Build / Release Notes
+
+- Latest local installer: `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe`.
+- Installed location: `E:\Cloud-Service-Console`.
+- Silent install for `0.3.68`: not run.
+- Latest copied EXEs:
+  - `E:\Cloud-Service-Console\Cloud Service Console.exe` at `2026-06-05 01:18:23`.
+  - `E:\Cloud-Service-Console\cloud-console-backend.exe` at `2026-06-05 01:18:17`.
+  - `E:\Cloud-Service-Console\Cloud Service Console Setup.exe` at `2026-06-05 01:18:39`.
+- Copied installer verified:
+  - `E:\Cloud-Service-Console\Cloud Service Console_0.3.68_x64-setup.exe` at `2026-06-05 01:18:39`.

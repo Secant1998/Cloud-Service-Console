@@ -1,6 +1,6 @@
 # Tank Trouble Agent Handoff
 
-Last updated: 2026-05-05
+Last updated: 2026-05-06 00:24
 
 Owner: Tank Trouble game design, game cloud room service, game monitor pages, game assets, game one-click setup.
 
@@ -92,6 +92,7 @@ Public assets:
 - `frontend\public\tank-trouble\powerups\minigun.png`
 - `frontend\public\tank-trouble\powerups\double-barrel.png`
 - `frontend\public\tank-trouble\powerups\shield.png`
+- `frontend\public\tank-trouble\powerups\land-mine.png`
 - `frontend\public\tank-trouble\scoreboard\rank-1.png`
 - `frontend\public\tank-trouble\scoreboard\rank-2.png`
 - `frontend\public\tank-trouble\scoreboard\rank-3.png`
@@ -200,6 +201,12 @@ Current powerups:
 - Minigun: gray pickup, minigun icon, pickup text `MINIGUN`, 20 rounds, 0.5s spin-up.
 - Double barrel: gray pickup, icon `double-barrel.png`, pickup text `BARREL+1`, 10 independent shots.
 - Shield: gray pickup, shield icon, pickup text `SHIELD`, visible circular force field.
+- Land mine: gray pickup, icon `land-mine.png`, pickup text `AT MINE`, 3 planted mines, tank becomes a mine layer with no long barrel and a mounted mine. Planted mines arm after 1s, blink with the planter color, trigger on any tank including the planter, detonate 1s later, fade after 3s over 2s, and reveal quickly when a tank approaches.
+
+Recent Tank Trouble change:
+
+- 2026-05-06 00:24: Packaged the land mine build as app version `0.3.62`. Built `Cloud Service Console_0.3.62_x64-setup.exe` and copied it to `E:\Cloud-Service-Console`. No remote cloud deployment, GitHub push, or tag update was performed.
+- 2026-05-06 00:18: Added the land mine powerup across desktop Canvas, online prediction/sync, preview push/page, cloud room authority, cloud spectator rendering, and bundled static assets. One-click setup still uses the existing bundle hash over `tank_trouble_room.py` and `www\tank-trouble\**`, so new servers can sync this game script and `land-mine.png` asset without manual SCP/systemd edits.
 
 Current visual sync expectation:
 

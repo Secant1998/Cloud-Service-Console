@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import {
+  clearAccountSessionToken,
+  discardLegacyAccessToken,
   getAccessInfo,
   getStatus,
+  getStoredAccessToken,
   heartbeatOnlinePresence,
   leaveOnlinePresence,
-  readAccessTokenFromUrl,
+  login,
+  loginAccountWithDevice,
+  setAccountSessionToken,
   type AccessInfo,
 } from "./api/cloudApi";
+import { disableWebAutoLogin, findAutoLogin } from "./authStorage";
 import { useAppUpdater } from "./hooks/useAppUpdater";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -18,61 +24,46 @@ const THEME_STORAGE_KEY = "cloud-service-console.theme";
 const THEME_EXPLICIT_STORAGE_KEY = "cloud-service-console.theme-explicit";
 const BASE_DOCUMENT_TITLE = "Cloud Service Console";
 const ONLINE_PRESENCE_INTERVAL_MS = 15000;
+const DEFAULT_ACCESS: AccessInfo = {
+  webMode: false,
+  authenticated: false,
+  username: "",
+  role: "desktop",
+  admin: true,
+  avatarDataUrl: "",
+  defaultHost: "",
+  defaultSshUsername: "ubuntu",
+};
 const isPageVisible = () => typeof document === "undefined" || document.visibilityState !== "hidden";
 
 function detectInitialTheme(): ThemeMode {
   if (typeof window === "undefined") {
     return "light";
   }
-
   const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
   const savedThemeIsExplicit = window.localStorage.getItem(THEME_EXPLICIT_STORAGE_KEY) === "1";
-  if (savedThemeIsExplicit && (savedTheme === "light" || savedTheme === "dark")) {
-    return savedTheme;
-  }
-
-  return "light";
+  return savedThemeIsExplicit && (savedTheme === "light" || savedTheme === "dark") ? savedTheme : "light";
 }
 
 function getAccessRoleLabel(accessInfo: AccessInfo) {
-  if (!accessInfo.webMode) {
+  if (!accessInfo.webMode || !accessInfo.authenticated) {
     return "";
   }
-  return accessInfo.admin ? "管理员入口" : "普通用户入口";
-}
-
-function isWebAccessFailure(message: string) {
-  if (message.includes("Unauthorized web console link")) {
-    return true;
-  }
-  if (!message.includes("Request failed: 401")) {
-    return false;
-  }
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const currentWindow = window;
-  if (Object.prototype.hasOwnProperty.call(currentWindow, "__TAURI_IPC__")) {
-    return false;
-  }
-  return currentWindow.location.protocol === "http:" || currentWindow.location.protocol === "https:";
+  return `${accessInfo.username} · ${accessInfo.admin ? "管理员" : "普通用户"}`;
 }
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
   const [bootStatus, setBootStatus] = useState<DashboardStatus | null>(null);
-  const [accessInfo, setAccessInfo] = useState<AccessInfo>({ webMode: false, role: "desktop", admin: true });
+  const [accessInfo, setAccessInfo] = useState<AccessInfo>(DEFAULT_ACCESS);
   const [onlineCount, setOnlineCount] = useState(1);
-  const [autoLoginPaused, setAutoLoginPaused] = useState(false);
-  const [webAccessError, setWebAccessError] = useState("");
+  const [loginNotice, setLoginNotice] = useState("");
   const [theme, setTheme] = useState<ThemeMode>(detectInitialTheme);
   const { updater, installUpdate } = useAppUpdater();
 
   function handleToggleTheme() {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, "1");
-    }
+    window.localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, "1");
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   }
 
@@ -88,47 +79,84 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
+
+    async function openDashboard(access: AccessInfo) {
+      const status = await getStatus();
+      if (!alive) {
+        return;
+      }
+      setAccessInfo(access);
+      setBootStatus(status);
+      setAuthenticated(status.connected);
+    }
+
     async function bootstrap() {
+      discardLegacyAccessToken();
       try {
-        readAccessTokenFromUrl();
-        const access = await getAccessInfo();
+        let access = await getAccessInfo();
         if (!alive) {
           return;
         }
-        setWebAccessError("");
         setAccessInfo(access);
-        const status = await getStatus();
-        if (!alive) {
+
+        if (!access.webMode) {
+          await openDashboard(access);
           return;
         }
-        setBootStatus(status);
-        setAuthenticated(status.connected);
-      } catch (err) {
-        if (!alive) {
+
+        if (getStoredAccessToken() && access.authenticated) {
+          await openDashboard(access);
           return;
         }
-        const message = err instanceof Error ? err.message : "";
-        if (isWebAccessFailure(message)) {
-          setAccessInfo({ webMode: true, role: "user", admin: false });
-          setWebAccessError("网页入口未授权，请使用管理员或普通用户的完整 HTTPS 链接重新打开。");
+
+        clearAccountSessionToken();
+        const savedAutoLogin = findAutoLogin();
+        if (!savedAutoLogin) {
+          setAuthenticated(false);
+          return;
         }
-        setBootStatus(null);
+
+        try {
+          const accountSession = await loginAccountWithDevice(savedAutoLogin.deviceToken);
+          setAccountSessionToken(accountSession.session_token);
+          await login({
+            host: savedAutoLogin.host,
+            username: savedAutoLogin.sshUsername,
+            password: savedAutoLogin.sshPassword,
+            remember_password: true,
+            auto_login: true,
+          });
+          access = await getAccessInfo();
+          await openDashboard(access);
+        } catch (error) {
+          clearAccountSessionToken();
+          disableWebAutoLogin();
+          setAuthenticated(false);
+          setLoginNotice(error instanceof Error ? `自动登录失败：${error.message}` : "自动登录失败，请重新登录。");
+        }
+      } catch (error) {
+        clearAccountSessionToken();
         setAuthenticated(false);
+        setBootStatus(null);
+        setLoginNotice(error instanceof Error ? error.message : "无法连接控制台后端。");
       } finally {
         if (alive) {
           setBootChecked(true);
         }
       }
     }
-    bootstrap();
+
+    void bootstrap();
     return () => {
       alive = false;
     };
   }, []);
 
   useEffect(() => {
+    if (!authenticated) {
+      return;
+    }
     let disposed = false;
-
     async function syncOnlinePresence() {
       if (!isPageVisible()) {
         return;
@@ -154,9 +182,7 @@ export default function App() {
         void leaveOnlinePresence();
       }
     };
-    const handlePageHide = () => {
-      void leaveOnlinePresence();
-    };
+    const handlePageHide = () => void leaveOnlinePresence();
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handlePageHide);
 
@@ -167,10 +193,10 @@ export default function App() {
       window.removeEventListener("pagehide", handlePageHide);
       void leaveOnlinePresence();
     };
-  }, []);
+  }, [authenticated]);
 
   if (!bootChecked) {
-    return <div className="app-boot">正在连接本地后端...</div>;
+    return <div className="app-boot">正在连接控制台后端...</div>;
   }
 
   if (!authenticated) {
@@ -179,13 +205,14 @@ export default function App() {
         theme={theme}
         updater={updater}
         accessInfo={accessInfo}
+        initialNotice={loginNotice}
         onToggleTheme={handleToggleTheme}
         onInstallUpdate={installUpdate}
-        autoLoginPaused={autoLoginPaused}
-        webAccessError={webAccessError}
-        onLoggedIn={() => {
-          setAutoLoginPaused(false);
+        onLoggedIn={(access) => {
+          setLoginNotice("");
+          setAccessInfo(access);
           setAuthenticated(true);
+          setBootStatus(null);
         }}
       />
     );
@@ -198,12 +225,16 @@ export default function App() {
       updater={updater}
       accessInfo={accessInfo}
       onlineCount={onlineCount}
+      onAccessInfoChange={setAccessInfo}
       onToggleTheme={handleToggleTheme}
       onInstallUpdate={installUpdate}
       onLogoutDone={() => {
-        setAutoLoginPaused(true);
+        clearAccountSessionToken();
+        disableWebAutoLogin();
+        setAccessInfo({ ...DEFAULT_ACCESS, webMode: accessInfo.webMode });
         setAuthenticated(false);
         setBootStatus(null);
+        setLoginNotice("已退出登录。未开启自动登录时，每次进入都需要重新登录。");
       }}
     />
   );

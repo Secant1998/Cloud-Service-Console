@@ -1,0 +1,5 @@
+Piper geometry and URDF copied without modification from the user's Telebot2
+repository, services/compute/plugins/org.telebot.compute.robot-arm.generic/
+resources/agilex.piper/urdf. Repository license: LICENSE.telebot.txt.
+The URDF identifies the SolidWorks URDF exporter; that original header remains.
+This asset is used for measured-state replay, not for physical simulation.

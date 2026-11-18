@@ -3,6 +3,11 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: { main: "index.html", captureRenderer: "capture-renderer.html", modelThumbnail: "model-thumbnail.html" },
+    },
+  },
   server: {
     port: 5173,
     host: "127.0.0.1",

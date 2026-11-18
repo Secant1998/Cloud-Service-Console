@@ -375,6 +375,18 @@ html[data-theme="dark"] .button-secondary {
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
 }
 
+html[data-theme="dark"] .button-secondary:hover:not(:disabled),
+html[data-theme="dark"] .button-ghost:hover:not(:disabled) {
+  color: #bfdbfe;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(14, 165, 233, 0.14)),
+    rgba(15, 23, 42, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, 0.28),
+    0 16px 32px rgba(2, 6, 23, 0.28),
+    0 0 24px rgba(37, 99, 235, 0.1);
+}
+
 html[data-theme="dark"] .button-ghost {
   color: #d5e3f7;
   background: rgba(15, 23, 42, 0.76);
@@ -445,6 +457,12 @@ html[data-theme="dark"] .input {
 
 html[data-theme="dark"] .input::placeholder {
   color: rgba(159, 176, 201, 0.5);
+}
+
+html[data-theme="dark"] .login-form .login-password-remembered::placeholder {
+  color: #e2e8f0;
+  opacity: 1;
+  -webkit-text-fill-color: #e2e8f0;
 }
 
 html[data-theme="dark"] .input:focus {
@@ -549,6 +567,14 @@ html[data-theme="dark"] .login-page {
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.2), transparent 28%),
     radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 26%),
     linear-gradient(180deg, #050b16 0%, #0b1220 100%);
+  background-size: 135% 135%, 145% 145%, 100% 100%;
+}
+
+html[data-theme="dark"] .login-page::before {
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.045) 1px, transparent 1px);
+  opacity: 0.34;
 }
 
 html[data-theme="dark"] .login-intro {
@@ -567,13 +593,15 @@ html[data-theme="dark"] .login-intro p {
 
 html[data-theme="dark"] .feature-item,
 html[data-theme="dark"] .connection-preview {
-  background: rgba(15, 23, 42, 0.34);
-  border-color: rgba(148, 163, 184, 0.14);
+  background: rgba(9, 17, 32, 0.46);
+  border-color: rgba(191, 219, 254, 0.14);
+  box-shadow:
+    0 18px 42px rgba(2, 6, 23, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 html[data-theme="dark"] .connection-preview {
   color: #f8fbff;
-  box-shadow: none;
 }
 
 html[data-theme="dark"] .connection-preview-label {
@@ -585,7 +613,140 @@ html[data-theme="dark"] .connection-preview-note {
 }
 
 html[data-theme="dark"] .login-panel {
-  background: rgba(11, 18, 32, 0.9);
+  background: rgba(8, 15, 29, 0.62);
+  border-color: rgba(191, 219, 254, 0.14);
+  box-shadow:
+    0 28px 72px rgba(2, 6, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html[data-theme="dark"] .agent-settings-readonly,
+html[data-theme="dark"] .agent-config-state,
+html[data-theme="dark"] .agent-key-visibility {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.74);
+}
+
+html[data-theme="dark"] .agent-key-visibility:hover:not(:disabled) {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.4);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(14, 165, 233, 0.14)),
+    rgba(15, 23, 42, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, 0.12),
+    0 16px 30px rgba(2, 6, 23, 0.3),
+    0 0 22px rgba(37, 99, 235, 0.1);
+}
+
+html[data-theme="dark"] .agent-settings-enable-row,
+html[data-theme="dark"] .account-summary-list > div,
+html[data-theme="dark"] .account-avatar-setting {
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+html[data-theme="dark"] .user-management-counts,
+html[data-theme="dark"] .user-table-shell,
+html[data-theme="dark"] .capture-files-table-shell {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.52);
+}
+
+html[data-theme="dark"] .user-table th,
+html[data-theme="dark"] .capture-files-table th {
+  background: rgba(15, 23, 42, 0.82);
+}
+
+html[data-theme="dark"] .user-table th,
+html[data-theme="dark"] .user-table td,
+html[data-theme="dark"] .capture-files-table th,
+html[data-theme="dark"] .capture-files-table td {
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+html[data-theme="dark"] .user-table tbody tr:hover,
+html[data-theme="dark"] .capture-files-table tbody tr:hover {
+  background: rgba(30, 64, 175, 0.12);
+}
+
+html[data-theme="dark"] .capture-file-kind {
+  color: #a5f3fc;
+  background: rgba(8, 145, 178, 0.22);
+}
+
+html[data-theme="dark"] .user-avatar,
+html[data-theme="dark"] .account-avatar-preview,
+html[data-theme="dark"] .user-role-badge.admin {
+  color: #93c5fd;
+  background: rgba(30, 64, 175, 0.3);
+}
+
+html[data-theme="dark"] .avatar-upload-preview {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.24);
+  background:
+    linear-gradient(135deg, rgba(30, 64, 175, 0.3), rgba(14, 116, 144, 0.16)),
+    rgba(15, 23, 42, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 38px rgba(2, 6, 23, 0.34);
+}
+
+html[data-theme="dark"] .avatar-upload-preview:hover:not(:disabled),
+html[data-theme="dark"] .avatar-upload-preview:focus-visible {
+  border-color: rgba(125, 211, 252, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 44px rgba(2, 6, 23, 0.4),
+    0 0 24px rgba(37, 99, 235, 0.14);
+}
+
+html[data-theme="dark"] .avatar-upload-error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(127, 29, 29, 0.24);
+}
+
+html[data-theme="dark"] .user-role-badge {
+  color: #cbd5e1;
+  background: rgba(71, 85, 105, 0.5);
+}
+
+html[data-theme="dark"] .user-account-state {
+  color: #86efac;
+  background: rgba(20, 83, 45, 0.38);
+}
+
+html[data-theme="dark"] .user-management-counts .online strong,
+html[data-theme="dark"] .user-online-state.online {
+  color: #86efac;
+}
+
+html[data-theme="dark"] .user-management-feedback.error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(127, 29, 29, 0.24);
+}
+
+html[data-theme="dark"] .login-mode-switch button {
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .login-mode-switch button:hover:not(:disabled) {
+  color: #bfdbfe;
+}
+
+html[data-theme="dark"] .agent-config-state.configured,
+html[data-theme="dark"] .agent-settings-feedback.success {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.2);
+  background: rgba(20, 83, 45, 0.26);
+}
+
+html[data-theme="dark"] .agent-settings-feedback.error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(127, 29, 29, 0.24);
 }
 
 html[data-theme="dark"] .login-access-warning {
@@ -613,8 +774,11 @@ html[data-theme="dark"] .login-host-trigger {
 }
 
 html[data-theme="dark"] .login-host-trigger:hover:not(:disabled) {
-  background: rgba(30, 41, 59, 0.92);
-  color: #eff6ff;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(14, 165, 233, 0.16)),
+    rgba(15, 23, 42, 0.92);
+  color: #bfdbfe;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.26);
 }
 
 html[data-theme="dark"] .login-host-menu {
@@ -628,7 +792,8 @@ html[data-theme="dark"] .login-host-option {
   background: rgba(15, 23, 42, 0.82);
 }
 
-html[data-theme="dark"] .login-host-option:hover {
+html[data-theme="dark"] .login-host-option:hover,
+html[data-theme="dark"] .login-host-option:focus-visible {
   border-color: rgba(96, 165, 250, 0.26);
   background: rgba(20, 33, 56, 0.92);
 }
@@ -644,7 +809,14 @@ html[data-theme="dark"] .theme-mode-button-login {
 }
 
 html[data-theme="dark"] .theme-mode-button-login:hover:not(:disabled) {
-  background: rgba(30, 41, 59, 0.7);
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.34);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(14, 165, 233, 0.14)),
+    rgba(15, 23, 42, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, 0.12),
+    0 16px 30px rgba(2, 6, 23, 0.28);
 }
 
 html[data-theme="dark"] .update-action {
@@ -773,6 +945,45 @@ html[data-theme="light"] .tencent-cloud-push-code-display {
 html[data-theme="light"] .tencent-cloud-push-code-value {
   border-color: rgba(148, 163, 184, 0.24);
   background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .p2p-room-picker-domain,
+html[data-theme="light"] .p2p-room-picker-empty {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .p2p-room-picker-item {
+  border-color: rgba(37, 99, 235, 0.18);
+  background:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(219, 234, 254, 0.86));
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1);
+}
+
+html[data-theme="light"] .p2p-room-picker-item:hover,
+html[data-theme="light"] .p2p-room-picker-item:focus-visible {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(14, 165, 233, 0.94));
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.2);
+}
+
+html[data-theme="light"] .p2p-room-picker-item:hover span,
+html[data-theme="light"] .p2p-room-picker-item:focus-visible span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .p2p-v2-endpoint-item:disabled,
+html[data-theme="light"] .p2p-v2-endpoint-item:disabled:hover,
+html[data-theme="light"] .p2p-v2-endpoint-item:disabled:focus-visible {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(241, 245, 249, 0.82);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+html[data-theme="light"] .p2p-v2-endpoint-item:disabled span {
+  color: var(--text-secondary);
 }
 
 html[data-theme="light"] .tencent-cloud-push-code-display .button {
@@ -925,7 +1136,7 @@ html[data-theme="dark"] .setup-password-target-row {
   background: rgba(8, 16, 29, 0.42);
 }
 
-html[data-theme="dark"] .local-stream-select-menu {
+html[data-theme="dark"] .app-select-menu {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(11, 18, 32, 0.98);
   box-shadow:
@@ -933,17 +1144,18 @@ html[data-theme="dark"] .local-stream-select-menu {
     0 24px 58px rgba(2, 6, 23, 0.36);
 }
 
-html[data-theme="dark"] .local-stream-select-option {
+html[data-theme="dark"] .app-select-option {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.84);
 }
 
-html[data-theme="dark"] .local-stream-select-option:hover {
+html[data-theme="dark"] .app-select-option:hover,
+html[data-theme="dark"] .app-select-option:focus-visible {
   border-color: rgba(125, 211, 252, 0.24);
   background: rgba(17, 27, 49, 0.96);
 }
 
-html[data-theme="dark"] .local-stream-select-option.selected {
+html[data-theme="dark"] .app-select-option.selected {
   border-color: rgba(125, 211, 252, 0.28);
   background:
     linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(17, 27, 49, 0.92)),
@@ -953,25 +1165,20 @@ html[data-theme="dark"] .local-stream-select-option.selected {
     0 0 0 1px rgba(125, 211, 252, 0.08);
 }
 
-html[data-theme="dark"] .local-stream-select-option-sub {
+html[data-theme="dark"] .app-select-option-sub {
   color: #9fb0c9;
 }
 
-html[data-theme="dark"] .local-stream-select-trigger:hover:not(:disabled) {
+html[data-theme="dark"] .app-select-trigger:hover:not(:disabled) {
   border-color: rgba(125, 211, 252, 0.22);
   box-shadow: 0 16px 30px rgba(2, 6, 23, 0.18);
 }
 
 html[data-theme="dark"] .local-stream-field-disabled .input,
-html[data-theme="dark"] .local-stream-field-disabled .local-stream-select-trigger {
+html[data-theme="dark"] .local-stream-field-disabled .app-select-trigger {
   border-color: rgba(71, 85, 105, 0.34);
   background: rgba(15, 23, 42, 0.42);
   color: rgba(203, 213, 225, 0.62);
-}
-
-html[data-theme="dark"] .local-stream-select option {
-  color: #e5eefc;
-  background: #0f172a;
 }
 
 html[data-theme="dark"] .tencent-cloud-push-card {
@@ -991,9 +1198,14 @@ html[data-theme="dark"] .tencent-cloud-push-close {
 }
 
 html[data-theme="dark"] .tencent-cloud-push-close:hover {
-  border-color: rgba(96, 165, 250, 0.28);
-  background: rgba(30, 41, 59, 0.9);
-  color: #f8fafc;
+  border-color: rgba(96, 165, 250, 0.38);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(14, 165, 233, 0.14)),
+    rgba(15, 23, 42, 0.9);
+  color: #bfdbfe;
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, 0.1),
+    0 14px 28px rgba(2, 6, 23, 0.28);
 }
 
 html[data-theme="dark"] .tencent-cloud-push-code-display {
@@ -1007,6 +1219,67 @@ html[data-theme="dark"] .tencent-cloud-push-code-display {
 html[data-theme="dark"] .tencent-cloud-push-code-value {
   border-color: rgba(148, 163, 184, 0.14);
   background: rgba(2, 6, 23, 0.3);
+}
+
+html[data-theme="dark"] .p2p-room-picker-domain {
+  border-color: rgba(148, 163, 184, 0.18);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(30, 41, 59, 0.5)),
+    rgba(15, 23, 42, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .p2p-room-picker-domain span,
+html[data-theme="dark"] .p2p-room-picker-item span {
+  color: rgba(148, 163, 184, 0.86);
+}
+
+html[data-theme="dark"] .p2p-room-picker-domain strong,
+html[data-theme="dark"] .p2p-room-picker-item strong {
+  color: #e5eefc;
+}
+
+html[data-theme="dark"] .p2p-room-picker-item {
+  border-color: rgba(96, 165, 250, 0.22);
+  background:
+    linear-gradient(135deg, rgba(30, 41, 59, 0.82), rgba(15, 23, 42, 0.74)),
+    rgba(15, 23, 42, 0.64);
+  color: #e5eefc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .p2p-room-picker-item:hover,
+html[data-theme="dark"] .p2p-room-picker-item:focus-visible {
+  border-color: rgba(125, 211, 252, 0.46);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(14, 165, 233, 0.18)),
+    rgba(15, 23, 42, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(2, 6, 23, 0.24);
+}
+
+html[data-theme="dark"] .p2p-v2-endpoint-item:disabled,
+html[data-theme="dark"] .p2p-v2-endpoint-item:disabled:hover,
+html[data-theme="dark"] .p2p-v2-endpoint-item:disabled:focus-visible {
+  border-color: rgba(100, 116, 139, 0.22);
+  background: rgba(15, 23, 42, 0.58);
+  color: #cbd5e1;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .p2p-v2-endpoint-item:disabled strong {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .p2p-v2-endpoint-item:disabled small {
+  color: #8291a8;
+}
+
+html[data-theme="dark"] .p2p-room-picker-empty {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: rgba(203, 213, 225, 0.78);
+  background: rgba(15, 23, 42, 0.5);
 }
 
 html[data-theme="dark"] .tencent-cloud-push-preview {
@@ -1027,9 +1300,31 @@ html[data-theme="dark"] .tencent-cloud-push-status.live {
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.13), rgba(20, 184, 166, 0.07));
 }
 
+html[data-theme="dark"] .p2p-push-stat-grid > div {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .p2p-local-script-panel {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .p2p-local-script-grid > div {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.48);
+}
+
 html[data-theme="dark"] .video-push-mode-row {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.56);
+}
+
+html[data-theme="dark"] .video-push-mode-row:hover,
+html[data-theme="dark"] .video-push-mode-row:focus-visible {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(30, 64, 175, 0.2);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.24);
 }
 
 html[data-theme="dark"] .tencent-cloud-player-card {

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
 import json
 import math
 import os
+import base64
+import secrets
 import shlex
 import socket
 import ssl
-import secrets
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +27,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from auth_store import AccountStore, AgentSettingsStore
+from capture_store import CaptureFileStore
+from model_library import ModelLibrary, create_model_router
+from capture_tasks import (
+    CaptureTaskStore,
+    TaskConflict,
+    validate_recovery_artifact,
+    validate_recovery_filename,
+)
 from cloud_client import CloudRemoteClient
 from cloud_setup import CloudSetupBundle
 from config import (
@@ -41,9 +52,22 @@ from config import (
 )
 from health_checker import HealthChecker
 from local_stream import LocalStreamManager
+from p2p_local_pusher import P2PLocalPusherManager
 from log_store import LogStore
 from models import (
+    AccountAvatarRequest,
+    AccountAvatarResponse,
+    AccountDeviceLoginRequest,
+    AccountLoginRequest,
+    AccountRegisterRequest,
+    AccountSessionResponse,
+    AdminUserListResponse,
+    AgentConnectionTestResponse,
+    AgentSettingsRequest,
+    AgentSettingsResponse,
     ApiResponse,
+    CaptureFileListResponse,
+    CaptureUploadResponse,
     ControlMonitorConfigResponse,
     ControlMonitorKeyStateResponse,
     ControlMonitorOfferResponse,
@@ -62,6 +86,7 @@ from models import (
     LogsResponse,
     NetworkEndpointStatus,
     NetworkSnapshot,
+    P2PLocalPusherStatus,
     PortChecksResponse,
     PortStatus,
     ServiceStatus,
@@ -107,16 +132,30 @@ CONTROL_MONITOR_STATUS_FALLBACK_TIMEOUT_SECONDS = 2
 CONTROL_MONITOR_CLIENT_STALE_GRACE_MS = 300
 CONTROL_MONITOR_ROBOT_POLL_FRESH_MS = 5000
 CONTROL_MONITOR_SIGNAL_PAIR_FRESH_MS = 15000
+CONTROL_SIGNAL_BASE_URL_ENV = "TELEBOT_CONTROL_SIGNAL_BASE_URL"
+CONTROL_SIGNAL_ADMIN_TOKEN_ENV = "TELEBOT_SIGNAL_ADMIN_TOKEN"
+CONTROL_SIGNAL_COMPUTE_TOKEN_ENV = "TELEBOT_COMPUTE_SIGNAL_TOKEN"
+CONTROL_SIGNAL_FRONTEND_TOKEN_ENV = "TELEBOT_FRONTEND_SIGNAL_TOKEN"
+CAPTURE_UPLOAD_TOKEN_ENV = "TELEBOT_CAPTURE_UPLOAD_TOKEN"
+P2P_V2_FRONTEND_TOKEN_SHA256_ENV = "P2P_V2_FRONTEND_TOKEN_SHA256"
+P2P_V2_COMPUTE_TOKEN_SHA256_ENV = "P2P_V2_COMPUTE_TOKEN_SHA256"
+CAPTURE_UPLOAD_PATH = "/api/captures/upload"
 STATUS_LIVE_CACHE_TTL_SECONDS = 1.5
 TRAFFIC_MONITOR_CACHE_TTL_SECONDS = 1.0
 CONTROL_MONITOR_KEY_STATE_CACHE_TTL_SECONDS = 0.1
 ONLINE_CLIENT_TTL_SECONDS = 45.0
 WEB_MODE = os.environ.get("CLOUD_CONSOLE_WEB_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
 WEB_FRONTEND_DIST = Path(os.environ.get("CLOUD_CONSOLE_FRONTEND_DIST") or "").expanduser()
-WEB_ADMIN_TOKEN = str(os.environ.get("CLOUD_CONSOLE_ADMIN_TOKEN") or "").strip()
-WEB_USER_TOKEN = str(os.environ.get("CLOUD_CONSOLE_USER_TOKEN") or "").strip()
-WEB_TOKEN_COOKIE = "cloud_console_access"
+WEB_PUBLIC_PATHS = (
+    "/api/health",
+    "/api/access",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/device-login",
+    "/api/auth/logout",
+)
 WEB_SAFE_PATH_PREFIXES = (
+    "/api/account/",
     "/api/access",
     "/api/health",
     "/api/settings",
@@ -146,8 +185,12 @@ WEB_SAFE_PATH_PREFIXES = (
     "/api/logs",
     "/api/local-setup/check",
     "/api/online/",
+    "/api/agent/settings",
+    "/api/captures/",
+    "/api/model-library",
 )
 WEB_ADMIN_ONLY_PATH_PREFIXES = (
+    "/api/admin/",
     "/api/local-setup/run",
     "/api/services/",
     "/api/ingest-mode/switch",
@@ -291,6 +334,7 @@ class BackendState:
         self.current_config = None
         self.current_client = None
         self.local_stream_manager = LocalStreamManager(self.log_store)
+        self.p2p_local_pusher_manager = P2PLocalPusherManager(self.log_store)
         self._tank_trouble_bridge = None
         self._tank_trouble_preview_runtime = TankTroublePreviewRuntime()
         self._network_cache_host = ""
@@ -803,6 +847,15 @@ class BackendState:
         config, _ = self.get_session()
         return self.local_stream_manager.stop(config)
 
+    def get_p2p_local_pusher_status(self) -> P2PLocalPusherStatus:
+        return self.p2p_local_pusher_manager.status()
+
+    def start_p2p_local_pusher(self, payload: LocalStreamConfig, room_id: str, watch_url: str = "") -> P2PLocalPusherStatus:
+        return self.p2p_local_pusher_manager.start(payload, room_id, watch_url)
+
+    def stop_p2p_local_pusher(self) -> P2PLocalPusherStatus:
+        return self.p2p_local_pusher_manager.stop()
+
     def get_video_push_status(self) -> dict[str, object]:
         config, _ = self.get_session()
         remote_url = f"{config.public_base_url}/api/video/status"
@@ -1274,23 +1327,27 @@ done
         session_name: str,
         path: str,
         offer_id: str = "",
-        robot_client_id: str = "",
+        compute_client_id: str = "",
     ) -> str:
-        config, _ = self.get_session()
         params = {"session": session_name}
         if offer_id:
             params["offer_id"] = offer_id
-        if robot_client_id:
-            params["robot_client_id"] = robot_client_id
-        return f"{config.public_base_url}/control/webrtc/{path}?{urlencode(params)}"
+        if compute_client_id:
+            params["compute_client_id"] = compute_client_id
+        return f"{self._control_signal_base_url()}/control/webrtc/{path}?{urlencode(params)}"
+
+    def _control_signal_base_url(self) -> str:
+        configured = os.getenv(CONTROL_SIGNAL_BASE_URL_ENV, "").strip().rstrip("/")
+        if configured:
+            return configured
+        config, _ = self.get_session()
+        return config.public_base_url
 
     def _control_monitor_key_state_url(self, session_name: str) -> str:
-        config, _ = self.get_session()
-        return f"{config.public_base_url}/control/monitor/key-state?{urlencode({'session': session_name})}"
+        return f"{self._control_signal_base_url()}/control/monitor/key-state?{urlencode({'session': session_name})}"
 
     def _control_monitor_status_url(self) -> str:
-        config, _ = self.get_session()
-        return f"{config.public_base_url}/control/webrtc/status"
+        return f"{self._control_signal_base_url()}/control/webrtc/status"
 
     @staticmethod
     def _perform_remote_json_request(
@@ -1298,12 +1355,16 @@ done
         method: str = "GET",
         payload: dict[str, object] | None = None,
         timeout_seconds: float = CONTROL_MONITOR_REQUEST_TIMEOUT_SECONDS,
+        auth_token_env: str = "",
     ) -> tuple[int, bytes]:
         body = None
         headers = {
             "User-Agent": "CloudServiceConsole/0.3",
             "Cache-Control": "no-cache",
         }
+        signaling_token = os.getenv(auth_token_env, "").strip() if auth_token_env else ""
+        if signaling_token:
+            headers["Authorization"] = f"Bearer {signaling_token}"
         if payload is not None:
             body = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
@@ -1326,17 +1387,20 @@ done
     def poll_control_monitor_offer(
         self,
         session_name: str,
-        robot_client_id: str,
+        compute_client_id: str,
     ) -> ControlMonitorOfferResponse | None:
-        if not robot_client_id.strip():
-            raise RuntimeError("robot_client_id is required.")
+        if not compute_client_id.strip():
+            raise RuntimeError("compute_client_id is required.")
 
         remote_url = self._control_monitor_url(
             session_name,
-            "robot-next-offer",
-            robot_client_id=robot_client_id,
+            "compute-next-offer",
+            compute_client_id=compute_client_id,
         )
-        status_code, body = self._perform_remote_json_request(remote_url)
+        status_code, body = self._perform_remote_json_request(
+            remote_url,
+            auth_token_env=CONTROL_SIGNAL_COMPUTE_TOKEN_ENV,
+        )
         if status_code == 204:
             return None
         try:
@@ -1369,24 +1433,25 @@ done
         self,
         session_name: str,
         offer_id: str,
-        robot_client_id: str,
+        compute_client_id: str,
         payload: ControlSessionDescription,
     ) -> ApiResponse:
         if not offer_id.strip():
             raise RuntimeError("offer_id is required.")
-        if not robot_client_id.strip():
-            raise RuntimeError("robot_client_id is required.")
+        if not compute_client_id.strip():
+            raise RuntimeError("compute_client_id is required.")
 
         remote_url = self._control_monitor_url(
             session_name,
-            "robot-answer",
+            "compute-answer",
             offer_id=offer_id,
-            robot_client_id=robot_client_id,
+            compute_client_id=compute_client_id,
         )
         self._perform_remote_json_request(
             remote_url,
             method="POST",
-            payload=payload.model_dump(),
+            payload={**payload.model_dump(), "role": "compute_control_receiver"},
+            auth_token_env=CONTROL_SIGNAL_COMPUTE_TOKEN_ENV,
         )
         return ApiResponse(success=True, message="Control answer posted.")
 
@@ -1403,6 +1468,7 @@ done
         status_code, body = self._perform_remote_json_request(
             remote_url,
             timeout_seconds=CONTROL_MONITOR_KEY_STATE_TIMEOUT_SECONDS,
+            auth_token_env=CONTROL_SIGNAL_ADMIN_TOKEN_ENV,
         )
         if status_code == 204:
             payload = {"session": session_name}
@@ -1497,9 +1563,11 @@ done
 
         pending_offers = read_control_monitor_pending_user_offers(session_name, session_state)
         raw_pending_offers = int(session_state.get("pendingOffers") or 0)
-        browser_posts = int(session_state.get("browserPosts") or 0)
+        browser_posts = int(session_state.get("frontendPosts") or session_state.get("browserPosts") or 0)
         answers_posted = int(session_state.get("answersPosted") or 0)
-        robot_poll_age_ms = self._parse_control_monitor_iso_age_ms(session_state.get("lastRobotPollAt"))
+        last_compute_poll_at = session_state.get("lastComputePollAt") or session_state.get("lastRobotPollAt")
+        last_frontend_offer_at = session_state.get("lastFrontendOfferAt") or session_state.get("lastBrowserOfferAt")
+        robot_poll_age_ms = self._parse_control_monitor_iso_age_ms(last_compute_poll_at)
         robot_listener_age_ms = session_state.get("robotListenerAgeMs")
         if robot_listener_age_ms is None:
             robot_listener_age_ms = robot_poll_age_ms
@@ -1515,7 +1583,7 @@ done
         last_answer_at = session_state.get("lastAnswerAt")
         signal_pair_age_ms = self._parse_control_monitor_iso_age_ms(last_answer_at)
         last_answer_epoch_ms = self._parse_control_monitor_iso_epoch_ms(last_answer_at)
-        last_robot_poll_epoch_ms = self._parse_control_monitor_iso_epoch_ms(session_state.get("lastRobotPollAt"))
+        last_robot_poll_epoch_ms = self._parse_control_monitor_iso_epoch_ms(last_compute_poll_at)
         last_monitor_update_epoch_ms = self._parse_control_monitor_iso_epoch_ms(payload.get("lastUpdateAt"))
         monitor_observed_after_pair = (
             last_answer_epoch_ms is not None
@@ -1550,7 +1618,9 @@ done
             "userPendingOffers": pending_offers,
             "internalPendingOffers": max(0, raw_pending_offers - pending_offers),
             "browserPosts": browser_posts,
-            "robotPolls": int(session_state.get("robotPolls") or 0),
+            "robotPolls": int(session_state.get("computePolls") or session_state.get("robotPolls") or 0),
+            "frontendPosts": browser_posts,
+            "computePolls": int(session_state.get("computePolls") or session_state.get("robotPolls") or 0),
             "answersPosted": answers_posted,
             "activeClientCount": effective_active_client_count,
             "dialingClientCount": dialing_client_count,
@@ -1561,7 +1631,8 @@ done
             "signalPairAgeMs": signal_pair_age_ms,
             "signalPaired": signal_paired,
             "inferredDirectConnected": inferred_direct_connected,
-            "robotListenerClientId": session_state.get("robotListenerClientId") or "",
+            "robotListenerClientId": session_state.get("computeListenerClientId") or session_state.get("robotListenerClientId") or "",
+            "computeListenerClientId": session_state.get("computeListenerClientId") or session_state.get("robotListenerClientId") or "",
             "robotListenerFreshMs": robot_listener_fresh_ms,
             "robotListenerAgeMs": robot_listener_age_ms,
             "robotListenerLatencyMs": None,
@@ -1569,8 +1640,10 @@ done
             "robotListenerLatencyUpdatedAt": None,
             "robotListenerConflictCount": int(session_state.get("robotListenerConflictCount") or 0),
             "lastRobotListenerAt": session_state.get("robotListenerLastSeenAt"),
-            "lastBrowserOfferAt": session_state.get("lastBrowserOfferAt"),
-            "lastRobotPollAt": session_state.get("lastRobotPollAt"),
+            "lastBrowserOfferAt": last_frontend_offer_at,
+            "lastRobotPollAt": last_compute_poll_at,
+            "lastFrontendOfferAt": last_frontend_offer_at,
+            "lastComputePollAt": last_compute_poll_at,
             "lastAnswerAt": session_state.get("lastAnswerAt"),
             "source": "desktop-backend",
         }
@@ -1601,9 +1674,13 @@ done
                 pending_offers = int(merged_status.get("pendingOffers") or 0)
             except (TypeError, ValueError):
                 pending_offers = 0
-            last_offer_epoch_ms = self._parse_control_monitor_iso_epoch_ms(merged_status.get("lastBrowserOfferAt"))
+            last_offer_epoch_ms = self._parse_control_monitor_iso_epoch_ms(
+                merged_status.get("lastFrontendOfferAt") or merged_status.get("lastBrowserOfferAt")
+            )
             last_answer_epoch_ms = self._parse_control_monitor_iso_epoch_ms(merged_status.get("lastAnswerAt"))
-            last_robot_poll_epoch_ms = self._parse_control_monitor_iso_epoch_ms(merged_status.get("lastRobotPollAt"))
+            last_robot_poll_epoch_ms = self._parse_control_monitor_iso_epoch_ms(
+                merged_status.get("lastComputePollAt") or merged_status.get("lastRobotPollAt")
+            )
 
             # For compute -> arm-edge the cloud broker only sees signaling.
             # If arm-edge polls again after the last answer, the previous
@@ -1639,6 +1716,7 @@ done
             _, status_body = self._perform_remote_json_request(
                 self._control_monitor_status_url(),
                 timeout_seconds=CONTROL_MONITOR_STATUS_FALLBACK_TIMEOUT_SECONDS,
+                auth_token_env=CONTROL_SIGNAL_ADMIN_TOKEN_ENV,
             )
             decoded_status = json.loads(status_body.decode("utf-8") or "{}")
             if isinstance(decoded_status, dict):
@@ -1674,7 +1752,7 @@ done
                 "directLatencySource",
             ):
                 merged_status[key] = fallback_status.get(key)
-            for key in ("lastRobotPollAt", "lastRobotListenerAt"):
+            for key in ("lastRobotPollAt", "lastComputePollAt", "lastRobotListenerAt"):
                 merged_status[key] = fallback_status.get(key) or existing_status.get(key)
             payload["linkStatus"] = merged_status
         else:
@@ -1840,7 +1918,22 @@ done
 
 
 state = BackendState()
+account_store = AccountStore(state.defaults.app_dir)
+agent_settings_store = AgentSettingsStore(state.defaults.app_dir)
+capture_storage_root = Path(
+    os.environ.get("CLOUD_CONSOLE_CAPTURE_STORAGE_DIR")
+    or (state.defaults.app_dir / "captures")
+).expanduser()
+capture_store = CaptureFileStore(capture_storage_root)
+capture_tasks = CaptureTaskStore(
+    capture_store,
+    Path(os.environ.get("CLOUD_CONSOLE_FRONTEND_DIST") or Path(__file__).resolve().parents[1] / "frontend" / "dist"),
+)
 app = FastAPI(title="Cloud Service Console Backend", version="0.3.0")
+model_library = ModelLibrary(Path(os.environ.get("CLOUD_CONSOLE_MODEL_LIBRARY_DIR")
+    or ("/opt/telebot-model-library" if WEB_MODE else state.defaults.app_dir / "model-library")),
+    Path(os.environ["CLOUD_CONSOLE_MODEL_CATALOG_DIR"]) if os.environ.get("CLOUD_CONSOLE_MODEL_CATALOG_DIR") else None)
+app.include_router(create_model_router(model_library))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1848,10 +1941,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def _web_tokens_configured() -> bool:
-    return bool(WEB_ADMIN_TOKEN and WEB_USER_TOKEN)
 
 
 def _read_web_token(request: FastAPIRequest) -> str:
@@ -1864,15 +1953,51 @@ def _read_web_token(request: FastAPIRequest) -> str:
     header_token = str(request.headers.get("x-cloud-console-token") or "").strip()
     if header_token:
         return header_token
-    return str(request.cookies.get(WEB_TOKEN_COOKIE) or "").strip()
-
-
-def _role_for_web_token(token: str) -> str:
-    if WEB_ADMIN_TOKEN and secrets.compare_digest(token, WEB_ADMIN_TOKEN):
-        return "admin"
-    if WEB_USER_TOKEN and secrets.compare_digest(token, WEB_USER_TOKEN):
-        return "user"
     return ""
+
+
+def _account_for_web_token(token: str) -> dict[str, str] | None:
+    return account_store.resolve_session(token)
+
+
+def _capture_upload_tokens() -> tuple[str, ...]:
+    # A dedicated capture token is preferred for new deployments. Signal
+    # tokens remain accepted so existing Frontend and Compute installations
+    # can upload without copying another secret to every machine at once.
+    values = (
+        os.environ.get(CAPTURE_UPLOAD_TOKEN_ENV),
+        os.environ.get(CONTROL_SIGNAL_FRONTEND_TOKEN_ENV),
+        os.environ.get(CONTROL_SIGNAL_COMPUTE_TOKEN_ENV),
+        os.environ.get(CONTROL_SIGNAL_ADMIN_TOKEN_ENV),
+    )
+    return tuple(dict.fromkeys(str(value or "").strip() for value in values if str(value or "").strip()))
+
+
+def _capture_machine_authorized(request: FastAPIRequest) -> bool:
+    expected_tokens = _capture_upload_tokens()
+    expected_hashes = tuple(
+        dict.fromkeys(
+            str(os.environ.get(name) or "").strip().lower()
+            for name in (
+                P2P_V2_FRONTEND_TOKEN_SHA256_ENV,
+                P2P_V2_COMPUTE_TOKEN_SHA256_ENV,
+            )
+            if str(os.environ.get(name) or "").strip()
+        )
+    )
+    if not expected_tokens and not expected_hashes:
+        return False
+    supplied = str(request.headers.get("x-telebot-capture-token") or "").strip()
+    if not supplied:
+        authorization = str(request.headers.get("authorization") or "").strip()
+        if authorization.lower().startswith("bearer "):
+            supplied = authorization[7:].strip()
+    if not supplied:
+        return False
+    if any(secrets.compare_digest(supplied, expected) for expected in expected_tokens):
+        return True
+    supplied_hash = hashlib.sha256(supplied.encode("utf-8")).hexdigest()
+    return any(secrets.compare_digest(supplied_hash, expected) for expected in expected_hashes)
 
 
 def _online_updated_at(now: float) -> str:
@@ -1909,8 +2034,8 @@ def _online_snapshot(now: float | None = None) -> dict[str, object]:
 
 def _record_online_client(request: FastAPIRequest, payload: dict[str, object]) -> dict[str, object]:
     now = time.time()
-    token = _read_web_token(request)
-    role = _role_for_web_token(token) if WEB_MODE else "desktop"
+    account = getattr(request.state, "account", None) if WEB_MODE else None
+    role = str(account.get("role") or "user") if isinstance(account, dict) else "desktop"
     client_id = _sanitize_online_client_id(payload.get("clientId"))
     if not client_id:
         host = request.client.host if request.client else "local"
@@ -1958,10 +2083,34 @@ async def web_access_guard(request: FastAPIRequest, call_next):
     if request.method == "OPTIONS" or _is_static_web_path(path):
         return await call_next(request)
 
+    if request.method == "GET" and path.startswith("/api/captures/downloads/"):
+        return await call_next(request)
+
+    if request.method == "POST" and path == CAPTURE_UPLOAD_PATH and _capture_machine_authorized(request):
+        request.state.capture_machine = True
+        request.state.account = None
+        return await call_next(request)
+
+    if request.method == "GET" and (path == "/api/model-library" or path.startswith("/api/model-library/")):
+        expected = os.environ.get("CLOUD_CONSOLE_MODEL_TOKEN_SHA256", "").strip()
+        supplied = request.headers.get("x-model-library-token", "")
+        if expected and supplied and secrets.compare_digest(hashlib.sha256(supplied.encode()).hexdigest(), expected):
+            return await call_next(request)
+
     token = _read_web_token(request)
-    role = _role_for_web_token(token)
-    if _web_tokens_configured() and not role:
-        return JSONResponse({"detail": "Unauthorized web console link."}, status_code=401)
+    account = _account_for_web_token(token)
+    request.state.account = account
+    if _path_matches(path, WEB_PUBLIC_PATHS):
+        return await call_next(request)
+    if not account:
+        return JSONResponse({"detail": "请先登录个人账号。"}, status_code=401)
+
+    role = account["role"]
+
+    if path == "/api/model-library" or path.startswith("/api/model-library/"):
+        allowed = {name.strip().lower() for name in os.getenv("CLOUD_CONSOLE_MODEL_READERS", "").split(",") if name.strip()}
+        if role != "admin" and account.get("username", "").lower() not in allowed:
+            return JSONResponse({"detail": "模型仓库仅限管理员和已授权的研究账号访问。"}, status_code=403)
 
     if role != "admin" and _path_matches(path, WEB_ADMIN_ONLY_PATH_PREFIXES):
         return JSONResponse({"detail": "管理员链接才允许执行此操作。"}, status_code=403)
@@ -1970,8 +2119,8 @@ async def web_access_guard(request: FastAPIRequest, call_next):
         return JSONResponse({"detail": "普通用户链接没有此操作权限。"}, status_code=403)
 
     response = await call_next(request)
-    if role:
-        response.headers["X-Cloud-Console-Role"] = role
+    response.headers["X-Cloud-Console-Role"] = role
+    response.headers["X-Cloud-Console-User"] = account["username"]
     return response
 
 
@@ -2215,30 +2364,78 @@ def api_health() -> ApiResponse:
     return ApiResponse(success=True, message="backend-ready")
 
 
+def _build_account_session_response(account: dict[str, str], remember_device: bool) -> AccountSessionResponse:
+    return AccountSessionResponse(
+        session_token=account_store.create_session(account),
+        device_token=account_store.create_device_credential(account) if remember_device else "",
+        username=account["username"],
+        role=account["role"],
+        admin=account["role"] == "admin",
+        avatar_data_url=account.get("avatar_data_url", ""),
+    )
+
+
+@app.post("/api/auth/register", response_model=AccountSessionResponse)
+def api_account_register(payload: AccountRegisterRequest) -> AccountSessionResponse:
+    try:
+        account = account_store.register(payload.username, payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _build_account_session_response(account, payload.remember_device)
+
+
+@app.post("/api/auth/login", response_model=AccountSessionResponse)
+def api_account_login(payload: AccountLoginRequest) -> AccountSessionResponse:
+    account = account_store.authenticate_password(payload.username, payload.password)
+    if not account:
+        raise HTTPException(status_code=401, detail="用户名或密码错误。")
+    return _build_account_session_response(account, payload.remember_device)
+
+
+@app.post("/api/auth/device-login", response_model=AccountSessionResponse)
+def api_account_device_login(payload: AccountDeviceLoginRequest) -> AccountSessionResponse:
+    account = account_store.authenticate_device(payload.device_token)
+    if not account:
+        raise HTTPException(status_code=401, detail="此设备保存的登录凭据已失效，请重新输入密码。")
+    return _build_account_session_response(account, remember_device=False)
+
+
+@app.post("/api/auth/logout", response_model=ApiResponse)
+def api_account_logout(request: FastAPIRequest) -> ApiResponse:
+    account_store.revoke_session(_read_web_token(request))
+    return ApiResponse(success=True, message="Account session cleared.")
+
+
+@app.put("/api/account/avatar", response_model=AccountAvatarResponse)
+def api_account_avatar(payload: AccountAvatarRequest, request: FastAPIRequest) -> AccountAvatarResponse:
+    account = getattr(request.state, "account", None)
+    if not isinstance(account, dict) or not account.get("username"):
+        raise HTTPException(status_code=401, detail="请先登录个人账号。")
+    try:
+        avatar_data_url = account_store.update_avatar(account["username"], payload.data_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AccountAvatarResponse(avatar_data_url=avatar_data_url)
+
+
 @app.get("/api/access")
 def api_access(request: FastAPIRequest) -> JSONResponse:
     token = _read_web_token(request)
-    role = _role_for_web_token(token) if WEB_MODE else "desktop"
-    if WEB_MODE and _web_tokens_configured() and not role:
-        raise HTTPException(status_code=401, detail="Unauthorized web console link.")
-
-    response = JSONResponse(
+    account = _account_for_web_token(token) if WEB_MODE else None
+    role = account["role"] if account else ("user" if WEB_MODE else "desktop")
+    saved_settings = state.get_saved_settings()
+    return JSONResponse(
         {
             "webMode": WEB_MODE,
-            "role": role or "user",
+            "authenticated": bool(account) or not WEB_MODE,
+            "username": account["username"] if account else "",
+            "role": role,
             "admin": role == "admin" or not WEB_MODE,
+            "avatarDataUrl": account.get("avatar_data_url", "") if account else "",
+            "defaultHost": saved_settings.host,
+            "defaultSshUsername": saved_settings.username or state.defaults.default_ssh_user,
         }
     )
-    if WEB_MODE and role in {"admin", "user"}:
-        response.set_cookie(
-            WEB_TOKEN_COOKIE,
-            token,
-            httponly=True,
-            samesite="lax",
-            secure=False,
-            max_age=60 * 60 * 24 * 30,
-        )
-    return response
 
 
 @app.get("/api/online")
@@ -2264,6 +2461,275 @@ def api_get_settings() -> LoginSettingsResponse:
 @app.post("/api/settings", response_model=LoginSettingsResponse)
 def api_save_settings(payload: SettingsRequest) -> LoginSettingsResponse:
     return state.save_settings(payload)
+
+
+@app.get("/api/captures/files", response_model=CaptureFileListResponse)
+def api_capture_files(limit: int = 0) -> CaptureFileListResponse:
+    files = capture_store.list_files(limit=limit)
+    return CaptureFileListResponse(
+        files=files,
+        total=len(files),
+        total_bytes=sum(int(item.get("size_bytes") or 0) for item in files),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@app.post("/api/captures/upload", response_model=CaptureUploadResponse)
+async def api_capture_upload(
+    request: FastAPIRequest,
+) -> CaptureUploadResponse:
+    account = getattr(request.state, "account", None)
+    machine_upload = bool(getattr(request.state, "capture_machine", False))
+    if WEB_MODE and not machine_upload and not isinstance(account, dict):
+        raise HTTPException(status_code=401, detail="请先登录个人账号，或提供采集上传 token。")
+    recovery_task_id = str(request.headers.get("x-telebot-capture-recovery-task") or "").strip()
+    recovery_kind = str(request.headers.get("x-telebot-capture-recovery-kind") or "").strip()
+    encoded_filename = str(request.headers.get("x-telebot-capture-filename-b64") or "").strip()
+    if encoded_filename:
+        try:
+            filename = base64.b64decode(encoded_filename, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise HTTPException(status_code=400, detail="补传文件名编码无效。") from exc
+    else:
+        filename = str(request.headers.get("x-telebot-capture-filename") or "capture.bin")
+    encoded_metadata = str(request.headers.get("x-telebot-capture-metadata-b64") or "").strip()
+    if encoded_metadata:
+        try:
+            metadata_json = base64.b64decode(encoded_metadata, validate=True).decode("utf-8")
+            parsed_metadata = json.loads(metadata_json or "{}")
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=400, detail="采集文件元数据不是有效 JSON。") from exc
+    else:
+        parsed_metadata = {}
+    if not isinstance(parsed_metadata, dict):
+        raise HTTPException(status_code=400, detail="metadata_json 必须是 JSON 对象。")
+    recovery_task = None
+    if recovery_task_id or recovery_kind:
+        _require_admin_account(request)
+        if not recovery_task_id or not recovery_kind:
+            raise HTTPException(status_code=400, detail="补传请求缺少任务 ID 或素材类型。")
+        try:
+            recovery_task = capture_tasks.prepare_recovery_upload(recovery_task_id, recovery_kind)
+            validate_recovery_filename(recovery_kind, filename)
+        except (KeyError, TaskConflict) as exc:
+            raise _capture_task_error(exc) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        parsed_metadata = {
+            "kind": recovery_kind,
+            "source": "console-recovery-upload",
+            "session_id": recovery_task["session_id"],
+            "room_id": recovery_task["room_id"],
+            "started_at_server_ms": recovery_task.get("started_at_server_ms"),
+            "stopped_at_server_ms": recovery_task.get("stopped_at_server_ms"),
+            "authoritative_started_at_server_ms": recovery_task.get(
+                "authoritative_started_at_server_ms",
+                recovery_task.get("started_at_server_ms"),
+            ),
+            "authoritative_stopped_at_server_ms": recovery_task.get(
+                "authoritative_stopped_at_server_ms",
+                recovery_task.get("stopped_at_server_ms"),
+            ),
+            "stop_authority": recovery_task.get("stop_authority") or "",
+            "recovery_task_id": recovery_task_id,
+        }
+    if isinstance(account, dict) and account.get("username"):
+        parsed_metadata.setdefault("uploaded_by", account["username"])
+    try:
+        record = await capture_store.store_async_upload(
+            request.stream(),
+            filename=filename,
+            content_type=str(request.headers.get("content-type") or "application/octet-stream"),
+            metadata=parsed_metadata,
+        )
+    except TaskConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"采集文件保存失败：{exc}") from exc
+    if recovery_task is not None:
+        stored = capture_store.get_file(record["id"])
+        try:
+            if stored is None:
+                raise ValueError("补传文件保存后无法读取。")
+            validate_recovery_artifact(
+                stored[1],
+                recovery_kind,
+                recovery_task["session_id"],
+                recovery_task["room_id"],
+            )
+        except (ValueError, OSError) as exc:
+            capture_store.delete_file(record["id"])
+            detail = str(exc) if isinstance(exc, ValueError) else "补传文件保存后无法读取。"
+            raise HTTPException(status_code=400, detail=detail) from exc
+        except Exception:
+            capture_store.delete_file(record["id"])
+            raise
+    return CaptureUploadResponse(file=record)
+
+
+@app.get("/api/captures/files/{capture_id}/download")
+def api_capture_download(capture_id: str) -> FileResponse:
+    result = capture_store.get_file(capture_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="采集文件不存在或已被移除。")
+    record, path = result
+    return FileResponse(
+        path,
+        media_type=str(record.get("content_type") or "application/octet-stream"),
+        filename=str(record.get("filename") or path.name),
+        headers={"X-Capture-SHA256": str(record.get("sha256") or "")},
+    )
+
+
+def _require_admin_account(request: FastAPIRequest) -> dict[str, str]:
+    if not WEB_MODE:
+        return {"username": "desktop", "role": "admin"}
+    account = getattr(request.state, "account", None)
+    if not isinstance(account, dict) or account.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="只有管理员可以执行此操作。")
+    return account
+
+
+@app.get("/api/captures/tasks")
+def api_capture_tasks() -> dict:
+    tasks = capture_tasks.list_tasks()
+    return {
+        "tasks": tasks, "total": len(tasks),
+        "total_bytes": sum(t["size_bytes"] + t["output_bytes"] for t in tasks),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _capture_task_error(exc: Exception) -> HTTPException:
+    return HTTPException(
+        status_code=404 if isinstance(exc, KeyError) else 409,
+        detail="采集任务不存在。" if isinstance(exc, KeyError) else str(exc),
+    )
+
+
+@app.post("/api/captures/tasks/{task_id}/synthesize")
+def api_capture_synthesize(task_id: str, request: FastAPIRequest) -> dict:
+    _require_admin_account(request)
+    try:
+        return capture_tasks.start(task_id)
+    except (KeyError, TaskConflict) as exc:
+        raise _capture_task_error(exc) from exc
+
+
+@app.get("/api/captures/tasks/{task_id}/download")
+def api_capture_task_download(task_id: str) -> FileResponse:
+    try:
+        path = capture_tasks.download(task_id)
+    except (KeyError, TaskConflict) as exc:
+        raise _capture_task_error(exc) from exc
+    return FileResponse(path, media_type="video/mp4", filename=f"{task_id}-piper-replay.mp4")
+
+
+@app.delete("/api/captures/tasks/{task_id}")
+def api_capture_task_delete(task_id: str, request: FastAPIRequest) -> dict:
+    _require_admin_account(request)
+    try:
+        capture_tasks.delete(task_id)
+    except (KeyError, TaskConflict) as exc:
+        raise _capture_task_error(exc) from exc
+    return {"success": True}
+
+
+_capture_download_tickets: dict[str, dict] = {}
+_capture_download_lock = threading.Lock()
+
+
+@app.post("/api/captures/downloads")
+def api_capture_download_ticket(payload: dict[str, str]) -> dict:
+    try:
+        if payload.get("task_id"):
+            capture_tasks.download(payload["task_id"])
+            target = {"task_id": payload["task_id"]}
+        elif payload.get("file_id") and capture_store.get_file(payload["file_id"]):
+            target = {"file_id": payload["file_id"]}
+        else:
+            raise KeyError("file")
+    except (KeyError, TaskConflict) as exc:
+        raise _capture_task_error(exc) from exc
+    ticket = secrets.token_urlsafe(32)
+    with _capture_download_lock:
+        now = time.monotonic()
+        for key in list(_capture_download_tickets):
+            if _capture_download_tickets[key]["expires"] < now:
+                del _capture_download_tickets[key]
+        if len(_capture_download_tickets) >= 256:
+            raise HTTPException(429, "下载请求过多，请稍后重试。")
+        _capture_download_tickets[ticket] = {**target, "expires": now + 15 * 60}
+    return {"path": f"/api/captures/downloads/{ticket}"}
+
+
+@app.get("/api/captures/downloads/{ticket}")
+def api_capture_ticket_download(ticket: str) -> FileResponse:
+    with _capture_download_lock:
+        target = _capture_download_tickets.get(ticket)
+        if not target or target["expires"] < time.monotonic():
+            raise HTTPException(404, "下载凭据已失效，请重新点击下载。")
+    response = (
+        api_capture_task_download(target["task_id"]) if target.get("task_id")
+        else api_capture_download(target["file_id"])
+    )
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@app.get("/api/admin/users", response_model=AdminUserListResponse)
+def api_admin_users(request: FastAPIRequest) -> AdminUserListResponse:
+    _require_admin_account(request)
+    users = account_store.list_users()
+    return AdminUserListResponse(
+        users=users,
+        total=len(users),
+        online=sum(1 for user in users if user["online"]),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@app.get("/api/agent/settings", response_model=AgentSettingsResponse)
+def api_get_agent_settings() -> AgentSettingsResponse:
+    return AgentSettingsResponse(**agent_settings_store.public_view())
+
+
+@app.put("/api/agent/settings", response_model=AgentSettingsResponse)
+def api_save_agent_settings(payload: AgentSettingsRequest, request: FastAPIRequest) -> AgentSettingsResponse:
+    account = _require_admin_account(request)
+    try:
+        settings = agent_settings_store.save(payload.model_dump(), account["username"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AgentSettingsResponse(**settings)
+
+
+@app.post("/api/agent/settings/test", response_model=AgentConnectionTestResponse)
+def api_test_agent_settings(request: FastAPIRequest) -> AgentConnectionTestResponse:
+    _require_admin_account(request)
+    settings = agent_settings_store.load_private()
+    api_key = str(settings.get("apiKey") or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="请先保存 DeepSeek API Key。")
+    base_url = str(settings.get("baseUrl") or "https://api.deepseek.com").rstrip("/")
+    models_url = f"{base_url}/models"
+    api_request = Request(
+        models_url,
+        headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+        method="GET",
+    )
+    try:
+        with urlopen(api_request, timeout=10) as response:
+            if response.status < 200 or response.status >= 300:
+                raise RuntimeError(f"HTTP {response.status}")
+    except HTTPError as exc:
+        raise HTTPException(status_code=400, detail=f"DeepSeek API 验证失败：HTTP {exc.code}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"DeepSeek API 验证失败：{exc}") from exc
+    return AgentConnectionTestResponse(success=True, message="DeepSeek API 连接正常。")
 
 
 @app.post("/api/login", response_model=ApiResponse)
@@ -2386,10 +2852,10 @@ def api_control_monitor_config() -> ControlMonitorConfigResponse:
 @app.get("/api/control-monitor/offer", response_model=ControlMonitorOfferResponse)
 def api_control_monitor_offer(
     session: str = CONTROL_MONITOR_DEFAULT_SESSION,
-    robot_client_id: str = "",
+    compute_client_id: str = "",
 ):
     try:
-        offer = state.poll_control_monitor_offer(session, robot_client_id)
+        offer = state.poll_control_monitor_offer(session, compute_client_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -2403,10 +2869,10 @@ def api_control_monitor_answer(
     payload: ControlSessionDescription,
     session: str = CONTROL_MONITOR_DEFAULT_SESSION,
     offer_id: str = "",
-    robot_client_id: str = "",
+    compute_client_id: str = "",
 ) -> ApiResponse:
     try:
-        return state.post_control_monitor_answer(session, offer_id, robot_client_id, payload)
+        return state.post_control_monitor_answer(session, offer_id, compute_client_id, payload)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -2760,12 +3226,54 @@ def api_local_stream_stop() -> LocalStreamStatus:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@app.get("/api/p2p-local-pusher/status", response_model=P2PLocalPusherStatus)
+def api_p2p_local_pusher_status() -> P2PLocalPusherStatus:
+    if WEB_MODE:
+        return P2PLocalPusherStatus(
+            available=False,
+            running=False,
+            message="P2P local pusher is available only in the desktop app.",
+            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+    try:
+        return state.get_p2p_local_pusher_status()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/p2p-local-pusher/start", response_model=P2PLocalPusherStatus)
+def api_p2p_local_pusher_start(payload: LocalStreamConfig, room_id: str = "robot", watch_url: str = "") -> P2PLocalPusherStatus:
+    if WEB_MODE:
+        raise HTTPException(status_code=400, detail="P2P local pusher is available only in the desktop app.")
+    try:
+        return state.start_p2p_local_pusher(payload, room_id, watch_url)
+    except Exception as exc:
+        state.log_store.append(f"P2P local pusher start failed: {exc}", level="error")
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/p2p-local-pusher/stop", response_model=P2PLocalPusherStatus)
+def api_p2p_local_pusher_stop() -> P2PLocalPusherStatus:
+    if WEB_MODE:
+        raise HTTPException(status_code=400, detail="P2P local pusher is available only in the desktop app.")
+    try:
+        return state.stop_p2p_local_pusher()
+    except Exception as exc:
+        state.log_store.append(f"P2P local pusher stop failed: {exc}", level="error")
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @app.on_event("shutdown")
 def on_shutdown() -> None:
+    capture_tasks.close()
     try:
         if state.current_config is not None:
             state.local_stream_manager.stop(state.current_config, quiet=True)
         state.local_stream_manager.clear_logs()
+    except Exception:
+        pass
+    try:
+        state.p2p_local_pusher_manager.stop(quiet=True)
     except Exception:
         pass
     try:
